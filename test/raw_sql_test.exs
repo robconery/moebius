@@ -21,7 +21,7 @@ defmodule MoebiusTest do
   test "returning multiple rows returns map list" do
     case Moebius.Runner.query "select id, email, first, last from users limit 1" do
       {:ok, res} -> assert length(res) > 0
-      {:error, err} -> flunk "Nope"
+      {:error, _} -> flunk "Nope"
     end
   end
 

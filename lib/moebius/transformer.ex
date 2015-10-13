@@ -15,34 +15,20 @@ defmodule Moebius.Transformer do
   end
 
   def coerce_atoms({:ok, string_key_map}) do
-    atom_keyed = for {key, val} <- string_key_map, into: %{}, do: {String.to_atom(key), val}
-    {:ok, atom_keyed}
+    coerce_atoms string_key_map
   end
 
-  # def map_list(cols, [head | tail], res) do
-  #   zipped = List.zip [cols, head]
-  #   mapped = Enum.into zipped, %{}
-  #
-  #   {:ok, atomized} =  coerce_atoms({:ok, mapped})
-  #
-  #   res = List.insert_at(res, length(res), atomized)
-  #   map_list(cols, tail, res)
-  # end
-
-  def split_rows_and_cols(res) do
-    [rows: res.rows, cols: res.columns]
-  end
-  def merge_cols_and_rows do
-
+  def coerce_atoms(string_key_map) do
+    atomized = for {key, val} <- string_key_map, into: %{}, do: {String.to_atom(key), val}
+    {:ok, atomized}
   end
 
   def map_list({:error, err}), do: {:error, err}
   def map_list({:ok, res}) do
 
     listed = Enum.map res.rows, fn(r) ->
-      IO.inspect res.columns
-      string_key_map = List.zip([res.columns, r])
-      for {key, val} <- string_key_map, into: %{}, do: {String.to_atom(key), val}
+      List.zip([res.columns, r])
+        |> coerce_atoms
     end
 
     {:ok, listed}
