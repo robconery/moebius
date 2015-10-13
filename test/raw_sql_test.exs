@@ -11,7 +11,15 @@ defmodule MoebiusTest do
   test "inserting to users with raw SQL" do
     case Moebius.Runner.execute "insert into users(email) values ($1)", ["test@test.com"] do
       {:ok, res} -> assert res
-      {:error, err} -> IO.inspect err#flunk err
+      {:error, err} -> flunk IO.inspect(err)
     end
   end
+
+  test "returning single returns map" do
+    case Moebius.Runner.single "select id, email, first, last from users limit 1" do
+      {:ok, res} -> assert res.id
+      {:error, err} -> flunk IO.inspect(err)
+    end
+  end
+
 end
