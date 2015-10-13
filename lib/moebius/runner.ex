@@ -1,7 +1,7 @@
 defmodule Moebius.Runner do
 
   def connect do
-    db = Application.get_env(:db, :connection)
+    db = Application.get_env(:moebius, :connection)
     Postgrex.Connection.start_link(db)
   end
 
@@ -45,17 +45,17 @@ defmodule Moebius.Runner do
     build_file
   end
 
-  def run_with_psql(sql) do
+  def run_with_psql(sql, db) do
     #TODO: Read the DB from the config
-    args = ["-d", "bigmachine", "-c", sql, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
+    args = ["-d", db, "-c", sql, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
     #hand off to PSQL because Postgrex can't run more than one command per query
     System.cmd "psql", args
   end
 
-  def execute_sql_files_in_directory(sql_dir) do
+  def execute_sql_files_in_directory(db, sql_dir) do
     DB.Builder.read_and_concat_files(sql_dir)
       |> prepare_sql_batch
-      |> run_with_psql
+      |> run_with_psql(db)
   end
 
   def execute_transaction(list) do

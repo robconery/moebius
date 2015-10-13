@@ -19,14 +19,6 @@ defmodule Moebius.Transformer do
     {:ok, atom_keyed}
   end
 
-  def map_single({:error, err}) do
-    raise err
-  end
-
-  def map_list({:error, err}) do
-    raise err
-  end
-
   def map_list(cols, [head | tail], res) do
     zipped = List.zip [cols, head]
     mapped = Enum.into zipped, %{}
@@ -37,16 +29,15 @@ defmodule Moebius.Transformer do
     map_list(cols, tail, res)
   end
 
-  def map_list(cols, [], res) do
-    res
-  end
 
+  def map_list({:error, err}), do: {:error, err}
   def map_list({:ok, res}) do
     cols = res.columns
     rows = res.rows
     map_list res.columns, res.rows, []
   end
 
+  def map_single({:error, err}), do: {:error, err}
   def map_single({:ok, res}) do
     get_first_result({:ok, res})
       |> zip_columns_and_row
