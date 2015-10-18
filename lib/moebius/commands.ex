@@ -14,4 +14,8 @@ defmodule Moebius.Commands do
     %Moebius.QueryCommand{sql: sql, params: vals, table_name: table_name}
   end
 
+  def insert([maps], table) do
+    IO.puts "HOOHAA"
+  end
+
 end
