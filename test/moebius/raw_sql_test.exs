@@ -3,13 +3,6 @@ defmodule MoebiusTest do
   #doctest Moebius
   #import Moebius.Runner
 
-  setup_all do
-    Moebius.Runner.execute "delete from users;"
-    case Moebius.Runner.execute "insert into users(email) values ($1)", ["test@test.com"] do
-      {:ok, res} -> {:ok, res: res}
-      {:error, err} -> flunk IO.inspect(err)
-    end
-  end
 
   test "returning single returns map" do
     case Moebius.Runner.single "select id, email, first, last from users limit 1" do

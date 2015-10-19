@@ -27,6 +27,11 @@ create table logs(
   user_id integer references users(id),
   log text
 );
+
+insert into users(email, first, last) values('rob@test.com','Rob','Blah');
+insert into users(email, first, last) values('jill@test.com','Jill','Gloop');
+insert into users(email, first, last) values('mary@test.com','Mary','Muggtler');
+insert into users(email, first, last) values('mike@test.com','Mike','Ghruoisl');
 "
 
 Moebius.Runner.run_with_psql sql, "meebuss"

@@ -5,12 +5,25 @@ defmodule Moebius.Query do
   """
 
   @doc """
-  The main starting point. Currently you specify a table here
+  The main starting point. Currently you specify a table here but, possibly, in the future you can override connection settings
   """
   def db(table) do
     %Moebius.QueryCommand{table_name: Atom.to_string(table)}
   end
 
+
+  @doc """
+  A basic "WHERE" statement builder that builds a NOT IN statement
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+      |> filter(:name, not_in: ["mark", "biff", "skip"])
+      |> select
+      |> run
+  ```
+  """
   def filter(cmd, criteria, not_in: params) when is_atom(criteria) and is_list(params) do
     #this is an IN query
     in_list = Enum.map_join(1..length(params), ", ", &"$#{&1}")
@@ -18,6 +31,18 @@ defmodule Moebius.Query do
     %{cmd | where: where, params: params}
   end
 
+  @doc """
+  A basic "WHERE" statement builder that builds an IN statement
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+      |> filter(:name, in: ["mark", "biff", "skip"])
+      |> select
+      |> run
+  ```
+  """
   def filter(cmd, criteria, in: params) when is_atom(criteria) and is_list(params),  do: filter(cmd, criteria, params)
   def filter(cmd, criteria, params) when is_atom(criteria) and is_list(params) do
     #this is an IN query
@@ -26,6 +51,18 @@ defmodule Moebius.Query do
     %{cmd | where: where, params: params}
   end
 
+  @doc """
+  A basic "WHERE" statement builder that builds an IN statement
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+      |> filter(:name, ["mark", "biff", "skip"])
+      |> select
+      |> run
+  ```
+  """
   def filter(cmd, criteria) when is_bitstring(criteria), do: filter(cmd, criteria, [])
   def filter(cmd, criteria, params) when is_bitstring(criteria)  do
     unless is_list params do
@@ -34,6 +71,18 @@ defmodule Moebius.Query do
     %{cmd | params: params, where: " where " <> criteria}
   end
 
+  @doc """
+  A basic "WHERE" statement builder that builds an inclusive AND-based where statement
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+      |> filter(name: "Mike")
+      |> select
+      |> run
+  ```
+  """
   def filter(cmd, criteria) when is_list(criteria) do
 
     cols = Keyword.keys(criteria)
@@ -48,6 +97,19 @@ defmodule Moebius.Query do
     %{cmd | params: vals, where: where, where_columns: cols}
   end
 
+  @doc """
+  Sets the order by. Ascending using `:asc` is the default, you can send in `:desc` if you like.
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+      |> filter(id: 1, name: "Steve")
+      |> sort(:name, :desc)
+      |> select
+      |> run
+  ```
+  """
   def sort(cmd, cols, direction \\ :asc) do
     order_column = cols
     if is_atom(cols) do
@@ -57,10 +119,36 @@ defmodule Moebius.Query do
     %{cmd | order: " order by #{order_column} #{sort_dir}"}
   end
 
+
+  @doc """
+  Sets the limit of the return.
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+      |> limit(20)
+      |> select
+      |> run
+  ```
+  """
   def limit(cmd, bound) do
     %{cmd | limit: " limit #{bound}"}
   end
 
+  @doc """
+  Offsets the limit - so would produce SQL like "select * from users limit 10 offset 2;"
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+      |> limit(20)
+      |> offset(2)
+      |> select
+      |> run
+  ```
+  """
   def offset(cmd, skip) do
     %{cmd | offset: " offset #{skip}"}
   end
@@ -69,6 +157,16 @@ defmodule Moebius.Query do
     %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
+  def search(cmd, term, columns) when is_list columns do
+    concat_list = Enum.map_join(columns, ", ' ',  ", &"#{&1}")
+    sql = """
+    select *, ts_rank_cd(to_tsvector(concat(#{concat_list})),to_tsquery($1)) as rank from #{cmd.table_name}
+  	where to_tsvector(concat(#{concat_list})) @@ to_tsquery($1)
+  	order by rank desc
+    """
+
+    %{cmd | sql: sql, params: [term]}
+  end
 
   def insert(cmd, criteria) do
     cols = Keyword.keys(criteria)

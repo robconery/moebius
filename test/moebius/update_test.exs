@@ -7,7 +7,7 @@ defmodule Moebius.UpdateTest do
   setup_all do
     cmd = db(:users)
         |> filter(id: 1)
-        |> update(email: "test@test.com")
+        |> update(email: "maggot@test.com")
 
     {:ok, cmd: cmd}
   end
