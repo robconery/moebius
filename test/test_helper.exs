@@ -21,6 +21,12 @@ create table products(
   search tsvector,
   variants jsonb
 );
+
+create table logs(
+  id serial primary key not null,
+  user_id references users(id),
+  log text
+);
 "
 
 Moebius.Runner.run_with_psql sql, "meebuss"

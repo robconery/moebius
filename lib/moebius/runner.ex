@@ -7,19 +7,19 @@ defmodule Moebius.Runner do
 
   def single(sql,args \\ []) do
     execute(sql,args)
-      |> Moebius.Transformer.map_single
+      |> Moebius.Transformer.to_single
   end
 
   def query(sql,args \\ []) do
     execute(sql,args)
-      |> Moebius.Transformer.map_list
+      |> Moebius.Transformer.to_list
   end
 
   def execute_single_function(function_name, args) do
     {:ok, pid} = connect()
     sql = "select * from #{function_name};"
     Postgrex.Connection.query(pid, sql, args)
-      |> Moebius.Transformer.map_single
+      |> Moebius.Transformer.to_single
   end
 
   def execute(sql, args \\ []) do

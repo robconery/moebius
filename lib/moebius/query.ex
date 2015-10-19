@@ -1,6 +1,6 @@
 defmodule Moebius.Query do
 
-  def dataset(table, cols \\ "*") do
+  def db(table, cols \\ "*") do
     %Moebius.QueryCommand{table_name: Atom.to_string(table), columns: cols}
   end
 

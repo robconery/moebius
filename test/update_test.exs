@@ -5,7 +5,7 @@ defmodule Moebius.UpdateTest do
   import Moebius.Query
 
   setup_all do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter(id: 1)
         |> update(email: "test@test.com")
 
@@ -22,7 +22,7 @@ defmodule Moebius.UpdateTest do
   end
 
   test "a bulk update with a string filter" do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter("id > 100")
         |> update(email: "test@test.com")
 
@@ -32,7 +32,7 @@ defmodule Moebius.UpdateTest do
 
 
   test "a bulk update with a string filter and params" do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter("email LIKE %$2", "test")
         |> update(email: "ox@test.com")
 

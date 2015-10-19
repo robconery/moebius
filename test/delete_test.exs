@@ -3,7 +3,7 @@ defmodule Moebius.DeleteTest do
   import Moebius.Query
 
   test "a simple delete" do
-    cmd = dataset(:users)
+    cmd = db(:users)
       |> filter(id: 1)
       |> delete
 
@@ -12,7 +12,7 @@ defmodule Moebius.DeleteTest do
   end
 
   test "a bulk delete with no params" do
-    cmd = dataset(:users)
+    cmd = db(:users)
       |> filter("id > 100")
       |> delete
 
@@ -21,7 +21,7 @@ defmodule Moebius.DeleteTest do
   end
 
   test "a bulk delete with a single param" do
-    cmd = dataset(:users)
+    cmd = db(:users)
       |> filter("id > $1", 1)
       |> delete
 

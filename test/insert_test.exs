@@ -4,7 +4,7 @@ defmodule MoebiusInsertTest do
   import Moebius.Query
 
   setup_all do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> insert(email: "test@test.com", first: "Test", last: "User")
     {:ok, cmd: cmd}
   end

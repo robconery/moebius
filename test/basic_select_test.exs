@@ -5,7 +5,7 @@ defmodule Moebius.BasicSelectTest do
 
   test "a basic select *" do
 
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> build
 
     assert cmd.sql == "select * from users;"
@@ -13,14 +13,14 @@ defmodule Moebius.BasicSelectTest do
 
   test "a basic select with columns" do
 
-    cmd = dataset(:users, "first, last")
+    cmd = db(:users, "first, last")
         |> build
 
     assert cmd.sql == "select first, last from users;"
   end
 
   test "a basic select with where" do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter(id: 1, name: "Steve")
         |> build
 
@@ -28,7 +28,7 @@ defmodule Moebius.BasicSelectTest do
   end
 
   test "a basic select with a where string" do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter("name=$1 OR thing=$2", ["Steve", "Bill"])
         |> build
 
@@ -36,7 +36,7 @@ defmodule Moebius.BasicSelectTest do
   end
 
   test "a basic select with a where string and no parameters" do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter("id > 100")
         |> build
 
@@ -44,7 +44,7 @@ defmodule Moebius.BasicSelectTest do
   end
 
   test "a basic select with where and order" do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter(id: 1, name: "Steve")
         |> sort(:name, :desc)
         |> build
@@ -53,7 +53,7 @@ defmodule Moebius.BasicSelectTest do
   end
 
   test "a basic select with where and order and limit without skip" do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter(id: 1, name: "Steve")
         |> sort(:name, :desc)
         |> limit(10)
@@ -63,7 +63,7 @@ defmodule Moebius.BasicSelectTest do
   end
 
   test "a basic select with where and order and limit with offset" do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter(id: 1, name: "Steve")
         |> sort(:name, :desc)
         |> limit(10)
@@ -74,7 +74,7 @@ defmodule Moebius.BasicSelectTest do
   end
 
   test "a simple IN query" do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter(:name, ["mark", "biff", "skip"])
         |> build
 
@@ -83,7 +83,7 @@ defmodule Moebius.BasicSelectTest do
   end
 
   test "a simple IN query, specified" do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter(:name, in: ["mark", "biff", "skip"])
         |> build
 
@@ -91,7 +91,7 @@ defmodule Moebius.BasicSelectTest do
     assert length(cmd.params) == 3
   end
   test "a simple NOT IN query, specified" do
-    cmd = dataset(:users)
+    cmd = db(:users)
         |> filter(:name, not_in: ["mark", "biff", "skip"])
         |> build
 
