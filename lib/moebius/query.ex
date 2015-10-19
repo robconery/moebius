@@ -58,7 +58,7 @@ defmodule Moebius.Query do
     %{cmd | offset: " offset #{skip}"}
   end
 
-  def build(cmd) do
+  def select(cmd) do
     %{cmd | sql: "select #{cmd.columns} from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 

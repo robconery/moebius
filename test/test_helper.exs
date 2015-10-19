@@ -1,7 +1,7 @@
 ExUnit.start()
 
 sql = "
-drop table logs;
+drop table if exists logs;
 drop table if exists users;
 drop table if exists products;
 
@@ -24,7 +24,7 @@ create table products(
 
 create table logs(
   id serial primary key not null,
-  user_id references users(id),
+  user_id integer references users(id),
   log text
 );
 "
