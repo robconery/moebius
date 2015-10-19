@@ -1,6 +1,7 @@
 ExUnit.start()
 
 sql = "
+drop table logs;
 drop table if exists users;
 drop table if exists products;
 

@@ -107,5 +107,23 @@ defmodule Moebius.Query do
     %{cmd | sql: sql, type: :delete}
   end
 
+  def sql_file(file, params \\ []) do
+
+    unless is_list params do
+      params = [params]
+    end
+
+    #find the DB dir
+    scripts_dir = Application.get_env(:moebius, :scripts)
+    file_path = Path.join(scripts_dir, "#{Atom.to_string(file)}.sql")
+    sql=File.read!(file_path)
+
+    %Moebius.QueryCommand{sql: String.strip(sql), params: params}
+  end
+
+  def run(cmd), do: Moebius.Runner.execute(cmd.sql, cmd.params)
+  def execute(cmd), do: Moebius.Runner.execute(cmd.sql, cmd.params)
+  def to_single(res), do: Moebius.Transformer.to_single(res)
+  def to_list(res), do: Moebius.Transformer.to_list(res)
 
 end

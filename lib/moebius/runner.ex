@@ -52,11 +52,6 @@ defmodule Moebius.Runner do
     System.cmd "psql", args
   end
 
-  def execute_sql_files_in_directory(db, sql_dir) do
-    DB.Builder.read_and_concat_files(sql_dir)
-      |> prepare_sql_batch
-      |> run_with_psql(db)
-  end
 
   def execute_transaction(list) do
     {:ok, pid} = connect()
