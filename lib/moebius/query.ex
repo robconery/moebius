@@ -4,7 +4,13 @@ defmodule Moebius.Query do
     %Moebius.QueryCommand{table_name: Atom.to_string(table), columns: cols}
   end
 
-  def filter(cmd, criteria) do
+  def filter(cmd, criteria) when is_bitstring(criteria), do: filter(cmd, criteria, [])
+  def filter(cmd, criteria, params) when is_bitstring(criteria)  do
+    %{cmd | params: params}
+    %{cmd | where: " where " <> criteria}
+  end
+
+  def filter(cmd, criteria) when is_list(criteria) do
 
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
@@ -29,9 +35,16 @@ defmodule Moebius.Query do
     %{cmd | order: " order by #{order_column} #{sort_dir}"}
   end
 
+  def limit(cmd, bound) do
+    %{cmd | limit: " limit #{bound}"}
+  end
+
+  def offset(cmd, skip) do
+    %{cmd | offset: " offset #{skip}"}
+  end
 
   def build(cmd, type: :select) do
-    %{cmd | sql: "select #{cmd.columns} from #{cmd.table_name}#{cmd.where}#{cmd.order};"}
+    %{cmd | sql: "select #{cmd.columns} from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
 end

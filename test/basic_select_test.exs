@@ -27,6 +27,22 @@ defmodule Moebius.BasicSelectTest do
     assert cmd.sql == "select * from users where id = $1 and name = $2;"
   end
 
+  test "a basic select with a where string" do
+    cmd = dataset(:users)
+        |> filter("name=$1 OR thing=$2", ["Steve", "Bill"])
+        |> build(type: :select)
+
+    assert cmd.sql == "select * from users where name=$1 OR thing=$2;"
+  end
+
+  test "a basic select with a where string and no parameters" do
+    cmd = dataset(:users)
+        |> filter("id > 100")
+        |> build(type: :select)
+
+    assert cmd.sql == "select * from users where id > 100;"
+  end
+
   test "a basic select with where and order" do
     cmd = dataset(:users)
         |> filter(id: 1, name: "Steve")
@@ -34,6 +50,27 @@ defmodule Moebius.BasicSelectTest do
         |> build(type: :select)
 
     assert cmd.sql == "select * from users where id = $1 and name = $2 order by name desc;"
+  end
+
+  test "a basic select with where and order and limit without skip" do
+    cmd = dataset(:users)
+        |> filter(id: 1, name: "Steve")
+        |> sort(:name, :desc)
+        |> limit(10)
+        |> build(type: :select)
+
+    assert cmd.sql == "select * from users where id = $1 and name = $2 order by name desc limit 10;"
+  end
+
+  test "a basic select with where and order and limit with offset" do
+    cmd = dataset(:users)
+        |> filter(id: 1, name: "Steve")
+        |> sort(:name, :desc)
+        |> limit(10)
+        |> offset(2)
+        |> build(type: :select)
+
+    assert cmd.sql == "select * from users where id = $1 and name = $2 order by name desc limit 10 offset 2;"
   end
 
 end
