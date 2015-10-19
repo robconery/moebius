@@ -27,11 +27,6 @@ create table logs(
   user_id integer references users(id),
   log text
 );
-
-create function all_users()
-as
-select * from users;
-language sql;
 "
 
 Moebius.Runner.run_with_psql sql, "meebuss"

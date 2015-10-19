@@ -63,6 +63,7 @@ defmodule Moebius.BasicSelectTest do
   end
 
   test "a basic select with where and order and limit with offset" do
+
     cmd = db(:users)
         |> filter(id: 1, name: "Steve")
         |> sort(:name, :desc)

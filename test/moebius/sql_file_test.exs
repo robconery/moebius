@@ -15,10 +15,9 @@ defmodule Moebius.SQLFileTest do
   end
 
   test "a cte can be loaded and run" do
-    
+
     {:ok, res} = sql_file(:cte, "test@test.com")
-      |> execute
-      |> to_single
+      |> single
 
     assert res.id > 0
   end

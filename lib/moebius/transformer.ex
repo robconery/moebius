@@ -26,9 +26,12 @@ defmodule Moebius.Transformer do
   def to_list({:error, err}), do: {:error, err}
   def to_list({:ok, res}) do
 
-    listed = Enum.map res.rows, fn(r) ->
-      List.zip([res.columns, r])
-        |> coerce_atoms
+    listed = cond do
+      res.rows ->  Enum.map res.rows, fn(r) ->
+        List.zip([res.columns, r])
+          |> coerce_atoms
+        end
+      true -> []
     end
 
     {:ok, listed}
