@@ -14,10 +14,11 @@ defmodule MoebiusUpdateTest do
 
   test "a basic user update", %{cmd: cmd} do
     assert cmd.sql == "update users set email = $1 where id = $2 returning *;"
+    assert length(cmd.params) == 2
   end
 
   test "a basic user insert has params set", %{cmd: cmd} do
-    assert length(cmd.params) == 1
+    assert length(cmd.params) == 2
   end
 
   test "a bulk update with a string filter" do
@@ -26,7 +27,7 @@ defmodule MoebiusUpdateTest do
         |> update(email: "test@test.com")
 
     assert cmd.sql == "update users set email = $1 where id > 100 returning *;"
-
+    assert length(cmd.params) == 1
   end
 
 
@@ -36,7 +37,7 @@ defmodule MoebiusUpdateTest do
         |> update(email: "ox@test.com")
 
     assert cmd.sql == "update users set email = $1 where email LIKE %$2 returning *;"
-
+    assert length(cmd.params) == 2
   end
 
 end
