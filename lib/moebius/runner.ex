@@ -15,13 +15,6 @@ defmodule Moebius.Runner do
       |> Moebius.Transformer.to_list
   end
 
-  def execute_single_function(function_name, args) do
-    {:ok, pid} = connect()
-    sql = "select * from #{function_name};"
-    Postgrex.Connection.query(pid, sql, args)
-      |> Moebius.Transformer.to_single
-  end
-
   def execute(sql, args \\ []) do
     {:ok, pid} = connect()
     Postgrex.Connection.query(pid, sql, args)

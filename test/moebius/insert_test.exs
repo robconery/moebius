@@ -17,4 +17,12 @@ defmodule MoebiusInsertTest do
     assert length(cmd.params) == 3
   end
 
+  test "it actually works" do
+    {:ok, res} = db(:users)
+        |> insert(email: "test@test.com", first: "Test", last: "User")
+        |> single
+
+    assert res.id
+  end
+
 end

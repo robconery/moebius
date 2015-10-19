@@ -1,13 +1,8 @@
 defmodule Moebius do
+  use Application
 
-  def dataset(table) do
-
-    %Moebius.QueryCommand{table_name: Atom.to_string(table)}
-
+  def start,  do: start(:normal, [])
+  def start(_type, _args) do
+    Moebius.Supervisor.start_link(_type, _args)
   end
-
-  def where(condition) do
-
-  end
-
 end

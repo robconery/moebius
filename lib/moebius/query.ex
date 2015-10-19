@@ -153,10 +153,34 @@ defmodule Moebius.Query do
     %{cmd | offset: " offset #{skip}"}
   end
 
+  @doc """
+  Builds the select statement based on what was piped together
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+      |> limit(20)
+      |> offset(2)
+      |> select
+      |> run
+  ```
+  """
   def select(cmd, cols \\ "*") do
     %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
+  @doc """
+  Full text search using Postgres' built in indexing.
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+        |> search("Mike", [:first, :last, :email])
+        |> run
+  ```
+  """
   def search(cmd, term, columns) when is_list columns do
     concat_list = Enum.map_join(columns, ", ' ',  ", &"#{&1}")
     sql = """
@@ -168,6 +192,17 @@ defmodule Moebius.Query do
     %{cmd | sql: sql, params: [term]}
   end
 
+  @doc """
+  A simple insert. Create your list of data and send it on in.
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+      |> insert(email: "test@test.com", first: "Test", last: "User")
+      |> execute
+  ```
+  """
   def insert(cmd, criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
@@ -178,6 +213,19 @@ defmodule Moebius.Query do
     %{cmd | sql: sql, params: vals, type: :insert}
   end
 
+
+  @doc """
+  A simple update based on the criteria you specify.
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+      |> filter(id: 1)
+      |> update(email: "maggot@test.com")
+      |> execute
+  ```
+  """
   def update(cmd, criteria) when is_list(criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
@@ -208,11 +256,31 @@ defmodule Moebius.Query do
     %{cmd | sql: sql, type: :update, params: params}
   end
 
+  @doc """
+  Deletes a record based on your filter.
+
+  Example:
+
+  ```
+  db(:users)
+    |> filter("id > $1", 1)
+    |> delete
+    |> execute
+  ```
+  """
   def delete(cmd) do
     sql = "delete from #{cmd.table_name}" <> cmd.where <> " returning *;"
     %{cmd | sql: sql, type: :delete}
   end
 
+
+  @doc """
+  Executes the SQL in a given SQL file. Specify this by setting the `scripts` directive in the config. Pass the file name as an atom, without extension.
+
+  ```
+  {:ok, res} = sql_file(:simple, 1)
+    |> run
+  """
   def sql_file(file, params \\ []) do
 
     unless is_list params do
@@ -226,6 +294,19 @@ defmodule Moebius.Query do
 
     %Moebius.QueryCommand{sql: String.strip(sql), params: params}
   end
+
+  @doc """
+  Executes a function with the given name, passed as an atom.
+
+  Example:
+
+  ```
+  {:ok, res} = db(:users)
+    |> function(:all_users, name: "steve")
+    |> run
+
+  ```
+  """
 
   def function(cmd, function_name, params \\ []) do
     fname = function_name
@@ -247,29 +328,44 @@ defmodule Moebius.Query do
     %{cmd | sql: sql, params: params}
   end
 
+  @doc """
+  Executes a given pipeline and returns a single result as a map.
+  """
   def single(cmd) do
      Moebius.Runner.execute(cmd.sql, cmd.params)
        |> Moebius.Transformer.to_single
   end
 
+  @doc """
+  Executes a raw SQL query without parameters
+  """
   def run(sql) when is_bitstring(sql) do
     Moebius.Runner.execute(sql, [])
       |> Moebius.Transformer.to_list
   end
 
+  @doc """
+  Executes a raw SQL query with paramters
+  """
   def run(sql, params) when is_bitstring(sql) do
     Moebius.Runner.execute(sql, params)
       |> Moebius.Transformer.to_list
   end
 
+  @doc """
+  Executes a given pipeline and returns a list of mapped results
+  """
   def run(cmd) do
     Moebius.Runner.execute(cmd.sql, cmd.params)
       |> Moebius.Transformer.to_list
   end
 
+  @doc """
+  Executes a pass-through query and returns a single result
+  """
   def execute(cmd) do
     Moebius.Runner.execute(cmd.sql, cmd.params)
-      |> Moebius.Transformer.to_list
+      |> Moebius.Transformer.to_single
   end
 
 

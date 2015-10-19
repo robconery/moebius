@@ -5,6 +5,7 @@ defmodule Moebius.UpdateTest do
   import Moebius.Query
 
   setup_all do
+
     cmd = db(:users)
         |> filter(id: 1)
         |> update(email: "maggot@test.com")
@@ -38,6 +39,17 @@ defmodule Moebius.UpdateTest do
 
     assert cmd.sql == "update users set email = $1 where email LIKE %$2 returning *;"
     assert length(cmd.params) == 2
+  end
+
+  test "it actually works" do
+
+    {:ok, res} = db(:users)
+        |> filter(id: 1)
+        |> update(email: "maggot@test.com")
+        |> execute
+
+    assert res.id
+
   end
 
 end
