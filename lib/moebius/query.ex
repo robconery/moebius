@@ -92,6 +92,7 @@ defmodule Moebius.Query do
 
       cmd.where -> cmd.where
     end
+
     params = cond do
       length(cmd.params) > 0 && length(vals) > 0 ->
         List.flatten(vals,cmd.params)
@@ -121,11 +122,50 @@ defmodule Moebius.Query do
     %Moebius.QueryCommand{sql: String.strip(sql), params: params}
   end
 
-  def run(sql) when is_bitstring(sql), do: Moebius.Runner.execute(sql, [])
-  def run(sql, params) when is_bitstring(sql), do: Moebius.Runner.execute(sql, params)
-  def run(cmd), do: Moebius.Runner.execute(cmd.sql, cmd.params)
-  def execute(cmd), do: Moebius.Runner.execute(cmd.sql, cmd.params)
-  def to_single(res), do: Moebius.Transformer.to_single(res)
-  def to_list(res), do: Moebius.Transformer.to_list(res)
+  def function(cmd, function_name, params \\ []) do
+    fname = function_name
+
+    if is_atom(function_name) do
+      fname = Atom.to_string(function_name)
+    end
+
+    unless is_list params do
+      params = [params]
+    end
+
+    arg_list = cond do
+      length(params) > 0 ->  Enum.map_join(1..length(params), ", ", &"$#{&1}")
+      true -> ""
+    end
+
+    sql = "select * from #{fname}(#{arg_list});"
+    %{cmd | sql: sql, params: params}
+  end
+
+  def single(cmd) do
+     Moebius.Runner.execute(cmd.sql, cmd.params)
+       |> Moebius.Transformer.to_single
+  end
+
+  def run(sql) when is_bitstring(sql) do
+    Moebius.Runner.execute(sql, [])
+      |> Moebius.Transformer.to_list
+  end
+
+  def run(sql, params) when is_bitstring(sql) do
+    Moebius.Runner.execute(sql, params)
+      |> Moebius.Transformer.to_list
+  end
+
+  def run(cmd) do
+    Moebius.Runner.execute(cmd.sql, cmd.params)
+      |> Moebius.Transformer.to_list
+  end
+
+  def execute(cmd) do
+    Moebius.Runner.execute(cmd.sql, cmd.params)
+      |> Moebius.Transformer.to_list
+  end
+
 
 end

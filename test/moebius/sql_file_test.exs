@@ -3,6 +3,7 @@ defmodule Moebius.SQLFileTest do
   import Moebius.Query
 
   setup do
+    run "delete from logs;"
     run "delete from users;"
     {:ok, [res: true]}
   end
@@ -14,6 +15,7 @@ defmodule Moebius.SQLFileTest do
   end
 
   test "a cte can be loaded and run" do
+    
     {:ok, res} = sql_file(:cte, "test@test.com")
       |> execute
       |> to_single
