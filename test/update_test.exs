@@ -1,21 +1,42 @@
 defmodule MoebiusUpdateTest do
   use ExUnit.Case
 
-  # import Moebius.Commands
-  #
-  # setup_all do
-  #   {:ok, cmd: %{email: "test@test.com"}, where: %{id: 1} |> update :users}
-  # end
-  #
-  # test "SQL is generated properly", %{cmd: cmd} do
-  #   assert cmd.sql == "UPDATE users SET email=$1 RETURNING *;"
-  # end
-  #
-  # test "Params are set properly", %{cmd: cmd} do
-  #   assert List.first(cmd.params) == "test@test.com"
-  #
-  #
-  #
-  # end
+
+  import Moebius.Query
+
+  setup_all do
+    cmd = dataset(:users)
+        |> filter(id: 1)
+        |> update(email: "test@test.com")
+
+    {:ok, cmd: cmd}
+  end
+
+  test "a basic user update", %{cmd: cmd} do
+    assert cmd.sql == "update users set email = $1 where id = $2 returning *;"
+  end
+
+  test "a basic user insert has params set", %{cmd: cmd} do
+    assert length(cmd.params) == 1
+  end
+
+  test "a bulk update with a string filter" do
+    cmd = dataset(:users)
+        |> filter("id > 100")
+        |> update(email: "test@test.com")
+
+    assert cmd.sql == "update users set email = $1 where id > 100 returning *;"
+
+  end
+
+
+  test "a bulk update with a string filter and params" do
+    cmd = dataset(:users)
+        |> filter("email LIKE %$2", "test")
+        |> update(email: "ox@test.com")
+
+    assert cmd.sql == "update users set email = $1 where email LIKE %$2 returning *;"
+
+  end
 
 end

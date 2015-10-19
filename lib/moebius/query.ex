@@ -20,7 +20,7 @@ defmodule Moebius.Query do
 
     where = " where " <> Enum.join(filters, " and ")
 
-    %{cmd | params: vals, where: where}
+    %{cmd | params: vals, where: where, where_columns: cols}
   end
 
   def sort(cmd, cols, direction \\ :asc) do
@@ -53,6 +53,31 @@ defmodule Moebius.Query do
     " values(" <> Enum.map_join(1..length(cols), ", ", &"$#{&1}") <> ") returning *;"
 
     %{cmd | sql: sql, params: vals, type: :insert}
+  end
+
+  def update(cmd, criteria) when is_list(criteria) do
+    cols = Keyword.keys(criteria)
+    vals = Keyword.values(criteria)
+
+    {cols, count} = Enum.map_reduce cols, 1, fn col, acc ->
+      {"#{col} = $#{acc}", acc + 1}
+    end
+
+    #here's something for John to clean up :):)
+    where = cond do
+
+      length(cmd.where_columns) > 0 ->
+        {filters, _count} = Enum.map_reduce cmd.where_columns, count, fn col, acc ->
+          {"#{col} = $#{acc}", acc + 1}
+        end
+        " where " <> Enum.join(filters, " and ")
+
+      cmd.where -> cmd.where
+
+    end
+
+    sql = "update #{cmd.table_name} set " <> Enum.join(cols, ", ") <> where <> " returning *;"
+    %{cmd | sql: sql, type: :update}
   end
 
 
