@@ -1,7 +1,14 @@
 defmodule Moebius.Query do
 
-  def db(table, cols \\ "*") do
-    %Moebius.QueryCommand{table_name: Atom.to_string(table), columns: cols}
+  @moduledoc """
+  The main query interface for Moebius. Import this module into your code and query like a champ
+  """
+
+  @doc """
+  The main starting point. Currently you specify a table here
+  """
+  def db(table) do
+    %Moebius.QueryCommand{table_name: Atom.to_string(table)}
   end
 
   def filter(cmd, criteria, not_in: params) when is_atom(criteria) and is_list(params) do
@@ -58,8 +65,8 @@ defmodule Moebius.Query do
     %{cmd | offset: " offset #{skip}"}
   end
 
-  def select(cmd) do
-    %{cmd | sql: "select #{cmd.columns} from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
+  def select(cmd, cols \\ "*") do
+    %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
 

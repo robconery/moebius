@@ -13,8 +13,8 @@ defmodule Moebius.BasicSelectTest do
 
   test "a basic select with columns" do
 
-    cmd = db(:users, "first, last")
-        |> select
+    cmd = db(:users)
+        |> select("first, last")
 
     assert cmd.sql == "select first, last from users;"
   end
