@@ -4,6 +4,21 @@ defmodule Moebius.Query do
     %Moebius.QueryCommand{table_name: Atom.to_string(table), columns: cols}
   end
 
+  def filter(cmd, criteria, not_in: params) when is_atom(criteria) and is_list(params) do
+    #this is an IN query
+    in_list = Enum.map_join(1..length(params), ", ", &"$#{&1}")
+    where = " where #{Atom.to_string(criteria)} NOT IN(#{in_list})"
+    %{cmd | where: where, params: params}
+  end
+
+  def filter(cmd, criteria, in: params) when is_atom(criteria) and is_list(params),  do: filter(cmd, criteria, params)
+  def filter(cmd, criteria, params) when is_atom(criteria) and is_list(params) do
+    #this is an IN query
+    in_list = Enum.map_join(1..length(params), ", ", &"$#{&1}")
+    where = " where #{Atom.to_string(criteria)} IN(#{in_list})"
+    %{cmd | where: where, params: params}
+  end
+
   def filter(cmd, criteria) when is_bitstring(criteria), do: filter(cmd, criteria, [])
   def filter(cmd, criteria, params) when is_bitstring(criteria)  do
     unless is_list params do
@@ -43,7 +58,7 @@ defmodule Moebius.Query do
     %{cmd | offset: " offset #{skip}"}
   end
 
-  def build(cmd, type: :select) do
+  def build(cmd) do
     %{cmd | sql: "select #{cmd.columns} from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
