@@ -6,8 +6,7 @@ defmodule Moebius.Query do
 
   def filter(cmd, criteria) when is_bitstring(criteria), do: filter(cmd, criteria, [])
   def filter(cmd, criteria, params) when is_bitstring(criteria)  do
-    %{cmd | params: params}
-    %{cmd | where: " where " <> criteria}
+    %{cmd | params: params, where: " where " <> criteria}
   end
 
   def filter(cmd, criteria) when is_list(criteria) do
@@ -21,9 +20,7 @@ defmodule Moebius.Query do
 
     where = " where " <> Enum.join(filters, " and ")
 
-    %{cmd | params: vals}
-    %{cmd | where: where}
-
+    %{cmd | params: vals, where: where}
   end
 
   def sort(cmd, cols, direction \\ :asc) do
@@ -46,5 +43,17 @@ defmodule Moebius.Query do
   def build(cmd, type: :select) do
     %{cmd | sql: "select #{cmd.columns} from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
+
+
+  def insert(cmd, criteria) do
+    cols = Keyword.keys(criteria)
+    vals = Keyword.values(criteria)
+
+    sql = "insert into #{cmd.table_name}(" <> Enum.map_join(cols, ", ", &"#{&1}") <> ")" <>
+    " values(" <> Enum.map_join(1..length(cols), ", ", &"$#{&1}") <> ") returning *;"
+
+    %{cmd | sql: sql, params: vals, type: :insert}
+  end
+
 
 end

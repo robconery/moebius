@@ -1,18 +1,20 @@
 defmodule MoebiusInsertTest do
   use ExUnit.Case
 
-  import Moebius.Commands
+  import Moebius.Query
 
-  # setup_all do
-  #   {:ok, cmd: %{email: "test@test.com"} |> insert :users}
-  # end
-  #
-  # test "SQL is generated properly", %{cmd: cmd} do
-  #   assert cmd.sql == "INSERT INTO users(email) VALUES($1) RETURNING *;"
-  # end
-  #
-  # test "Params are set properly", %{cmd: cmd} do
-  #   assert List.first(cmd.params) == "test@test.com"
-  # end
+  setup_all do
+    cmd = dataset(:users)
+        |> insert(email: "test@test.com", first: "Test", last: "User")
+    {:ok, cmd: cmd}
+  end
+
+  test "a basic user insert", %{cmd: cmd} do
+    assert cmd.sql == "insert into users(email, first, last) values($1, $2, $3) returning *;"
+  end
+
+  test "a basic user insert has params set", %{cmd: cmd} do
+    assert length(cmd.params) == 3
+  end
 
 end
