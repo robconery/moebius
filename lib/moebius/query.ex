@@ -7,7 +7,7 @@ defmodule Moebius.Query do
   def filter(cmd, criteria) when is_bitstring(criteria), do: filter(cmd, criteria, [])
   def filter(cmd, criteria, params) when is_bitstring(criteria)  do
     unless is_list params do
-      params = [params] 
+      params = [params]
     end
     %{cmd | params: params, where: " where " <> criteria}
   end
@@ -85,6 +85,11 @@ defmodule Moebius.Query do
 
     sql = "update #{cmd.table_name} set " <> Enum.join(cols, ", ") <> where <> " returning *;"
     %{cmd | sql: sql, type: :update, params: params}
+  end
+
+  def delete(cmd) do
+    sql = "delete from #{cmd.table_name}" <> cmd.where <> " returning *;"
+    %{cmd | sql: sql, type: :delete}
   end
 
 

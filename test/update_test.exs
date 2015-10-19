@@ -1,4 +1,4 @@
-defmodule MoebiusUpdateTest do
+defmodule Moebius.UpdateTest do
   use ExUnit.Case
 
 
