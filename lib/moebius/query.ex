@@ -121,6 +121,8 @@ defmodule Moebius.Query do
     %Moebius.QueryCommand{sql: String.strip(sql), params: params}
   end
 
+  def run(sql) when is_bitstring(sql), do: Moebius.Runner.execute(sql, [])
+  def run(sql, params) when is_bitstring(sql), do: Moebius.Runner.execute(sql, params)
   def run(cmd), do: Moebius.Runner.execute(cmd.sql, cmd.params)
   def execute(cmd), do: Moebius.Runner.execute(cmd.sql, cmd.params)
   def to_single(res), do: Moebius.Transformer.to_single(res)
