@@ -5,12 +5,13 @@ defmodule Moebius.Query do
   """
 
   @doc """
-  The main starting point. Currently you specify a table here but, possibly, in the future you can override connection settings
+  The main starting point. Currently you specify a table here but, possibly, in the future you can override connection settings.
   """
-  def db(table) do
-    %Moebius.QueryCommand{table_name: Atom.to_string(table)}
-  end
+  def db(table) when is_atom(table),
+    do: db(Atom.to_string(table))
 
+  def db(table),
+    do: %Moebius.QueryCommand{table_name: table}
 
   @doc """
   A basic "WHERE" statement builder that builds a NOT IN statement

@@ -6,6 +6,12 @@ otp_release:
 
 sudo: false
 
+addons:
+  postgresql: "9.4"
+
+before_script:
+  - psql -c 'create database meebuss;' -U postgres
+
 install:
 - mix local.hex --force
 - mix deps.get
