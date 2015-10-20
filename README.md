@@ -10,13 +10,13 @@ I love working with Elixir but so far there hasn't been all that much choice whe
  - A generic "Repository" interface (CRUD ops) that [isn't really a Repository](http://martinfowler.com/eaaCatalog/repository.html) which is OK, it's just a bit confusing.
  - A very close resemblance to ActiveRecord, which I am not a fan of
 
-Those are negative things. There are quite a few positives in there - it's some of the best code I've ever seen and [reading the source](https://github.com/elixir-lang/ecto) is one of the main ways I learned Elixir. These are the early days - this repo is hear to demonstrate some ideas and, possibly, to build on.
+Those are negative things. There are quite a few positives in there - it's some of the best code I've ever seen and [reading the source](https://github.com/elixir-lang/ecto) is one of the main ways I learned Elixir. These are the early days - this repo is here to demonstrate some ideas and, possibly, to build on.
 
 No, **Moebius won't run on MySQL**. It's a dedicated PostgreSQL solution.
 
 ## Inspiration
 
-If you've [ever used Sequel](http://sequel.jeremyevans.net/rdoc/) for Ruby, this will look familiar to you. At it's core, Moebius embraces the idea of pushing/transforming data through a functional pipeline. You select/shape/reduce as you need.
+If you've [ever used Sequel](http://sequel.jeremyevans.net/rdoc/) for Ruby, this will look familiar to you. At its core, Moebius embraces the idea of pushing/transforming data through a functional pipeline. You select/shape/reduce as you need.
 
 This is still very much a work in progress.
 
