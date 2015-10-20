@@ -1,5 +1,7 @@
 defmodule Moebius.Query do
 
+  import Inflex, only: [singularize: 1]
+
   @moduledoc """
   The main query interface for Moebius. Import this module into your code and query like a champ
   """
@@ -168,7 +170,7 @@ defmodule Moebius.Query do
   ```
   """
   def select(cmd, cols \\ "*") do
-    %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
+    %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
   @doc """
@@ -274,6 +276,47 @@ defmodule Moebius.Query do
     %{cmd | sql: sql, type: :delete}
   end
 
+  @doc """
+  Build a table join for your query. There are a number of options to handle various joins.
+  Joins can also be piped for multiple joins.
+
+  :join        - set the type of join. LEFT, RIGHT, FULL, etc. defaults to INNER
+  :on          - specify the table to join on
+  :foreign_key - specify the tables foreign key column
+  :primary_key - specify the joining tables primary key column
+  :using       - used to specify a USING queries list of columns to join on
+
+  Example of simple join:
+  ```
+    cmd = db(:customers)
+        |> join(:orders)
+        |> select
+  ```
+
+  Example of multiple table joins:
+  ```
+    cmd = db(:customers)
+        |> join(:orders, on: :customers)
+        |> join(:items, on: :orders)
+        |> select
+  ```
+  """
+  def join(cmd, table, opts \\ []) do
+    join_type   = Keyword.get(opts, :join, "inner")
+    join_table  = Keyword.get(opts, :on, cmd.table_name)
+    foreign_key = Keyword.get(opts, :foreign_key, "#{singularize(join_table)}_id")
+    primary_key = Keyword.get(opts, :primary_key, "id")
+    using       = Keyword.get(opts, :using, nil)
+
+    join_condition = case using do
+      nil ->
+        " #{join_type} join #{table} on #{join_table}.#{primary_key} = #{table}.#{foreign_key}"
+      cols ->
+        " #{join_type} join #{table} using (#{Enum.join(cols, ", ")})"
+    end
+
+    %{cmd | join: [cmd.join|join_condition]}
+  end
 
   @doc """
   Executes the SQL in a given SQL file. Specify this by setting the `scripts` directive in the config. Pass the file name as an atom, without extension.
