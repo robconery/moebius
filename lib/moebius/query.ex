@@ -368,5 +368,11 @@ defmodule Moebius.Query do
       |> Moebius.Transformer.to_single
   end
 
+  def execute(cmd, pid) do
+    #this is a passed-in process from an open transaction
+    Postgrex.Connection.query(pid, cmd.sql,cmd.params)
+      |> Moebius.Transformer.to_single
+  end
+
 
 end
