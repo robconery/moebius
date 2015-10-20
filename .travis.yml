@@ -3,15 +3,13 @@ elixir:
 - 1.1.1
 otp_release:
 - 18.0
-
 sudo: false
-
 install:
 - mix local.hex --force
 - mix deps.get
-
 script: mix test
-
 notifications:
   recipients:
   - rob@datachomp.com
+  slack:
+    secure: NnZo/ecaElOEDRvbIoMsMe2A3LWE2FdEQWMlQv9jbJiG6/RoCmP16CTfVetcRVgK7DPy8IZOOobge45397uzqSSCcjGeKrEBqbC65L0Uf2Ev3WEt36blXJLTd7PH6zYlaifYZI7o1iimuBX4PtlpHTrC+2cjUqUHfO7xhkg2w/MeMTdMGC178KTwRV0O9eyF4ffPiiBrJ86+99m4JTMG9A3KBXi0rFuka7aorUiAKqRlKSdn4TyU9jDlsomhFWXcTJs548Q3s9yxRLPP6WDMnKJUCGxApwRXNhs0bZwod1gy2rW1a9gNBXuLG045P1qrfMXc0MYxEa5AZyoMGF3p9U6OR8vDn+8aozCLi24rO4KQfBmY9bK9XvNgBQxr//aGV9elB+wTTNLyUjx1L21y8BETtM5INUSRcQMZXmJWHBUsfzhk4A8NqpzLnALAp5UApLlwwqRmca6K8tgGdcPqr+5Lv41Cvv9pySHOJdVVQ7s4vXcLXAaDpguWPDWDe+MVlIloYryRl7VJFaXxkjQsPJh6DIs2ex8PHGCpNqtGA6I4JwpfdoVHFylO4DexO0wZHbM/Rk1HKXv6ehC2wlrVdlSjw2lyKy+iByg4TIg8jQQvpZBt+DKUBwZtQPzAfGGxAud7qzifE1Wn4k2J/wZ+4p1Mg21siWuAlFq9cewSjZE=
