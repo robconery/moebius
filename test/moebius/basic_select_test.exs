@@ -11,6 +11,14 @@ defmodule Moebius.BasicSelectTest do
     assert cmd.sql == "select * from users;"
   end
 
+  test "a basic select * using binary for tablename" do
+
+    cmd = db("users")
+        |> select
+
+    assert cmd.sql == "select * from users;"
+  end
+
   test "a basic select with columns" do
 
     cmd = db(:users)
