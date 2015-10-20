@@ -84,6 +84,31 @@ If I did the API right, this should be pretty obvious. And no, order is not impo
     |> run
 ```
 
+An `IN` query happens when you pass an array:
+
+```ex
+{:ok, res} = db(:users)
+    |> filter(:name, ["mark", "biff", "skip"])
+    |> select
+    |> run
+
+#or, if you want to be more precise
+
+{:ok, res} = db(:users)
+    |> filter(:name, in: ["mark", "biff", "skip"])
+    |> select
+    |> run
+```
+
+A NOT IN query happens when you specify the `not_in` key:
+
+```ex
+{:ok, res} = db(:users)
+    |> filter(:name, not_in: ["mark", "biff", "skip"])
+    |> select
+    |> run
+```
+
 If you don't want to deal with my abstractions, just use SQL:
 
 ```ex
