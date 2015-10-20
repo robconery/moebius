@@ -6,12 +6,6 @@ otp_release:
 
 sudo: false
 
-install:
-- mix local.hex --force
-- mix deps.get
-
-script: mix test
-
 notifications:
   recipients:
   - rob@datachomp.com
