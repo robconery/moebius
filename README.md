@@ -1,3 +1,5 @@
+![travis](https://travis-ci.org/robconery/moebius.svg?branch=master) [![Hex.pm Version](https://img.shields.io/hexpm/v/moebius.svg)](https://hex.pm/packages/moebius)
+
 # Moebius: A functional query tool for Elixir and PostgreSQL.
 
 I love working with Elixir but so far there hasn't been all that much choice when working with a database. Ecto works very well, but to me ORMs are just a bit out of place in the functional landscape of Elixir. I wanted to explore some options, so I made this package.
