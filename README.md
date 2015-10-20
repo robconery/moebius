@@ -155,6 +155,39 @@ Deleting works exactly the same way as `update`:
     |> execute
 ```
 
+## Table Joins
+
+Table joins can be applied for a single join or piped to create multiple joins. The table names can be either atoms or binary strings. There are a number of options to customize your joins:
+
+``` ex
+
+  :join        # set the type of join. LEFT, RIGHT, FULL, etc. defaults to INNER
+  :on          # specify the table to join on
+  :foreign_key # specify the tables foreign key column
+  :primary_key # specify the joining tables primary key column
+  :using       # used to specify a USING queries list of columns to join on
+
+```
+
+The simplest example is a basic join:
+
+```ex
+{:ok, res} = db(:customers)
+    |> join(:orders)
+    |> select
+    |> execute
+```
+
+For multiple table joins you can specify the table that you want to join on:
+
+```ex
+{:ok, res} = db(:customers)
+    |> join(:orders, on: :customers)
+    |> join(:items, on: :orders)
+    |> select
+    |> execute
+```
+
 ## Transactions
 
 I'm still working on an approach for this, but my initial inclination is usually to write SQL that does exactly what I want. I *will* have something in place in a week or so, but if you are OK using SQL, then build yourself a CTE (have a look in the test/db directory at `cte.sql`) which is a transactional operation. You'll write less code probably :).
