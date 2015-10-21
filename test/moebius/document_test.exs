@@ -87,6 +87,7 @@ defmodule Moebius.DocTest do
   end
 
   test "select works with filter", %{res: res} do
+
     return = db(:user_docs)
       |> contains(email: res.email)
       |> select
