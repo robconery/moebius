@@ -51,35 +51,25 @@ defmodule Moebius.DocumentQuery do
   end
 
   def execute(cmd, opts \\ nil) do
-    res = cmd
+    cmd
       |> Moebius.Runner.execute
       |> parse_json_column(cmd)
-
-    cond do
-      opts == :single ->
-        {:ok, [single]} = res
-        {:ok, single}
-      true -> res
-    end
-
+      |> return_results(opts)
   end
+
+  defp return_results([results], :single), do: results
+  defp return_results(results, _opt), do: results
 
   defp parse_json_column({:error, err}), do: {:error, err}
   defp parse_json_column({:ok, res}, cmd) do
-
-    # THIS IS ABSOLUTE GARBAGE
-    massaged = Enum.map res.rows, fn(row)->
-      [id, json] = row
-      json = cond do
-        is_map json -> {:ok, json} = json
-        true -> decode!(json, keys: :atoms!)
-      end
-      #decoded = decode!(json, keys: :atoms!)
-      Map.put_new json, :id, id
-    end
-
-    {:ok, massaged}
+    Enum.map(res.rows, &handle_row/1)
   end
 
+  defp handle_row([id, json]) do
+    decode_json(json) |> Map.put_new(:id, id)
+  end
+
+  defp decode_json(json) when is_map(json), do: json
+  defp decode_json(json), do: decode!(json, keys: :atoms!)
 
 end

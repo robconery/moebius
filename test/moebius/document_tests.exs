@@ -5,7 +5,7 @@ defmodule Moebius.DocTest do
   setup do
     "delete from user_docs;" |> Moebius.Query.run
     doc = [email: "steve@test.com", first: "Steve"]
-    {:ok, res} = db(:user_docs)
+    res = db(:user_docs)
       |> insert(doc)
       |> execute(:single)
     {:ok, res: res}
@@ -21,35 +21,27 @@ defmodule Moebius.DocTest do
 
   test "a simple insert as a map" do
     doc = %{email: "steve@test.com", first: "Steve"}
-    res = db(:user_docs)
-      |> insert(doc)
-      |> execute(:single)
 
-    case res do
-      {:ok, res} -> assert res.email == "steve@test.com"
-      {:error, err} -> IO.inspect(err); flunk "No good"
-    end
+    assert %{email: "steve@test.com", first: "Steve", id: _id} =
+      db(:user_docs)
+        |> insert(doc)
+        |> execute(:single)
   end
 
   test "a simple insert as a string" do
     doc = "{\"email\":\"steve@test.com\"}"
-    res = db(:user_docs)
-      |> insert(doc)
-      |> execute(:single)
 
-    case res do
-      {:ok, res} -> assert res.email == "steve@test.com"
-      {:error, err} -> IO.inspect(err); flunk "No good"
-    end
+    assert %{email: "steve@test.com", id: _id} =
+      db(:user_docs)
+        |> insert(doc)
+        |> execute(:single)
   end
 
   test "a simple document query with the DocumentQuery lib" do
-
-    {:ok, res} = db(:user_docs)
-      |> select
-      |> execute(:single)
-
-    assert res.email == "steve@test.com"
+    assert %{email: "steve@test.com", id: _id} =
+      db(:user_docs)
+        |> select
+        |> execute(:single)
   end
   # test "a simple document query with the all shortcut" do
   #
