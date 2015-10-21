@@ -18,11 +18,10 @@ defmodule MoebiusInsertTest do
   end
 
   test "it actually works" do
-    {:ok, res} = db(:users)
+    assert %{email: "test@test.com", first: "Test", id: _id, last: "User", profile: nil} =
+      db(:users)
         |> insert(email: "test@test.com", first: "Test", last: "User")
         |> single
-
-    assert res.id
   end
 
 end

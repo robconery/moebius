@@ -42,14 +42,11 @@ defmodule Moebius.UpdateTest do
   end
 
   test "it actually works" do
-
-    {:ok, res} = db(:users)
+    assert %{email: "maggot@test.com", first: "Rob", id: 1, last: "Blah", profile: nil} =
+      db(:users)
         |> filter(id: 1)
         |> update(email: "maggot@test.com")
         |> execute
-
-    assert res.id
-
   end
 
 end
