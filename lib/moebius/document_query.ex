@@ -22,7 +22,7 @@ defmodule Moebius.DocumentQuery do
   end
 
   def insert(cmd, doc) when is_bitstring(doc) do
-    sql = "insert into #{cmd.table_name}(#{cmd.json_field}) VALUES('#{doc}') RETURNING id, #{cmd.json_field};";
+    sql = "insert into #{cmd.table_name}(#{cmd.json_field}) VALUES('#{doc}') RETURNING id, #{cmd.json_field}::text;";
     cmd = %{cmd | sql: sql, params: [doc], type: :insert}
   end
 
@@ -71,9 +71,7 @@ defmodule Moebius.DocumentQuery do
     massaged = Enum.map res.rows, fn(row)->
       [id, json] = row
       json = cond do
-        is_map json ->
-          {:ok, json} = Moebius.Transformer.coerce_atoms(json)
-          json
+        is_map json -> {:ok, json} = json
         true -> decode!(json, keys: :atoms!)
       end
       #decoded = decode!(json, keys: :atoms!)
