@@ -18,11 +18,33 @@ defmodule Moebius.DocumentQuery do
   end
 
   def select(cmd) do
-    %{cmd | sql: "select id, #{cmd.json_field}::text from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
+    sql = """
+    select id, #{cmd.json_field}::text
+    from #{cmd.table_name}
+    #{cmd.where}
+    #{cmd.order}
+    #{cmd.limit}
+    #{cmd.offset};
+    """
+    %{cmd | sql: sql}
+  end
+
+  def update(cmd, change, id) when is_map(change) and is_integer(id) do
+    {:ok, encoded} = JSON.encode(change)
+    sql = """
+    update #{cmd.table_name}
+    set #{cmd.json_field} = '#{encoded}'
+    where id = #{id} returning id, #{cmd.json_field}::text;
+    """
+    %{cmd | sql: sql, type: :update}
   end
 
   def insert(cmd, doc) when is_bitstring(doc) do
-    sql = "insert into #{cmd.table_name}(#{cmd.json_field}) VALUES('#{doc}') RETURNING id, #{cmd.json_field}::text;";
+    sql = """
+    insert into #{cmd.table_name}(#{cmd.json_field})
+    VALUES('#{doc}')
+    RETURNING id, #{cmd.json_field}::text;
+    """
     cmd = %{cmd | sql: sql, params: [doc], type: :insert}
   end
 
