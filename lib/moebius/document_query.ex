@@ -17,6 +17,30 @@ defmodule Moebius.DocumentQuery do
     %{cmd | where: where, params: []}
   end
 
+  def filter(cmd, criteria, params \\ []) when is_bitstring(criteria) do
+    unless is_list(params) do
+      params = [params]
+    end
+    where = " where #{criteria}"
+    %{cmd | where: where, params: params}
+  end
+
+  def filter(cmd, field, operator, params) do
+    unless is_list(params) do
+      params = [params]
+    end
+    where = " where body -> '#{field}' #{operator} $1"
+    %{cmd | where: where, params: params}
+  end
+
+  def exists(cmd, field, params) do
+    unless is_list(params) do
+      params = [params]
+    end
+    where = " where body -> '#{field}' ? $1"
+    %{cmd | where: where, params: params}
+  end
+
   def select(cmd) do
     sql = """
     select id, #{cmd.json_field}::text
@@ -96,10 +120,11 @@ defmodule Moebius.DocumentQuery do
       |> return_results(opts)
   end
 
+  defp return_results({:error, err}), do: {:error, err}
   defp return_results([results], :single), do: results
   defp return_results(results, _opt), do: results
 
-  defp parse_json_column({:error, err}), do: {:error, err}
+  defp parse_json_column({:error, err}, cmd), do: {:error, err}
   defp parse_json_column({:ok, res}, cmd) do
     Enum.map(res.rows, &handle_row/1)
   end

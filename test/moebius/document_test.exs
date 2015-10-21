@@ -5,7 +5,7 @@ defmodule Moebius.DocTest do
 
   setup do
     "delete from user_docs;" |> Moebius.Query.run
-    doc = [email: "steve@test.com", first: "Steve"]
+    doc = [email: "steve@test.com", first: "Steve", money_spent: 500, pets: ["poopy", "skippy"]]
     res = db(:user_docs)
       |> insert(doc)
       |> execute(:single)
@@ -84,6 +84,48 @@ defmodule Moebius.DocTest do
       |> execute
 
     assert length(res) > 0
+  end
+
+  test "select works with filter", %{res: res} do
+    return = db(:user_docs)
+      |> contains(email: res.email)
+      |> select
+      |> execute(:single)
+
+    assert return.email == res.email
+
+  end
+
+  test "select works with string criteria", %{res: res} do
+    return = db(:user_docs)
+      |> filter("body -> 'email' = $1", res.email)
+      |> select
+      |> execute(:single)
+
+    assert return.email == res.email
+
+  end
+
+  test "select works with basic criteria", %{res: res} do
+
+    return = db(:user_docs)
+      |> filter(:money_spent, ">", 100)
+      |> select
+      |> execute()
+
+    assert length(return) > 0
+
+  end
+
+  test "select works with existence operator", %{res: res} do
+
+    return = db(:user_docs)
+      |> exists(:pets, "poopy")
+      |> select
+      |> execute(:single)
+
+    assert return.id == res.id
+
   end
 
 end
