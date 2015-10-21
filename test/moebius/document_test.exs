@@ -66,6 +66,24 @@ defmodule Moebius.DocTest do
     assert %{email: "blurgh@test.com", id: _id} =
       db(:user_docs)
         |> save(change)
-
   end
+
+  test "delete works with just an id", %{res: res} do
+    res = db(:user_docs)
+      |> delete(res.id)
+      |> execute(:single)
+
+    assert res.id
+  end
+
+  test "delete works with criteria", %{res: res} do
+
+    res = db(:user_docs)
+      |> contains(email: res.email)
+      |> delete
+      |> execute
+
+    assert length(res) > 0
+  end
+
 end

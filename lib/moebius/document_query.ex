@@ -45,7 +45,7 @@ defmodule Moebius.DocumentQuery do
     VALUES('#{doc}')
     RETURNING id, #{cmd.json_field}::text;
     """
-    cmd = %{cmd | sql: sql, params: [doc], type: :insert}
+    %{cmd | sql: sql, params: [doc], type: :insert}
   end
 
   def insert(cmd, doc) when is_list(doc) or is_map(doc) do
@@ -54,12 +54,20 @@ defmodule Moebius.DocumentQuery do
   end
 
   def save(cmd, doc) do
-
     cond do
       Map.has_key? doc, :id -> update(cmd, Map.delete(doc, :id), doc.id) |> execute(:single)
       true -> insert(cmd, doc) |> execute(:single)
     end
+  end
 
+  def delete(cmd, id) when is_integer(id) do
+    sql = "delete from #{cmd.table_name} where id=#{id} returning *"
+    %{cmd | sql: sql, type: :delete}
+  end
+
+  def delete(cmd) do
+    sql = "delete from #{cmd.table_name} #{cmd.where} returning *;"
+    %{cmd | sql: sql, type: :delete}
   end
 
   def single(cmd) do
