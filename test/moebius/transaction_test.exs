@@ -24,6 +24,7 @@ defmodule Moebius.TransactionTest do
       {:ok, log} = db(:logs)
         |> insert(user_id: new_user.id, log: "This is an entry")
         |> execute(conn)
+      new_user
     end
     IO.inspect cmds
   end

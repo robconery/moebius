@@ -15,27 +15,14 @@ defmodule Moebius.Runner do
       |> Moebius.Transformer.to_list
   end
 
-  def execute(sql, args \\ []) do
+  def execute(cmd) do
+    {:ok, pid} = connect()
+    Postgrex.Connection.query(pid, cmd.sql, cmd.params)
+  end
+
+  def execute(sql, args) when is_bitstring(sql) do
     {:ok, pid} = connect()
     Postgrex.Connection.query(pid, sql, args)
-  end
-
-  def prepare_sql_batch(files) do
-    #make sure its wrapped in a transaction, and stop with the annoying NOTICEs
-    #NOTE: this can be run with -1 with PSQL however I want to be sure
-    #that if it's put to file later, it will be clear that it's a tx
-    IO.puts "Executing #{length files} statements"
-    files = List.insert_at(files,0,"BEGIN;SET client_min_messages=WARNING;");
-    files ++ ["COMMIT;"]
-    Enum.join(files, "\r\n")
-  end
-
-  def write_batch_to_file(sql_blob) do
-    build_file = Path.join("build", "db.sql")
-    {:ok, file} = File.open build_file, [:write]
-    IO.binwrite file, sql_blob
-    File.close file
-    build_file
   end
 
   def run_with_psql(sql, db) do
@@ -43,24 +30,6 @@ defmodule Moebius.Runner do
     args = ["-d", db, "-c", sql, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
     #hand off to PSQL because Postgrex can't run more than one command per query
     System.cmd "psql", args
-  end
-
-
-  def execute_transaction(list) do
-    {:ok, pid} = connect()
-    Postgrex.Connection.query(pid, "BEGIN;",[])
-    execute_transaction pid, list
-  end
-
-  def execute_transaction(pid, []) do
-    Postgrex.Connection.query(pid, "COMMIT;",[])
-  end
-
-  def execute_transaction(pid, [next | list]) do
-    case Postgrex.Connection.query(pid, next.sql,[]) do
-      {:error, err} -> raise err
-      {:ok, _} ->  execute_transaction(pid, list);
-    end
   end
 
 end

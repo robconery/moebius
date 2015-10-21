@@ -32,7 +32,7 @@ defmodule Moebius.Mixfile do
   end
 
   defp deps(:prod) do
-    [{:postgrex, "~> 0.9.1"},{:timex, "~> 0.19.4"},{:inflex, "~> 1.5.0"}]
+    [{:postgrex, "~> 0.9.1"},{:timex, "~> 0.19.4"},{:inflex, "~> 1.5.0"}, {:poison, "~> 1.5"},{:json, "~> 0.3.0"}]
   end
 
   def package do

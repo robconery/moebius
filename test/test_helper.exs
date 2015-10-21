@@ -1,6 +1,8 @@
 ExUnit.start()
 
 sql = "
+drop index if exists idx_docs;
+drop table if exists user_docs;
 drop table if exists logs;
 drop table if exists users;
 drop table if exists products;
@@ -27,6 +29,13 @@ create table logs(
   user_id integer references users(id),
   log text
 );
+
+create table user_docs(
+  id serial primary key not null,
+  body jsonb not null
+);
+
+create index idx_docs on user_docs using GIN(body jsonb_path_ops);
 
 insert into users(email, first, last) values('rob@test.com','Rob','Blah');
 insert into users(email, first, last) values('jill@test.com','Jill','Gloop');

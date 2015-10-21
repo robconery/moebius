@@ -9,8 +9,9 @@ defmodule Moebius do
   def transaction(fun) do
     {:ok, pid} = Moebius.Runner.connect()
     Postgrex.Connection.query(pid, "BEGIN;",[])
-    fun.(pid)
+    res = fun.(pid)
     Postgrex.Connection.query(pid, "COMMIT;",[])
+    res
   end
 
 
