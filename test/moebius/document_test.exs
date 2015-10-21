@@ -54,4 +54,18 @@ defmodule Moebius.DocTest do
 
   end
 
+  test "the save shortcut inserts a document without an id" do
+    new_doc = %{email: "new_person@test.com"}
+    assert %{email: "new_person@test.com", id: _id} =
+      db(:user_docs)
+        |> save(new_doc)
+  end
+
+  test "the save shortcut works updating a document", %{res: res} do
+    change = %{email: "blurgh@test.com"}
+    assert %{email: "blurgh@test.com", id: _id} =
+      db(:user_docs)
+        |> save(change)
+
+  end
 end

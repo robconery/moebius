@@ -53,6 +53,15 @@ defmodule Moebius.DocumentQuery do
     insert(cmd, encoded)
   end
 
+  def save(cmd, doc) do
+
+    cond do
+      Map.has_key? doc, :id -> update(cmd, Map.delete(doc, :id), doc.id) |> execute(:single)
+      true -> insert(cmd, doc) |> execute(:single)
+    end
+
+  end
+
   def single(cmd) do
     res = cmd
       |> select
