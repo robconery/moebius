@@ -67,10 +67,17 @@ defmodule Moebius.DocumentQuery do
   defp parse_json_column({:error, err}), do: {:error, err}
   defp parse_json_column({:ok, res}, cmd) do
 
+    # THIS IS ABSOLUTE GARBAGE
     massaged = Enum.map res.rows, fn(row)->
       [id, json] = row
-      decoded = decode!(json, keys: :atoms!)
-      Map.put_new decoded, :id, id
+      json = cond do
+        is_map json ->
+          {:ok, json} = Moebius.Transformer.coerce_atoms(json)
+          json
+        true -> decode!(json, keys: :atoms!)
+      end
+      #decoded = decode!(json, keys: :atoms!)
+      Map.put_new json, :id, id
     end
 
     {:ok, massaged}

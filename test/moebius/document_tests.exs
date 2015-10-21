@@ -49,7 +49,7 @@ defmodule Moebius.DocTest do
       |> select
       |> execute(:single)
 
-    assert res.profile.twitter
+    assert res.email == "steve@test.com"
   end
   # test "a simple document query with the all shortcut" do
   #
