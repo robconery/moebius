@@ -18,21 +18,21 @@ defmodule Moebius.DocumentQuery do
   end
 
   def select(cmd) do
-    %{cmd | sql: "select #{cmd.json_field}::text from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
+    %{cmd | sql: "select id, #{cmd.json_field}::text from #{cmd.table_name}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
-  def insert(cmd, doc) when is_list(doc) do
+  def insert(cmd, doc) when is_bitstring(doc) do
+    sql = "insert into #{cmd.table_name}(#{cmd.json_field}) VALUES('#{doc}') RETURNING id, #{cmd.json_field};";
+    cmd = %{cmd | sql: sql, params: [doc], type: :insert}
+  end
+
+  def insert(cmd, doc) when is_list(doc) or is_map(doc) do
     {:ok, encoded} = JSON.encode(doc)
     insert(cmd, encoded)
   end
 
-  def insert(cmd, doc) when is_bitstring(doc) do
-    sql = "insert into #{cmd.table_name}(#{cmd.json_field}) VALUES($1) RETURNING #{cmd.json_field};";
-    %{cmd | sql: sql, params: [doc], type: :insert}
-  end
-
-  def first(cmd) do
-    cmd
+  def single(cmd) do
+    res = cmd
       |> select
       |> execute
 
@@ -50,14 +50,15 @@ defmodule Moebius.DocumentQuery do
       |> parse_json_column(cmd)
   end
 
-  def execute(cmd) do
+  def execute(cmd, opts \\ nil) do
     res = cmd
       |> Moebius.Runner.execute
       |> parse_json_column(cmd)
 
-
     cond do
-      cmd.type == :inserted && res == {:ok, new_record} -> Map.put_new(new_record, :id, 1)
+      opts == :single ->
+        {:ok, [single]} = res
+        {:ok, single}
       true -> res
     end
 
@@ -65,11 +66,14 @@ defmodule Moebius.DocumentQuery do
 
   defp parse_json_column({:error, err}), do: {:error, err}
   defp parse_json_column({:ok, res}, cmd) do
-    cond do
-      length(res.rows) > 0 -> {:ok, decode!(res.rows, keys: :atoms!)}
-      true -> {:ok, []}
+
+    massaged = Enum.map res.rows, fn(row)->
+      [id, json] = row
+      decoded = decode!(json, keys: :atoms!)
+      Map.put_new decoded, :id, id
     end
 
+    {:ok, massaged}
   end
 
 
