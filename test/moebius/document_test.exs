@@ -121,8 +121,7 @@ defmodule Moebius.DocTest do
 
     return = db(:user_docs)
       |> exists(:pets, "poopy")
-      |> select
-      |> execute(:single)
+      |> first
 
     assert return.id == res.id
 

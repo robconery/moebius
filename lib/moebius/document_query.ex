@@ -94,12 +94,13 @@ defmodule Moebius.DocumentQuery do
     %{cmd | sql: sql, type: :delete}
   end
 
-  def single(cmd) do
+  def first(cmd) do
     res = cmd
       |> select
-      |> execute
-
+      |> execute(:single)
   end
+
+  def to_list(cmd),  do: all(cmd)
 
   def all(cmd) do
     cmd
@@ -107,12 +108,7 @@ defmodule Moebius.DocumentQuery do
       |> execute
   end
 
-  def run(cmd) do
-    cmd
-      |> Moebius.Runner.execute
-      |> parse_json_column(cmd)
-  end
-
+  def run(cmd),  do: execute(cmd)
   def execute(cmd, opts \\ nil) do
     cmd
       |> Moebius.Runner.execute
