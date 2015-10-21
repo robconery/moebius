@@ -28,7 +28,7 @@ defmodule Moebius.DocumentQuery do
 
   def insert(cmd, doc) when is_bitstring(doc) do
     sql = "insert into #{cmd.table_name}(#{cmd.json_field}) VALUES($1) RETURNING #{cmd.json_field};";
-    %{cmd | sql: sql, params: [doc]}
+    %{cmd | sql: sql, params: [doc], type: :insert}
   end
 
   def first(cmd) do
@@ -51,9 +51,16 @@ defmodule Moebius.DocumentQuery do
   end
 
   def execute(cmd) do
-    cmd
+    res = cmd
       |> Moebius.Runner.execute
       |> parse_json_column(cmd)
+
+
+    cond do
+      cmd.type == :inserted && res == {:ok, new_record} -> Map.put_new(new_record, :id, 1)
+      true -> res
+    end
+
   end
 
   defp parse_json_column({:error, err}), do: {:error, err}
