@@ -1,15 +1,23 @@
 defmodule Moebius.Mixfile do
   use Mix.Project
 
+  @version "0.0.1"
+
   def project do
     [app: :moebius,
      description: "A functional approach to data access with Elixir",
-     version: "0.0.1",
+     version: @version,
      elixir: "~> 1.1",
      package: package,
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps(Mix.env)]
+     deps: deps(Mix.env),
+     # ExDoc
+     name: "Moebius",
+     docs: [source_ref: "v#{@version}",
+            main: Moebius.Query,
+            source_url: "https://github.com/robconery/moebius",
+            extras: ["README.md"]]]
   end
 
   # Configuration for the OTP application
