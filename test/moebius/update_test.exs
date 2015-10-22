@@ -1,11 +1,9 @@
 defmodule Moebius.UpdateTest do
   use ExUnit.Case
 
-
   import Moebius.Query
 
   setup_all do
-
     cmd = db(:users)
         |> filter(id: 1)
         |> update(email: "maggot@test.com")

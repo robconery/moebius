@@ -5,24 +5,21 @@ defmodule Moebius.Runner do
     Postgrex.Connection.start_link(db)
   end
 
-  def single(sql,args \\ []) do
-    execute(sql,args)
+  def single(sql, args \\ []) do
+    %Moebius.DocumentCommand{sql: sql, params: args}
+      |> execute
       |> Moebius.Transformer.to_single
   end
 
-  def query(sql,args \\ []) do
-    execute(sql,args)
+  def query(sql, args \\ []) do
+    %Moebius.DocumentCommand{sql: sql, params: args}
+      |> execute
       |> Moebius.Transformer.to_list
   end
 
   def execute(cmd) do
     {:ok, pid} = connect()
     Postgrex.Connection.query(pid, cmd.sql, cmd.params)
-  end
-
-  def execute(sql, args) when is_bitstring(sql) do
-    {:ok, pid} = connect()
-    Postgrex.Connection.query(pid, sql, args)
   end
 
   def run_with_psql(sql, db) do
