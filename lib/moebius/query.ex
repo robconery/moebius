@@ -419,15 +419,25 @@ defmodule Moebius.Query do
       |> Moebius.Transformer.to_single
   end
 
+  def ideally, do: begin
   def begin do
     case connect do
       {:ok, pid} ->
+        Postgrex.Connection.query(pid, "BEGIN",[])
         %Moebius.QueryCommand{pid: pid}
+
       {:error, message} ->
         raise message
     end
   end
 
-  def commit(cmd), do: execute(cmd)
-
+  def win(cmd), do: commit(cmd)
+  def commit(cmd) do
+    # will always return OK even if there were errors in the transaction
+    Postgrex.Connection.query(cmd.pid, "COMMIT",[])
+    cond do
+      cmd.error-> {:error, cmd.error}
+      true -> {:ok, true}
+    end
+  end
 end

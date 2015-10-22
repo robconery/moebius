@@ -16,6 +16,7 @@ defmodule Moebius.QueryCommand do
       limit: "",
       offset: "",
       where_columns: [],
-      join: [""]
+      join: [""],
+      error: nil
     ]
 end

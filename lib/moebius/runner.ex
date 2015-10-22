@@ -27,7 +27,13 @@ defmodule Moebius.Runner do
   end
 
   def execute(cmd) do
-    Postgrex.Connection.query(cmd.pid, cmd.sql, cmd.params)
+
+    #TODO: A commit will succeed no matter what - we have no way of knowing right
+    #now if a tx fails.
+    case Postgrex.Connection.query(cmd.pid, cmd.sql, cmd.params) do
+      {:ok, result} -> {:ok, result}
+      {:error, err} -> raise err.postgres.message
+    end
   end
 
   def run_with_psql(sql, db) do
