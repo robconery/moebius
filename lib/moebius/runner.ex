@@ -17,9 +17,17 @@ defmodule Moebius.Runner do
       |> Moebius.Transformer.to_list
   end
 
-  def execute(cmd) do
+  @doc """
+    If there isn't a connection process started then one is added to the command
+  """
+  def execute(%{pid: nil} = cmd) do
     {:ok, pid} = connect()
-    Postgrex.Connection.query(pid, cmd.sql, cmd.params)
+    Map.merge(cmd, %{pid: pid})
+      |> execute
+  end
+
+  def execute(cmd) do
+    Postgrex.Connection.query(cmd.pid, cmd.sql, cmd.params)
   end
 
   def run_with_psql(sql, db) do

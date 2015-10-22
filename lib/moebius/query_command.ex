@@ -3,6 +3,7 @@ defmodule Moebius.QueryCommand do
   Struct for the query command which is piped through all the transforms
   """
   defstruct [
+      pid: nil,
       sql: nil,
       params: [],
       table_name: nil,
