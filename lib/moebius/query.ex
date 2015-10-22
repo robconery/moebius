@@ -2,6 +2,8 @@ defmodule Moebius.Query do
 
   import Inflex, only: [singularize: 1]
 
+  import Moebius.Runner, only: [connect: 0]
+
   @moduledoc """
   The main query interface for Moebius. Import this module into your code and query like a champ
   """
@@ -14,6 +16,9 @@ defmodule Moebius.Query do
 
   def db(table),
     do: %Moebius.QueryCommand{table_name: table}
+
+  def db(cmd, table),
+    do: Map.merge(cmd, %{table_name: table})
 
   @doc """
   A basic "WHERE" statement builder that builds a NOT IN statement
@@ -376,15 +381,16 @@ defmodule Moebius.Query do
   Executes a given pipeline and returns a single result as a map.
   """
   def single(cmd) do
-     Moebius.Runner.execute(cmd.sql, cmd.params)
-       |> Moebius.Transformer.to_single
+    Moebius.Runner.execute(cmd)
+      |> Moebius.Transformer.to_single
   end
 
   @doc """
   Executes a raw SQL query without parameters
   """
   def run(sql) when is_bitstring(sql) do
-    Moebius.Runner.execute(sql, [])
+    %Moebius.QueryCommand{sql: sql}
+      |> Moebius.Runner.execute
       |> Moebius.Transformer.to_list
   end
 
@@ -392,7 +398,8 @@ defmodule Moebius.Query do
   Executes a raw SQL query with paramters
   """
   def run(sql, params) when is_bitstring(sql) do
-    Moebius.Runner.execute(sql, params)
+    %Moebius.QueryCommand{sql: sql, params: params}
+      |> Moebius.Runner.execute
       |> Moebius.Transformer.to_list
   end
 
@@ -400,7 +407,7 @@ defmodule Moebius.Query do
   Executes a given pipeline and returns a list of mapped results
   """
   def run(cmd) do
-    Moebius.Runner.execute(cmd.sql, cmd.params)
+    Moebius.Runner.execute(cmd)
       |> Moebius.Transformer.to_list
   end
 
@@ -408,15 +415,19 @@ defmodule Moebius.Query do
   Executes a pass-through query and returns a single result
   """
   def execute(cmd) do
-    Moebius.Runner.execute(cmd.sql, cmd.params)
+    Moebius.Runner.execute(cmd)
       |> Moebius.Transformer.to_single
   end
 
-  def execute(cmd, pid) do
-    #this is a passed-in process from an open transaction
-    Postgrex.Connection.query(pid, cmd.sql,cmd.params)
-      |> Moebius.Transformer.to_single
+  def begin do
+    case connect do
+      {:ok, pid} ->
+        %Moebius.QueryCommand{pid: pid}
+      {:error, message} ->
+        raise message
+    end
   end
 
+  def commit(cmd), do: execute(cmd)
 
 end
