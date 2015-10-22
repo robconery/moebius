@@ -5,11 +5,13 @@ defmodule Moebius.TransactionTest do
 
   test "queuing a transaction" do
     cmds = Moebius.transaction fn(conn) ->
-      new_user = db(:users)
+      new_user = :users
+        |> db()
         |> insert(email: "tx@test.com", first: "Rob", last: "Blob")
         |> execute(conn)
 
-      db(:logs)
+      :logs
+        |> db()
         |> insert(user_id: new_user.id, log: "This is an entry")
         |> execute(conn)
       new_user
@@ -19,5 +21,4 @@ defmodule Moebius.TransactionTest do
 
     assert cmds
   end
-
 end

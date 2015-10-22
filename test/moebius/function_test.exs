@@ -5,7 +5,8 @@ defmodule Moebius.FunctionTest do
 
   test "a simple function call is constructed" do
 
-    cmd = db(:users)
+    cmd = :users
+          |> db()
           |> function(:all_users)
 
 
@@ -14,7 +15,8 @@ defmodule Moebius.FunctionTest do
 
   test "a simple function call is constructed with args" do
 
-    cmd = db(:users)
+    cmd = :users
+          |> db()
           |> function(:all_users, name: "steve")
 
 

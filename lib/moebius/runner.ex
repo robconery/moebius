@@ -6,13 +6,15 @@ defmodule Moebius.Runner do
   end
 
   def single(sql,args \\ []) do
-    execute(sql,args)
-      |> Moebius.Transformer.to_single
+    sql
+    |> execute(args)
+    |> Moebius.Transformer.to_single
   end
 
   def query(sql,args \\ []) do
-    execute(sql,args)
-      |> Moebius.Transformer.to_list
+    sql
+    |> execute(args)
+    |> Moebius.Transformer.to_list
   end
 
   def execute(cmd) do
@@ -31,5 +33,4 @@ defmodule Moebius.Runner do
     #hand off to PSQL because Postgrex can't run more than one command per query
     System.cmd "psql", args
   end
-
 end

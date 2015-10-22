@@ -79,8 +79,14 @@ defmodule Moebius.DocumentQuery do
 
   def save(cmd, doc) do
     cond do
-      Map.has_key? doc, :id -> update(cmd, Map.delete(doc, :id), doc.id) |> execute(:single)
-      true -> insert(cmd, doc) |> execute(:single)
+      Map.has_key? doc, :id ->
+        cmd
+        |> update(Map.delete(doc, :id), doc.id)
+        |> execute(:single)
+      true ->
+        cmd
+        |> insert(doc)
+        |> execute(:single)
     end
   end
 
@@ -126,10 +132,11 @@ defmodule Moebius.DocumentQuery do
   end
 
   defp handle_row([id, json]) do
-    decode_json(json) |> Map.put_new(:id, id)
+    json
+    |> decode_json()
+    |> Map.put_new(:id, id)
   end
 
   defp decode_json(json) when is_map(json), do: json
   defp decode_json(json), do: decode!(json, keys: :atoms!)
-
 end

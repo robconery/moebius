@@ -32,7 +32,8 @@ defmodule Moebius.Mixfile do
 
   defp deps(:dev) do
     deps(:prod)++[{:ex_doc, "~> 0.7", only: :dev},
-      {:earmark, ">= 0.0.0"}]
+      {:earmark, ">= 0.0.0"},
+      {:dogma, github: "lpil/dogma", only: :dev}]
   end
 
   defp deps(:test) do

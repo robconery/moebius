@@ -376,47 +376,51 @@ defmodule Moebius.Query do
   Executes a given pipeline and returns a single result as a map.
   """
   def single(cmd) do
-     Moebius.Runner.execute(cmd.sql, cmd.params)
-       |> Moebius.Transformer.to_single
+    cmd.sql
+    |> Moebius.Runner.execute(cmd.params)
+    |> Moebius.Transformer.to_single
   end
 
   @doc """
   Executes a raw SQL query without parameters
   """
   def run(sql) when is_bitstring(sql) do
-    Moebius.Runner.execute(sql, [])
-      |> Moebius.Transformer.to_list
+    sql
+    |> Moebius.Runner.execute([])
+    |> Moebius.Transformer.to_list
   end
 
   @doc """
   Executes a raw SQL query with paramters
   """
   def run(sql, params) when is_bitstring(sql) do
-    Moebius.Runner.execute(sql, params)
-      |> Moebius.Transformer.to_list
+    sql
+    |> Moebius.Runner.execute(params)
+    |> Moebius.Transformer.to_list
   end
 
   @doc """
   Executes a given pipeline and returns a list of mapped results
   """
   def run(cmd) do
-    Moebius.Runner.execute(cmd.sql, cmd.params)
-      |> Moebius.Transformer.to_list
+    cmd.sql
+    |> Moebius.Runner.execute(cmd.params)
+    |> Moebius.Transformer.to_list
   end
 
   @doc """
   Executes a pass-through query and returns a single result
   """
   def execute(cmd) do
-    Moebius.Runner.execute(cmd.sql, cmd.params)
-      |> Moebius.Transformer.to_single
+    cmd.sql
+    |> Moebius.Runner.execute(cmd.params)
+    |> Moebius.Transformer.to_single
   end
 
   def execute(cmd, pid) do
     #this is a passed-in process from an open transaction
-    Postgrex.Connection.query(pid, cmd.sql,cmd.params)
-      |> Moebius.Transformer.to_single
+    pid
+    |> Postgrex.Connection.query(cmd.sql,cmd.params)
+    |> Moebius.Transformer.to_single
   end
-
-
 end
