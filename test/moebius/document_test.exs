@@ -87,7 +87,6 @@ defmodule Moebius.DocTest do
   end
 
   test "select works with filter", %{res: res} do
-
     return = db(:user_docs)
       |> contains(email: res.email)
       |> select
@@ -128,4 +127,14 @@ defmodule Moebius.DocTest do
 
   end
 
+  test "select works with sort limit offset" do
+    return = db(:user_docs)
+      |> exists(:pets, "poopy")
+      |> sort(:money_spent)
+      |> limit(1)
+      |> offset(1)
+      |> first
+
+    assert return
+  end
 end

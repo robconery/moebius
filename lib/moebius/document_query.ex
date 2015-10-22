@@ -1,6 +1,7 @@
 defmodule Moebius.DocumentQuery do
 
   import Poison
+  import Moebius.Query, only: [:limit, :offset, :sql_file, :function]
 
   def db(table) when is_atom(table),
     do: db(Atom.to_string(table))
@@ -51,6 +52,20 @@ defmodule Moebius.DocumentQuery do
     #{cmd.offset};
     """
     %{cmd | sql: sql}
+  end
+
+  def limit(cmd, length), do: Moebius.Query.limit(cmd, length)
+  def offset(cmd, length), do: Moebius.Query.offset(cmd, length)
+  def function(cmd, name, args), do: Moebius.Query.function(cmd, name, args)
+  def sql_file(cmd, file, args), do: Moebius.Query.sql_file(cmd, file, args)
+
+  def sort(cmd, cols, direction \\ :asc) do
+    order_column = cols
+    if is_atom(cols) do
+      order_column = Atom.to_string cols
+    end
+    sort_dir = Atom.to_string direction
+    %{cmd | order: " order by body -> '#{order_column}' #{sort_dir}"}
   end
 
   def update(cmd, change, id) when is_map(change) and is_integer(id) do
