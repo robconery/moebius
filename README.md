@@ -224,3 +224,13 @@ I still need to build these - just a matter of time. Probably happen this week.
 ## Help? Please?
 
 Even if you tell me this sucks, that's still helpful :). I'd love any that you want to give.
+
+## Documentation
+
+API documentation is available at http://hexdocs.pm/moebius
+
+## Building docs from source
+
+```bash
+$ MIX_ENV=dev mix docs
+```
