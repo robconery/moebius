@@ -6,7 +6,8 @@ defmodule Moebius.DocTest do
   setup do
     "delete from user_docs;" |> Moebius.Query.run
     doc = [email: "steve@test.com", first: "Steve", money_spent: 500, pets: ["poopy", "skippy"]]
-    res = db(:user_docs)
+    res = :user_docs
+      |> db()
       |> insert(doc)
       |> execute(:single)
     {:ok, res: res}
@@ -24,52 +25,58 @@ defmodule Moebius.DocTest do
     doc = %{email: "steve@test.com", first: "Steve"}
 
     assert %{email: "steve@test.com", first: "Steve", id: _id} =
-      db(:user_docs)
-        |> insert(doc)
-        |> execute(:single)
+      :user_docs
+      |> db()
+      |> insert(doc)
+      |> execute(:single)
   end
 
   test "a simple insert as a string" do
-    doc = "{\"email\":\"steve@test.com\"}"
+    doc = ~s({"email": "steve@test.com"})
 
     assert %{email: "steve@test.com", id: _id} =
-      db(:user_docs)
-        |> insert(doc)
-        |> execute(:single)
+      :user_docs
+      |> db()
+      |> insert(doc)
+      |> execute(:single)
   end
 
   test "a simple document query with the DocumentQuery lib" do
     assert %{email: "steve@test.com", id: _id} =
-      db(:user_docs)
-        |> select
-        |> execute(:single)
+      :user_docs
+      |> db()
+      |> select
+      |> execute(:single)
   end
 
   test "updating a document", %{res: res} do
     change = %{email: "blurgh@test.com"}
     assert %{email: "blurgh@test.com", id: _id} =
-      db(:user_docs)
-        |> update(change, res.id)
-        |> execute(:single)
-
+      :user_docs
+      |> db()
+      |> update(change, res.id)
+      |> execute(:single)
   end
 
   test "the save shortcut inserts a document without an id" do
     new_doc = %{email: "new_person@test.com"}
     assert %{email: "new_person@test.com", id: _id} =
-      db(:user_docs)
-        |> save(new_doc)
+      :user_docs
+      |> db()
+      |> save(new_doc)
   end
 
   test "the save shortcut works updating a document", %{res: res} do
     change = %{email: "blurgh@test.com"}
     assert %{email: "blurgh@test.com", id: _id} =
-      db(:user_docs)
-        |> save(change)
+      :user_docs
+      |> db()
+      |> save(change)
   end
 
   test "delete works with just an id", %{res: res} do
-    res = db(:user_docs)
+    res = :user_docs
+      |> db()
       |> delete(res.id)
       |> execute(:single)
 
@@ -78,54 +85,54 @@ defmodule Moebius.DocTest do
 
   test "delete works with criteria", %{res: res} do
 
-    res = db(:user_docs)
+    res = :user_docs
+      |> db()
       |> contains(email: res.email)
-      |> delete
-      |> execute
+      |> delete()
+      |> execute()
 
     assert length(res) > 0
   end
 
   test "select works with filter", %{res: res} do
 
-    return = db(:user_docs)
+    return = :user_docs
+      |> db()
       |> contains(email: res.email)
-      |> select
+      |> select()
       |> execute(:single)
 
     assert return.email == res.email
-
   end
 
   test "select works with string criteria", %{res: res} do
-    return = db(:user_docs)
+    return = :user_docs
+      |> db()
       |> filter("body -> 'email' = $1", res.email)
-      |> select
+      |> select()
       |> execute(:single)
 
     assert return.email == res.email
-
   end
 
   test "select works with basic criteria", %{res: res} do
 
-    return = db(:user_docs)
+    return = :user_docs
+      |> db()
       |> filter(:money_spent, ">", 100)
       |> select
       |> execute()
 
     assert length(return) > 0
-
   end
 
   test "select works with existence operator", %{res: res} do
 
-    return = db(:user_docs)
+    return = :user_docs
+      |> db()
       |> exists(:pets, "poopy")
-      |> first
+      |> first()
 
     assert return.id == res.id
-
   end
-
 end

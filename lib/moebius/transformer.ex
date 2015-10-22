@@ -22,8 +22,9 @@ defmodule Moebius.Transformer do
   def to_list({:ok, res}) do
     cond do
       res.rows ->  Enum.map res.rows, fn(r) ->
-        List.zip([res.columns, r])
-          |> coerce_atoms
+        [res.columns, r]
+        |> List.zip()
+        |> coerce_atoms()
         end
       true -> []
     end
@@ -31,10 +32,10 @@ defmodule Moebius.Transformer do
 
   def to_single({:error, err}), do: {:error, err}
   def to_single({:ok, res}) do
-    get_first_result(res)
-      |> zip_columns_and_row
-      |> create_map_from_list
-      |> coerce_atoms
+    res
+    |> get_first_result()
+    |> zip_columns_and_row()
+    |> create_map_from_list()
+    |> coerce_atoms()
   end
-
 end

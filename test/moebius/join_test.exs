@@ -4,7 +4,8 @@ defmodule Moebius.JoinTest do
   import Moebius.Query
 
   test "a basic join" do
-    cmd = db(:customers)
+    cmd = :customers
+        |> db()
         |> join(:orders)
         |> select
 
@@ -13,7 +14,8 @@ defmodule Moebius.JoinTest do
   end
 
   test "using singular table names" do
-    cmd = db("customer")
+    cmd = "customer"
+        |> db()
         |> join("order")
         |> select
 
@@ -22,7 +24,8 @@ defmodule Moebius.JoinTest do
   end
 
   test "custom primary key" do
-    cmd = db("customer")
+    cmd = "customer"
+        |> db()
         |> join("order", primary_key: :customer_id)
         |> select
 
@@ -31,7 +34,8 @@ defmodule Moebius.JoinTest do
   end
 
   test "custom foreign key" do
-    cmd = db("customer")
+    cmd = "customer"
+        |> db()
         |> join("order", foreign_key: :customer_number)
         |> select
 
@@ -40,7 +44,8 @@ defmodule Moebius.JoinTest do
   end
 
   test "multiple joins" do
-    cmd = db(:customers)
+    cmd = :customers
+        |> db()
         |> join(:orders, on: :customers)
         |> join(:items, on: :orders)
         |> select
@@ -52,7 +57,8 @@ defmodule Moebius.JoinTest do
   end
 
   test "outer joins" do
-    cmd = db(:customers)
+    cmd = :customers
+        |> db()
         |> join(:orders, join: :left)
         |> select
 
@@ -60,7 +66,8 @@ defmodule Moebius.JoinTest do
       "select * from customers" <>
       " left join orders on customers.id = orders.customer_id;"
 
-    cmd = db(:customers)
+    cmd = :customers
+        |> db()
         |> join(:orders, join: :right)
         |> select
 
@@ -68,7 +75,8 @@ defmodule Moebius.JoinTest do
       "select * from customers" <>
       " right join orders on customers.id = orders.customer_id;"
 
-    cmd = db(:customers)
+    cmd = :customers
+        |> db()
         |> join(:orders, join: :full)
         |> select
 
@@ -76,9 +84,10 @@ defmodule Moebius.JoinTest do
       "select * from customers" <>
       " full join orders on customers.id = orders.customer_id;"
 
-    cmd = db(:customers)
+    cmd = :customers
+        |> db()
         |> join(:orders, join: :cross)
-        |> select
+        |> select()
 
     assert cmd.sql ==
       "select * from customers" <>
@@ -86,13 +95,13 @@ defmodule Moebius.JoinTest do
   end
 
   test "join with USING" do
-    cmd = db(:t1)
+    cmd = :t1
+        |> db()
         |> join(:t2, using: [:num, :name])
-        |> select
+        |> select()
 
     assert cmd.sql ==
       "select * from t1" <>
       " inner join t2 using (num, name);"
   end
-
 end
