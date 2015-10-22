@@ -2,6 +2,8 @@ defmodule Moebius.Query do
 
   import Inflex, only: [singularize: 1]
 
+  import Moebius.Runner, only: [connect: 0]
+
   @moduledoc """
   The main query interface for Moebius. Import this module into your code and query like a champ
   """
@@ -14,6 +16,9 @@ defmodule Moebius.Query do
 
   def db(table),
     do: %Moebius.QueryCommand{table_name: table}
+
+  def db(cmd, table),
+    do: Map.merge(cmd, %{table_name: table})
 
   @doc """
   A basic "WHERE" statement builder that builds a NOT IN statement
@@ -414,11 +419,15 @@ defmodule Moebius.Query do
       |> Moebius.Transformer.to_single
   end
 
-  def execute(cmd, pid) do
-    #this is a passed-in process from an open transaction
-    Postgrex.Connection.query(pid, cmd.sql,cmd.params)
-      |> Moebius.Transformer.to_single
+  def begin do
+    case connect do
+      {:ok, pid} ->
+        %Moebius.QueryCommand{pid: pid}
+      {:error, message} ->
+        raise message
+    end
   end
 
+  def commit(cmd), do: execute(cmd)
 
 end
