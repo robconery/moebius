@@ -194,6 +194,20 @@ defmodule Moebius.Query do
     %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
   def select!(cmd, cols \\ "*"), do: select(cmd, cols) |> execute
+
+  def count(cmd) do
+    %{cmd | sql: "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
+      |> execute
+  end
+
+  def map(cmd, cols) do
+    %{cmd | group_by: cols}
+  end
+
+  def reduce(cmd, rollup) do
+
+  end
+
   @doc """
   Full text search using Postgres' built in indexing.
 
