@@ -28,4 +28,12 @@ defmodule Moebius.DeleteTest do
     assert cmd.sql == "delete from users where id > $1 returning *;";
     assert length(cmd.params) == 1
   end
+
+  test "a bulk delete with a single param bang form" do
+    res = db(:logs)
+      |> filter("id > $1", 1)
+      |> delete!
+
+    assert res
+  end
 end

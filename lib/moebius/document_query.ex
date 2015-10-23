@@ -1,7 +1,10 @@
 defmodule Moebius.DocumentQuery do
 
+  @moduledoc """
+  If you like your Postgres doing document goodness, then you'll want to use this interface
+  """
+
   import Poison
-  import Moebius.Query, only: [:limit, :offset, :sql_file, :function]
 
   def db(table) when is_atom(table),
     do: db(Atom.to_string(table))
@@ -13,7 +16,7 @@ defmodule Moebius.DocumentQuery do
     map = Enum.into(criteria, %{})
     encoded = encode!(map)
 
-    #TODO: Do we need to parameterize this?
+    #TODO: Do we need to parameterize this? I don't think so
     where = " where #{cmd.json_field} @> '#{encoded}'"
     %{cmd | where: where, params: []}
   end

@@ -31,10 +31,15 @@ defmodule Moebius.Transformer do
 
   def to_single({:error, err}), do: {:error, err}
   def to_single({:ok, res}) do
-    get_first_result(res)
-      |> zip_columns_and_row
-      |> create_map_from_list
-      |> coerce_atoms
+    cond do
+      res.num_rows > 0 ->
+        get_first_result(res)
+          |> zip_columns_and_row
+          |> create_map_from_list
+          |> coerce_atoms
+      true -> []
+    end
+
   end
 
 end

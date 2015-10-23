@@ -32,7 +32,9 @@ defmodule Moebius.Runner do
     #now if a tx fails.
     case Postgrex.Connection.query(cmd.pid, cmd.sql, cmd.params) do
       {:ok, result} -> {:ok, result}
-      {:error, err} -> raise err.postgres.message
+      {:error, err} ->
+        Postgrex.Connection.query cmd.pid, "ROLLBACK", []
+        raise err.postgres.message
     end
   end
 

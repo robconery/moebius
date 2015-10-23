@@ -47,4 +47,11 @@ defmodule Moebius.UpdateTest do
         |> execute
   end
 
+  test "bang form actually works" do
+    assert %{email: "maggot@test.com", first: "Rob", id: 1, last: "Blah", profile: nil} =
+      db(:users)
+        |> filter(id: 1)
+        |> update!(email: "maggot@test.com")
+  end
+
 end

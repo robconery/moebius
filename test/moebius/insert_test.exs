@@ -21,7 +21,11 @@ defmodule MoebiusInsertTest do
     assert %{email: "test@test.com", first: "Test", id: _id, last: "User", profile: nil} =
       db(:users)
         |> insert(email: "test@test.com", first: "Test", last: "User")
-        |> single
+        |> first
   end
-
+  test "bang form actually works" do
+    assert %{email: "test2@test.com", first: "Test", id: _id, last: "User", profile: nil} =
+      db(:users)
+        |> insert!(email: "test2@test.com", first: "Test", last: "User")
+  end
 end

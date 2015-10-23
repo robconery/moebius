@@ -1,3 +1,33 @@
+# Transactions suck, just use anon fn
+# aggregates
+# docs with search etc - make your api apparent from pg_docs
+# push this shit and rebuild blackbook
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 defmodule Moebius.DocTest do
 
   use ExUnit.Case

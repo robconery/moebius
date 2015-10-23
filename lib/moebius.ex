@@ -6,13 +6,4 @@ defmodule Moebius do
     Moebius.Supervisor.start_link(_type, _args)
   end
 
-  def transaction(fun) do
-    {:ok, pid} = Moebius.Runner.connect()
-    Postgrex.Connection.query(pid, "BEGIN;",[])
-    res = fun.(pid)
-    Postgrex.Connection.query(pid, "COMMIT;",[])
-    res
-  end
-
-
 end

@@ -11,14 +11,30 @@ defmodule Moebius.Query do
   @doc """
   The main starting point. Currently you specify a table here but, possibly, in the future you can override connection settings.
   """
+  def with(table) when is_atom(table), do: db(table)
   def db(table) when is_atom(table),
     do: db(Atom.to_string(table))
 
+  def with(table), do: db(table)
   def db(table),
     do: %Moebius.QueryCommand{table_name: table}
 
+  def with(cmd, table), do: db(cmd, table)
   def db(cmd, table),
     do: Map.merge(cmd, %{table_name: table})
+
+
+  def transaction(fun) do
+    {:ok, pid} = Moebius.Runner.connect()
+    Postgrex.Connection.query(pid, "BEGIN;",[])
+    res = try do
+      fun.(%Moebius.QueryCommand{pid: pid})
+    rescue
+      e in RuntimeError -> {:error, e.message}
+    end
+    Postgrex.Connection.query(pid, "COMMIT;",[])
+    res
+  end
 
   @doc """
   A basic "WHERE" statement builder that builds a NOT IN statement
@@ -177,7 +193,7 @@ defmodule Moebius.Query do
   def select(cmd, cols \\ "*") do
     %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
-
+  def select!(cmd, cols \\ "*"), do: select(cmd, cols) |> execute
   @doc """
   Full text search using Postgres' built in indexing.
 
@@ -220,7 +236,7 @@ defmodule Moebius.Query do
 
     %{cmd | sql: sql, params: vals, type: :insert}
   end
-
+  def insert!(cmd, criteria), do: insert(cmd, criteria) |> execute
 
   @doc """
   A simple update based on the criteria you specify.
@@ -263,6 +279,7 @@ defmodule Moebius.Query do
     sql = "update #{cmd.table_name} set " <> Enum.join(cols, ", ") <> where <> " returning *;"
     %{cmd | sql: sql, type: :update, params: params}
   end
+  def update!(cmd, criteria), do: update(cmd, criteria) |> execute
 
   @doc """
   Deletes a record based on your filter.
@@ -281,6 +298,7 @@ defmodule Moebius.Query do
     %{cmd | sql: sql, type: :delete}
   end
 
+  def delete!(cmd), do: delete(cmd) |> execute
   @doc """
   Build a table join for your query. There are a number of options to handle various joins.
   Joins can also be piped for multiple joins.
@@ -380,7 +398,7 @@ defmodule Moebius.Query do
   @doc """
   Executes a given pipeline and returns a single result as a map.
   """
-  def single(cmd) do
+  def first(cmd) do
     Moebius.Runner.execute(cmd)
       |> Moebius.Transformer.to_single
   end
@@ -404,14 +422,6 @@ defmodule Moebius.Query do
   end
 
   @doc """
-  Executes a given pipeline and returns a list of mapped results
-  """
-  def run(cmd) do
-    Moebius.Runner.execute(cmd)
-      |> Moebius.Transformer.to_list
-  end
-
-  @doc """
   Executes a pass-through query and returns a single result
   """
   def execute(cmd) do
@@ -419,25 +429,27 @@ defmodule Moebius.Query do
       |> Moebius.Transformer.to_single
   end
 
-  def ideally, do: begin
-  def begin do
-    case connect do
-      {:ok, pid} ->
-        Postgrex.Connection.query(pid, "BEGIN",[])
-        %Moebius.QueryCommand{pid: pid}
+  def execute(cmd, :single), do: execute(cmd)
 
-      {:error, message} ->
-        raise message
-    end
-  end
-
-  def win(cmd), do: commit(cmd)
-  def commit(cmd) do
-    # will always return OK even if there were errors in the transaction
-    Postgrex.Connection.query(cmd.pid, "COMMIT",[])
-    cond do
-      cmd.error-> {:error, cmd.error}
-      true -> {:ok, true}
-    end
-  end
+  # def ideally, do: begin
+  # def begin do
+  #   case connect do
+  #     {:ok, pid} ->
+  #       Postgrex.Connection.query(pid, "BEGIN",[])
+  #       %Moebius.QueryCommand{pid: pid}
+  #
+  #     {:error, message} ->
+  #       raise message
+  #   end
+  # end
+  #
+  # def win(cmd), do: commit(cmd)
+  # def commit(cmd) do
+  #   # will always return OK even if there were errors in the transaction
+  #   Postgrex.Connection.query(cmd.pid, "COMMIT",[])
+  #   cond do
+  #     cmd.error-> {:error, cmd.error}
+  #     true -> {:ok, true}
+  #   end
+  # end
 end
