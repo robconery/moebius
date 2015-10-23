@@ -99,6 +99,7 @@ defmodule Moebius.BasicSelectTest do
     assert cmd.sql == "select * from users where name IN($1, $2, $3);"
     assert length(cmd.params) == 3
   end
+
   test "a simple NOT IN query, specified" do
     cmd = db(:users)
         |> filter(:name, not_in: ["mark", "biff", "skip"])
@@ -107,4 +108,19 @@ defmodule Moebius.BasicSelectTest do
     assert cmd.sql == "select * from users where name NOT IN($1, $2, $3);"
     assert length(cmd.params) == 3
   end
+
+  test "first returns first" do
+    res = db(:users)
+      |> first
+
+    assert res.id
+  end
+
+  test "last returns last" do
+    res = db(:users)
+      |> last(:id)
+
+    assert res.id
+  end
+
 end

@@ -12,6 +12,7 @@ create table users(
   email varchar(50) unique not null,
   first varchar(50),
   last varchar(50),
+  order_count integer not null default 10,
   profile jsonb
 );
 

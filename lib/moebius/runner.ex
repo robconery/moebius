@@ -5,35 +5,26 @@ defmodule Moebius.Runner do
     Postgrex.Connection.start_link(db)
   end
 
-  def single(sql, args \\ []) do
-    %Moebius.DocumentCommand{sql: sql, params: args}
-      |> execute
-      |> Moebius.Transformer.to_single
-  end
-
-  def query(sql, args \\ []) do
-    %Moebius.DocumentCommand{sql: sql, params: args}
-      |> execute
-      |> Moebius.Transformer.to_list
-  end
-
   @doc """
     If there isn't a connection process started then one is added to the command
   """
-  def execute(%{pid: nil} = cmd) do
+  def execute(cmd) do
     {:ok, pid} = connect()
-    Map.merge(cmd, %{pid: pid})
-      |> execute
+    case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
+      {:ok, result} -> {:ok, result}
+      {:error, err} -> {:error, err.postgres.message}
+    end
   end
 
-  def execute(cmd) do
+  def execute(cmd, pid) do
 
     #TODO: A commit will succeed no matter what - we have no way of knowing right
     #now if a tx fails.
-    case Postgrex.Connection.query(cmd.pid, cmd.sql, cmd.params) do
+    case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
       {:ok, result} -> {:ok, result}
       {:error, err} ->
-        Postgrex.Connection.query cmd.pid, "ROLLBACK", []
+        Postgrex.Connection.query pid, "ROLLBACK", []
+        #this will get caught by the transactor
         raise err.postgres.message
     end
   end

@@ -5,35 +5,36 @@ defmodule Moebius.DeleteTest do
   test "a simple delete" do
     cmd = db(:users)
       |> filter(id: 1)
-      |> delete
+      |> delete_command
 
-    assert cmd.sql == "delete from users where id = $1 returning *;";
+    assert cmd.sql == "delete from users where id = $1;";
     assert length(cmd.params) == 1
   end
 
   test "a bulk delete with no params" do
     cmd = db(:users)
       |> filter("id > 100")
-      |> delete
+      |> delete_command
 
-    assert cmd.sql == "delete from users where id > 100 returning *;";
+    assert cmd.sql == "delete from users where id > 100;";
     assert length(cmd.params) == 0
   end
 
   test "a bulk delete with a single param" do
     cmd = db(:users)
       |> filter("id > $1", 1)
-      |> delete
+      |> delete_command
 
-    assert cmd.sql == "delete from users where id > $1 returning *;";
+    assert cmd.sql == "delete from users where id > $1;";
     assert length(cmd.params) == 1
   end
 
-  test "a bulk delete with a single param bang form" do
+  test "it actually works" do
     res = db(:logs)
       |> filter("id > $1", 1)
-      |> delete!
+      |> delete
 
-    assert res
+    assert res.deleted
   end
+
 end

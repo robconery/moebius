@@ -19,23 +19,6 @@ defmodule Moebius.Query do
   def db(table),
     do: %Moebius.QueryCommand{table_name: table}
 
-  def with(cmd, table), do: db(cmd, table)
-  def db(cmd, table),
-    do: Map.merge(cmd, %{table_name: table})
-
-
-  def transaction(fun) do
-    {:ok, pid} = Moebius.Runner.connect()
-    Postgrex.Connection.query(pid, "BEGIN;",[])
-    res = try do
-      fun.(%Moebius.QueryCommand{pid: pid})
-    rescue
-      e in RuntimeError -> {:error, e.message}
-    end
-    Postgrex.Connection.query(pid, "COMMIT;",[])
-    res
-  end
-
   @doc """
   A basic "WHERE" statement builder that builds a NOT IN statement
 
@@ -193,18 +176,64 @@ defmodule Moebius.Query do
   def select(cmd, cols \\ "*") do
     %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
-  def select!(cmd, cols \\ "*"), do: select(cmd, cols) |> execute
 
   def count(cmd) do
-    %{cmd | sql: "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
-      |> execute
+
+    res = %{cmd | sql: "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
+      |> execute(:single)
+
+    case res do
+      {:error, err} -> {:error, err}
+      row -> row.count
+    end
+
   end
 
-  def map(cmd, cols) do
+  @doc """
+  Executes a given pipeline and returns a single result as a map.
+  """
+  def first(cmd, cols \\ "*") do
+    select(cmd, cols) |>
+     execute(:single)
+  end
+
+  def last(cmd, sort_by) when is_atom(sort_by) do
+    sort(cmd, sort_by, :desc)
+      |> select
+      |> execute(:single)
+  end
+
+  def to_list(cmd), do: all(cmd)
+  def all(cmd, cols \\ "*") do
+    select(cmd, cols) |>
+     execute
+  end
+
+  def group(cmd, cols) when is_atom(cols) do
+     group(cmd, Atom.to_string(cols))
+  end
+  def group(cmd, cols) do
     %{cmd | group_by: cols}
   end
 
-  def reduce(cmd, rollup) do
+  def map(cmd, criteria), do: filter(cmd, criteria)
+
+  def reduce(cmd, op, column) when is_atom(column), do: reduce(cmd, op, Atom.to_string(column))
+  def reduce(cmd, op, column) when is_bitstring(column) do
+    rollup = Atom.to_string(op)
+
+    sql = cond do
+      cmd.group_by ->  "select #{rollup}(#{column}), #{cmd.group_by} from #{cmd.table_name}#{cmd.join}#{cmd.where} GROUP BY #{cmd.group_by}"
+      true -> "select #{rollup}(#{column}) from #{cmd.table_name}#{cmd.join}#{cmd.where}"
+    end
+
+    res = %{cmd | sql: sql}
+      |> execute(:single)
+
+    case res do
+      {:error, err} -> {:error, err}
+      row -> Map.get(row, op)
+    end
 
   end
 
@@ -241,7 +270,9 @@ defmodule Moebius.Query do
       |> execute
   ```
   """
-  def insert(cmd, criteria) do
+  def insert(cmd, pid, criteria), do: insert_command(cmd, criteria) |> execute(:single, pid)
+  def insert(cmd, criteria), do: insert_command(cmd, criteria) |> execute(:single)
+  def insert_command(cmd, criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
 
@@ -250,21 +281,10 @@ defmodule Moebius.Query do
 
     %{cmd | sql: sql, params: vals, type: :insert}
   end
-  def insert!(cmd, criteria), do: insert(cmd, criteria) |> execute
 
-  @doc """
-  A simple update based on the criteria you specify.
 
-  Example:
+  def update_command(cmd, criteria) do
 
-  ```
-  {:ok, res} = db(:users)
-      |> filter(id: 1)
-      |> update(email: "maggot@test.com")
-      |> execute
-  ```
-  """
-  def update(cmd, criteria) when is_list(criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
 
@@ -293,7 +313,39 @@ defmodule Moebius.Query do
     sql = "update #{cmd.table_name} set " <> Enum.join(cols, ", ") <> where <> " returning *;"
     %{cmd | sql: sql, type: :update, params: params}
   end
-  def update!(cmd, criteria), do: update(cmd, criteria) |> execute
+
+
+  @doc """
+  A simple update based on the criteria you specify. Returns a single record as a result when you pass :single
+
+  Example:
+
+  ```
+  db(:users)
+      |> filter(id: 1)
+      |> update(:single, email: "maggot@test.com")
+  ```
+  """
+  def update(cmd, pid, :single, criteria) when is_list(criteria), do: update_command(cmd, criteria) |> execute(:single, pid)
+  def update(cmd, :single, criteria) when is_list(criteria), do: update_command(cmd, criteria) |> execute(:single)
+
+  @doc """
+  A simple update based on the criteria you specify.
+
+  Example:
+
+  ```
+  db(:users)
+    |> filter(id: 1)
+    |> update(email: "maggot@test.com")
+  ```
+  """
+  def update(cmd, criteria) when is_list(criteria), do: update_command(cmd, criteria) |> execute
+
+  def delete_command(cmd) do
+    sql = "delete from #{cmd.table_name}" <> cmd.where <> ";"
+    %{cmd | sql: sql, type: :delete}
+  end
 
   @doc """
   Deletes a record based on your filter.
@@ -304,15 +356,12 @@ defmodule Moebius.Query do
   db(:users)
     |> filter("id > $1", 1)
     |> delete
-    |> execute
   ```
   """
-  def delete(cmd) do
-    sql = "delete from #{cmd.table_name}" <> cmd.where <> " returning *;"
-    %{cmd | sql: sql, type: :delete}
-  end
+  def delete(cmd, pid), do: delete_command(cmd) |> execute(:single, pid)
+  def delete(cmd), do: delete_command(cmd) |> execute(:single)
 
-  def delete!(cmd), do: delete(cmd) |> execute
+
   @doc """
   Build a table join for your query. There are a number of options to handle various joins.
   Joins can also be piped for multiple joins.
@@ -362,8 +411,11 @@ defmodule Moebius.Query do
   {:ok, res} = sql_file(:simple, 1)
     |> run
   """
-  def sql_file(file, params \\ []) do
+  def sql_file(file), do: sql_file_command(file, []) |> execute
+  def sql_file(file, params), do: sql_file_command(file, params) |> execute
+  def sql_file(file, :single, params \\ []), do: sql_file_command(file, params) |> execute(:single)
 
+  def sql_file_command(file, params) do
     unless is_list params do
       params = [params]
     end
@@ -389,7 +441,12 @@ defmodule Moebius.Query do
   ```
   """
 
-  def function(cmd, function_name, params \\ []) do
+  def function(cmd, function_name), do: function_command(cmd, function_name, []) |> execute
+  def function(cmd, function_name, params), do: function_command(cmd, function_name, params) |> execute
+  def function(cmd, function_name, :single, params), do: function_command(cmd, function_name, params) |> execute(:single)
+  def function(cmd, function_name, :single), do: function_command(cmd, function_name, []) |> execute(:single)
+
+  def function_command(cmd, function_name, params \\ []) do
     fname = function_name
 
     if is_atom(function_name) do
@@ -409,61 +466,57 @@ defmodule Moebius.Query do
     %{cmd | sql: sql, params: params}
   end
 
-  @doc """
-  Executes a given pipeline and returns a single result as a map.
-  """
-  def first(cmd) do
-    Moebius.Runner.execute(cmd)
-      |> Moebius.Transformer.to_single
-  end
 
   @doc """
   Executes a raw SQL query without parameters
   """
-  def run(sql) when is_bitstring(sql) do
-    %Moebius.QueryCommand{sql: sql}
-      |> Moebius.Runner.execute
-      |> Moebius.Transformer.to_list
-  end
+  def run(sql, :single) when is_bitstring(sql), do: run(sql, [], :single)
+  def run(sql) when is_bitstring(sql), do: run(sql, [])
 
   @doc """
   Executes a raw SQL query with paramters
   """
+  def run(sql, params, :single) when is_bitstring(sql) do
+    %Moebius.QueryCommand{sql: sql, params: params}
+      |> execute(:single)
+  end
   def run(sql, params) when is_bitstring(sql) do
     %Moebius.QueryCommand{sql: sql, params: params}
-      |> Moebius.Runner.execute
-      |> Moebius.Transformer.to_list
+      |> execute
   end
-
   @doc """
   Executes a pass-through query and returns a single result
   """
-  def execute(cmd) do
+  def execute(cmd, :single) do
     Moebius.Runner.execute(cmd)
       |> Moebius.Transformer.to_single
   end
 
-  def execute(cmd, :single), do: execute(cmd)
+  def execute(cmd, :single, pid) do
+    Moebius.Runner.execute(cmd, pid)
+      |> Moebius.Transformer.to_single
+  end
 
-  # def ideally, do: begin
-  # def begin do
-  #   case connect do
-  #     {:ok, pid} ->
-  #       Postgrex.Connection.query(pid, "BEGIN",[])
-  #       %Moebius.QueryCommand{pid: pid}
-  #
-  #     {:error, message} ->
-  #       raise message
-  #   end
-  # end
-  #
-  # def win(cmd), do: commit(cmd)
-  # def commit(cmd) do
-  #   # will always return OK even if there were errors in the transaction
-  #   Postgrex.Connection.query(cmd.pid, "COMMIT",[])
-  #   cond do
-  #     cmd.error-> {:error, cmd.error}
-  #     true -> {:ok, true}
-  #   end
-  # end
+  def execute(cmd) do
+    Moebius.Runner.execute(cmd)
+      |> Moebius.Transformer.to_list
+  end
+
+  def transaction(fun) do
+    {:ok, pid} = Moebius.Runner.connect()
+    Postgrex.Connection.query(pid, "BEGIN;",[])
+    res = try do
+      fun.(pid)
+    rescue
+      e in RuntimeError -> {:error, e.message}
+    end
+    Postgrex.Connection.query(pid, "COMMIT;",[])
+    res
+  end
+
+  def execute(cmd, pid) do
+    Moebius.Runner.execute(cmd, pid)
+      |> Moebius.Transformer.to_list
+  end
+
 end

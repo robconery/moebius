@@ -6,7 +6,7 @@ defmodule Moebius.FunctionTest do
   test "a simple function call is constructed" do
 
     cmd = db(:users)
-          |> function(:all_users)
+          |> function_command(:all_users)
 
 
     assert cmd.sql == "select * from all_users();"
@@ -15,7 +15,7 @@ defmodule Moebius.FunctionTest do
   test "a simple function call is constructed with args" do
 
     cmd = db(:users)
-          |> function(:all_users, name: "steve")
+          |> function_command(:all_users, name: "steve")
 
 
     assert cmd.sql == "select * from all_users($1);"

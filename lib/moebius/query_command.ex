@@ -17,8 +17,7 @@ defmodule Moebius.QueryCommand do
       offset: "",
       where_columns: [],
       join: [""],
-      group_by: "",
-      having: "",
+      group_by: nil,
       error: nil
     ]
 end
