@@ -1,0 +1,1526 @@
+    <!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Moebius.Query – Moebius v1.0.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.10.0">
+    <link rel="stylesheet" href="dist/app.css" />
+    <script src="dist/sidebar_items.js"></script>
+  </head>
+  <body data-type="modules">
+
+    <div class="main">
+<button class="sidebar-toggle">
+  <i class="icon-menu"></i>
+</button>
+<section class="sidebar">
+  <button class="sidebar-toggle">
+    <i class="icon-menu"></i>
+  </button>
+
+  
+  <a href="Moebius.Query.html" class="sidebar-projectLink">
+    <div class="sidebar-projectDetails">
+      <h1 class="sidebar-projectName">
+        Moebius
+      </h1>
+      <h2 class="sidebar-projectVersion">
+        v1.0.0
+      </h2>
+    </div>
+    
+  </a>
+
+  <div class="sidebar-search">
+    <i class="icon-search"></i>
+    <input type="text" class="sidebar-searchInput" placeholder="search" autocomplete="off" />
+  </div>
+
+  <ul class="sidebar-listNav">
+    <li><a id="extras-list" href="#full-list">Pages</a></li>
+
+    
+      <li><a id="modules-list" href="#full-list">Modules</a></li>
+    
+
+    
+
+    
+  </ul>
+
+  <ul id="full-list" class="sidebar-fullList"></ul>
+  <div class="sidebar-noResults"></div>
+</section>
+
+<section class="content">
+  <div id="content" class="content-inner">
+
+
+      <h1>
+        Moebius.Query
+        
+        
+          <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L1" title="View Source" class="view-source" rel="help">
+            <i class="icon-code"></i>
+          </a>
+        
+      </h1>
+
+      
+        <section id="moduledoc" class="docstring">
+          <p>The main query interface for Moebius. Import this module into your code and query like a champ</p>
+
+        </section>
+      
+
+      
+        <section id="summary" class="details-list">
+          <h1 class="section-heading">
+            <a class="hover-link" href="#summary">
+              <i class="icon-link"></i>
+            </a>
+            Summary
+          </h1>
+          
+
+          
+  <div class="summary-functions summary">
+    <h2>
+      <a href="#functions">Functions</a>
+    </h2>
+    <div class="summary-row">
+  <div class="summary-signature">
+    <a href="#all/2">all(cmd, cols \\ &quot;*&quot;)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a given pipeline and returns all results. An alias for <a href="#to_list/2"><code class="inline">to_list/2</code></a></p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#count/1">count(cmd)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a COUNT query based on the assembled pipeline. Analagous to <code class="inline">map/reduce(:count)</code>. Returns an integer</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#db/1">db(table)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Specifies the table or view you want to query and is an alias for the <a href="#with/1"><code class="inline">with/1</code></a> function using
+a string as a table name. This is useful for specifying a table within a schema</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#delete/1">delete(cmd)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Deletes a record based on your filter.
+Example:</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#delete/2">delete(cmd, pid)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Deletes a record based on your filter, part of a transaction</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#delete_command/1">delete_command(cmd)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Creates a DELETE command</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#execute/1">execute(cmd)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a command, returning a list of results</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#execute/2">execute(cmd, pid)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a command, returning a list of results as part of a transaction</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#execute/3">execute(cmd, atom, pid)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a pass-through query and returns a single result as part of a transaction</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#filter/2">filter(cmd, criteria)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Builds a parameterized WHERE statement with ANDs for each passed list item</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#filter/3">filter(cmd, criteria, params)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Builds a parameterized WHERE statement based on the passed in string.
+This is useful for queries that pass in string information that you want to protect from SQL Injection</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#first/2">first(cmd, cols \\ &quot;*&quot;)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a given pipeline and returns the first matching result. You should specify a <code class="inline">sort</code> to be sure first works as intended</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#function/2">function(cmd, function_name)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a function with the given name, passed as an atom</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#function/3">function(cmd, function_name, params)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a function with the given name, passed as an atom, returning a single result</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#function/4">function(cmd, function_name, atom, params)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a function with the given name, passed as an atom, returning a single result</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#function_command/3">function_command(cmd, function_name, params \\ [])</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Creates a function command</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#group/2">group(cmd, cols)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Specifies a GROUP BY for a <code class="inline">map/reduce</code> (aggregate) query that is a string</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#insert/2">insert(cmd, criteria)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>A simple insert that that returns the inserted record. Create your list of data and send it on in</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#insert/3">insert(cmd, pid, criteria)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>A simple insert that is part of a transaction that returns the inserted record. Create your list of data and send it on in</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#insert_command/2">insert_command(cmd, criteria)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Creates an insert command based on the assembled pipeline</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#join/3">join(cmd, table, opts \\ [])</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Build a table join for your query. There are a number of options to handle various joins.
+Joins can also be piped for multiple joins</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#last/2">last(cmd, sort_by)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a given pipeline and returns the last matching result. You should specify a <code class="inline">sort</code> to be sure first works as intended</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#limit/2">limit(cmd, bound)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Sets the limit of the return</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#map/2">map(cmd, criteria)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>An alias for <code class="inline">filter</code>, specifies a range to rollup on for an aggregate query using a WHERE statement</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#offset/2">offset(cmd, n)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Offsets the limit and is an alias for <code class="inline">skip/1</code>”</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#reduce/3">reduce(cmd, op, column)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>A rollup operation that aggregates the mapped result set by the specified operation</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#run/1">run(sql)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#run/2">run(sql, params)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a raw SQL query with parameters</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#run/3">run(sql, params, atom)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a raw SQL query with parameters returning a single result</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#search/2">search(cmd, list)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Full text search using Postgres’ built in indexing, ranked using <code class="inline">tsrank</code>. This query will result in a full table scan and is not optimized for large result
+sets. For better results, create a <code class="inline">tsvector</code> field and populate it with a trigger on insert/update. This will cause some side
+effects, one of them being that Postgrex, the Elixir driver we use, doesn’t know how to resolve the tsvector type, and will throw</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#select_command/2">select_command(cmd, cols \\ &quot;*&quot;)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Creates a SELECT command based on the assembled pipeline. Uses the QueryCommand as its core structure</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#skip/2">skip(cmd, n)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Offsets the limit and is an alias for <code class="inline">offset/1</code>”</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#sort/3">sort(cmd, cols, direction \\ :asc)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Sets the order by. Ascending using <code class="inline">:asc</code> is the default, you can send in <code class="inline">:desc</code> if you like</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#sql_file/1">sql_file(file)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes the SQL in a given SQL file without parameters. Specify the scripts directory by setting the <code class="inline">scripts</code> directive in the config.
+Pass the file name as an atom, without extension</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#sql_file/2">sql_file(file, params)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes the SQL in a given SQL file with the specified parameters. Specify the scripts directory by setting the <code class="inline">scripts</code> directive in the config.
+Pass the file name as an atom, without extension</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#sql_file/3">sql_file(file, atom, params \\ [])</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes the SQL in a given SQL file with the specified parameters, returning a single result.
+Specify the scripts directory by setting the <code class="inline">scripts</code> directive in the config.
+Pass the file name as an atom, without extension</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#sql_file_command/2">sql_file_command(file, params)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Creates a SQL File command</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#to_list/2">to_list(cmd, cols \\ &quot;*&quot;)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Executes a given pipeline and returns all results. An alias for <a href="#all/2"><code class="inline">all/2</code></a></p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#transaction/1">transaction(fun)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Opens a transaction, returning a <code class="inline">pid</code> (Process ID) that you can pass to each of your queries that take part in the transaction.
+If an error occurs, it is passed back to you with <code class="inline">{:error, message}</code>. The transaction will automatically COMMIT on completion</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#update/2">update(cmd, criteria)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>A bulk update based on the criteria you specify. All changed records are returned</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#update/3">update(cmd, atom, criteria)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>A simple update based on the criteria you specify. This is a partial update.
+Returns a single record as a result when you pass <code class="inline">:single</code></p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#update/4">update(cmd, pid, atom, criteria)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>A simple update that is part of a transaction based on the criteria you specify. This is a partial update.
+Returns a single record as a result when you pass <code class="inline">:single</code></p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#update_command/2">update_command(cmd, criteria)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Creates an update command based on the assembled pipeline</p>
+</div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#with/1">with(table)</a>
+  </div>
+  
+    <div class="summary-synopsis"><p>Specifies the table or view you want to query and is an alias for the <a href="#db/1"><code class="inline">db/1</code></a> function using
+a string as a table name. This is useful for specifying a table within a schema</p>
+</div>
+  
+</div>
+
+  </div>
+
+
+          
+
+          
+
+        </section>
+      
+
+      
+
+      
+        <section id="functions" class="details-list">
+          <h1 class="section-heading">
+            <a class="hover-link" href="#functions">
+              <i class="icon-link"></i>
+            </a>
+            Functions
+          </h1>
+          <div class="detail" id="all/2">
+  <div class="detail-header">
+    <a href="#all/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">all(cmd, cols \\ &quot;*&quot;)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L369" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a given pipeline and returns all results. An alias for <a href="#to_list/2"><code class="inline">to_list/2</code></a></p>
+<p>cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.</p>
+<pre><code class="elixir">For example `now() as current_time, name, description`. Defaults to &quot;*&quot;</code></pre>
+<p>Example:</p>
+<pre><code class="elixir">all_users = db(:users)
+  |&gt; all(&quot;first, last, email&quot;)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="count/1">
+  <div class="detail-header">
+    <a href="#count/1" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">count(cmd)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L286" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a COUNT query based on the assembled pipeline. Analagous to <code class="inline">map/reduce(:count)</code>. Returns an integer.</p>
+<p>Example:</p>
+<p>count = db(:users)</p>
+<pre><code class="elixir">|&gt; limit(20)
+|&gt; count</code></pre>
+<p>#count == 20</p>
+
+  </section>
+</div>
+<div class="detail" id="db/1">
+  <div class="detail-header">
+    <a href="#db/1" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">db(table)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L37" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Specifies the table or view you want to query and is an alias for the <a href="#with/1"><code class="inline">with/1</code></a> function using
+a string as a table name. This is useful for specifying a table within a schema.</p>
+<p>“table”  -   the name of the table you want to query, such as <code class="inline">membership.users</code></p>
+<p>Example</p>
+<pre><code class="elixir">result = db(&quot;membership.users&quot;)
+  |&gt; to_list</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="delete/1">
+  <div class="detail-header">
+    <a href="#delete/1" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">delete(cmd)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L654" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Deletes a record based on your filter.
+Example:</p>
+<pre><code class="elixir">db(:users)
+  |&gt; filter(&quot;id &gt; $1&quot;, 1)
+  |&gt; delete</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="delete/2">
+  <div class="detail-header">
+    <a href="#delete/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">delete(cmd, pid)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L640" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Deletes a record based on your filter, part of a transaction.</p>
+<p>pid:  -   The process id from the current transaction callback.</p>
+<p>Example:</p>
+<pre><code class="elixir">transaction fn(pid) -&gt;
+  db(:users)
+    |&gt; filter(&quot;id &gt; $1&quot;, 1)
+    |&gt; delete(pid)
+end</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="delete_command/1">
+  <div class="detail-header">
+    <a href="#delete_command/1" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">delete_command(cmd)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L620" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Creates a DELETE command</p>
+
+  </section>
+</div>
+<div class="detail" id="execute/1">
+  <div class="detail-header">
+    <a href="#execute/1" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">execute(cmd)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L864" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a command, returning a list of results</p>
+
+  </section>
+</div>
+<div class="detail" id="execute/2">
+  <div class="detail-header">
+    <a href="#execute/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">execute(cmd, pid)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L848" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a command, returning a list of results as part of a transaction</p>
+
+  </section>
+</div>
+<div class="detail" id="execute/3">
+  <div class="detail-header">
+    <a href="#execute/3" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">execute(cmd, atom, pid)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L856" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a pass-through query and returns a single result as part of a transaction</p>
+
+  </section>
+</div>
+<div class="detail" id="filter/2">
+  <div class="detail-header">
+    <a href="#filter/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">filter(cmd, criteria)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L127" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Builds a parameterized WHERE statement with ANDs for each passed list item.</p>
+<p>criteria  -   <code class="inline">email: &#39;test@test.com&#39;, company: &#39;Test Company&#39;</code></p>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:products)
+    |&gt; filter(email: &#39;test@test.com&#39;, company: &#39;Test Company&#39;)
+    |&gt; to_list</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="filter/3">
+  <div class="detail-header">
+    <a href="#filter/3" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">filter(cmd, criteria, params)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L85" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Builds a parameterized WHERE statement based on the passed in string.
+This is useful for queries that pass in string information that you want to protect from SQL Injection.</p>
+<p>criteria  -   “name LIKE $1”
+params    -   “%steve%”
+Example:</p>
+<pre><code class="elixir">result = db(:products)
+    |&gt; filter(&quot;name LIKE %$1%&quot;, &quot;steve&quot;)
+    |&gt; to_list</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="first/2">
+  <div class="detail-header">
+    <a href="#first/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">first(cmd, cols \\ &quot;*&quot;)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L313" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a given pipeline and returns the first matching result. You should specify a <code class="inline">sort</code> to be sure first works as intended.</p>
+<p>cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.</p>
+<pre><code class="elixir">For example `now() as current_time, name, description`. Defaults to &quot;*&quot;</code></pre>
+<p>Example:</p>
+<pre><code class="elixir">top_spender = db(:users)
+  |&gt; sort(:money_spent, :desc)
+  |&gt; first(&quot;first, last, email&quot;)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="function/2">
+  <div class="detail-header">
+    <a href="#function/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">function(cmd, function_name)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L754" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a function with the given name, passed as an atom.</p>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:users)
+  |&gt; function(:all_users)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="function/3">
+  <div class="detail-header">
+    <a href="#function/3" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">function(cmd, function_name, params)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L769" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a function with the given name, passed as an atom, returning a single result.</p>
+<p>params:   -   An array of values to be passed to the function.</p>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:users)
+  |&gt; function(:friends, [&quot;mike&quot;,&quot;jane&quot;])</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="function/4">
+  <div class="detail-header">
+    <a href="#function/4" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">function(cmd, function_name, atom, params)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L782" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a function with the given name, passed as an atom, returning a single result.</p>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:users)
+  |&gt; function(:all_users)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="function_command/3">
+  <div class="detail-header">
+    <a href="#function_command/3" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">function_command(cmd, function_name, params \\ [])</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L802" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Creates a function command</p>
+
+  </section>
+</div>
+<div class="detail" id="group/2">
+  <div class="detail-header">
+    <a href="#group/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">group(cmd, cols)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L389" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Specifies a GROUP BY for a <code class="inline">map/reduce</code> (aggregate) query that is a string.</p>
+<p>cols  -   A string specifying the column to GROUP BY. Will also be part of the SELECT list.</p>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:users)
+  |&gt; map(&quot;money_spent &gt; 100&quot;)
+  |&gt; group(&quot;company, state&quot;)
+  |&gt; reduce(:sum, :money_spent)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="insert/2">
+  <div class="detail-header">
+    <a href="#insert/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">insert(cmd, criteria)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L518" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>A simple insert that that returns the inserted record. Create your list of data and send it on in.</p>
+<p>criteria:   -    A list or map of data to be saved</p>
+<p>Example:</p>
+<pre><code class="elixir">new_user = db(:users)
+    |&gt; insert(email: &quot;test@test.com&quot;, first: &quot;Test&quot;, last: &quot;User&quot;)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="insert/3">
+  <div class="detail-header">
+    <a href="#insert/3" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">insert(cmd, pid, criteria)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L504" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>A simple insert that is part of a transaction that returns the inserted record. Create your list of data and send it on in.</p>
+<p>pid:        -    The process id of the transaction (retrieved from the <code class="inline">transaction</code> callback)
+criteria:   -    A list or map of data to be saved</p>
+<p>Example:</p>
+<pre><code class="elixir">tranaction fn(pid) -&gt;
+  new_user = db(:users)
+      |&gt; insert(pid, email: &quot;test@test.com&quot;, first: &quot;Test&quot;, last: &quot;User&quot;)
+end</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="insert_command/2">
+  <div class="detail-header">
+    <a href="#insert_command/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">insert_command(cmd, criteria)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L523" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Creates an insert command based on the assembled pipeline</p>
+
+  </section>
+</div>
+<div class="detail" id="join/3">
+  <div class="detail-header">
+    <a href="#join/3" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">join(cmd, table, opts \\ [])</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L682" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Build a table join for your query. There are a number of options to handle various joins.
+Joins can also be piped for multiple joins.</p>
+<p>:join        - set the type of join. LEFT, RIGHT, FULL, etc. defaults to INNER
+:on          - specify the table to join on
+:foreign_key - specify the tables foreign key column
+:primary_key - specify the joining tables primary key column
+:using       - used to specify a USING queries list of columns to join on</p>
+<p>Example of simple join:</p>
+<pre><code class="elixir">cmd = db(:customers)
+      |&gt; join(:orders)
+      |&gt; select</code></pre>
+<p>Example of multiple table joins:</p>
+<pre><code class="elixir">cmd = db(:customers)
+      |&gt; join(:orders, on: :customers)
+      |&gt; join(:items, on: :orders)
+      |&gt; select</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="last/2">
+  <div class="detail-header">
+    <a href="#last/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">last(cmd, sort_by)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L333" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a given pipeline and returns the last matching result. You should specify a <code class="inline">sort</code> to be sure first works as intended.</p>
+<p>cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.</p>
+<pre><code class="elixir">For example `now() as current_time, name, description`. Defaults to &quot;*&quot;</code></pre>
+<p>Example:</p>
+<pre><code class="elixir">cheap_skate = db(:users)
+  |&gt; sort(:money_spent, :desc)
+  |&gt; last(&quot;first, last, email&quot;)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="limit/2">
+  <div class="detail-header">
+    <a href="#limit/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">limit(cmd, bound)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L214" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Sets the limit of the return.</p>
+<p>bound   -   And integer limiter</p>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:users)
+    |&gt; limit(20)
+    |&gt; to_list</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="map/2">
+  <div class="detail-header">
+    <a href="#map/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">map(cmd, criteria)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L424" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>An alias for <code class="inline">filter</code>, specifies a range to rollup on for an aggregate query using a WHERE statement.</p>
+<p>criteria  -   A string, atom or list (see <code class="inline">filter</code>)</p>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:users)
+  |&gt; map(&quot;money_spent &gt; 100&quot;)
+  |&gt; reduce(:sum, :money_spent)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="offset/2">
+  <div class="detail-header">
+    <a href="#offset/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">offset(cmd, n)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L230" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Offsets the limit and is an alias for <code class="inline">skip/1</code>”</p>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:users)
+    |&gt; limit(20)
+    |&gt; offset(2)
+    |&gt; to_list</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="reduce/3">
+  <div class="detail-header">
+    <a href="#reduce/3" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">reduce(cmd, op, column)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L440" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>A rollup operation that aggregates the mapped result set by the specified operation.</p>
+<p>op  -   An atom indicating what you want to have happen, such as <code class="inline">:sum</code>, <code class="inline">:avg</code>, <code class="inline">:min</code>, <code class="inline">:max</code>.</p>
+<pre><code class="elixir">Corresponds directly to a PostgreSQL rollup function.</code></pre>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:users)
+  |&gt; map(&quot;money_spent &gt; 100&quot;)
+  |&gt; reduce(:sum, :money_spent)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="run/1">
+  <div class="detail-header">
+    <a href="#run/1" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">run(sql)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L827" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="run/2">
+  <div class="detail-header">
+    <a href="#run/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">run(sql, params)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L826" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a raw SQL query with parameters</p>
+
+  </section>
+</div>
+<div class="detail" id="run/3">
+  <div class="detail-header">
+    <a href="#run/3" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">run(sql, params, atom)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L832" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a raw SQL query with parameters returning a single result</p>
+
+  </section>
+</div>
+<div class="detail" id="search/2">
+  <div class="detail-header">
+    <a href="#search/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">search(cmd, list)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L478" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Full text search using Postgres’ built in indexing, ranked using <code class="inline">tsrank</code>. This query will result in a full table scan and is not optimized for large result
+sets. For better results, create a <code class="inline">tsvector</code> field and populate it with a trigger on insert/update. This will cause some side
+effects, one of them being that Postgrex, the Elixir driver we use, doesn’t know how to resolve the tsvector type, and will throw.</p>
+<p>You will need to be sure that you exclude that search column from your query.</p>
+<p>for:  -   The string term you want to query against.
+in:   -   An atomized list of columns to search againts.</p>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:users)
+      |&gt; search(for: &quot;Mike&quot;, in: [:first, :last, :email])
+      |&gt; run</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="select_command/2">
+  <div class="detail-header">
+    <a href="#select_command/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">select_command(cmd, cols \\ &quot;*&quot;)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L265" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Creates a SELECT command based on the assembled pipeline. Uses the QueryCommand as its core structure.</p>
+<p>cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.</p>
+<pre><code class="elixir">For example `now() as current_time, name, description`</code></pre>
+<p>Example:</p>
+<pre><code class="elixir">command = db(:users)
+    |&gt; limit(20)
+    |&gt; offset(2)
+    |&gt; select_command(&quot;now() as current_time, name, description&quot;)
+
+#command is a QueryCommand object with all of the pipelined settings applied</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="skip/2">
+  <div class="detail-header">
+    <a href="#skip/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">skip(cmd, n)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L246" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Offsets the limit and is an alias for <code class="inline">offset/1</code>”</p>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:users)
+    |&gt; limit(20)
+    |&gt; skip(2)
+    |&gt; to_list</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="sort/3">
+  <div class="detail-header">
+    <a href="#sort/3" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">sort(cmd, cols, direction \\ :asc)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L191" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Sets the order by. Ascending using <code class="inline">:asc</code> is the default, you can send in <code class="inline">:desc</code> if you like.</p>
+<p>cols      -   The atomized name of the columns, such as <code class="inline">:company</code>
+direction -   <code class="inline">:asc</code> (default) or <code class="inline">:desc</code></p>
+<p>Example:</p>
+<pre><code class="elixir">result = db(:users)
+    |&gt; sort(:name, :desc)
+    |&gt; to_list</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="sql_file/1">
+  <div class="detail-header">
+    <a href="#sql_file/1" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">sql_file(file)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L706" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes the SQL in a given SQL file without parameters. Specify the scripts directory by setting the <code class="inline">scripts</code> directive in the config.
+Pass the file name as an atom, without extension.</p>
+<pre><code class="elixir">result = sql_file(:simple)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="sql_file/2">
+  <div class="detail-header">
+    <a href="#sql_file/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">sql_file(file, params)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L715" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes the SQL in a given SQL file with the specified parameters. Specify the scripts directory by setting the <code class="inline">scripts</code> directive in the config.
+Pass the file name as an atom, without extension.</p>
+<pre><code class="elixir">result = sql_file(:save_user, [1])</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="sql_file/3">
+  <div class="detail-header">
+    <a href="#sql_file/3" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">sql_file(file, atom, params \\ [])</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L725" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes the SQL in a given SQL file with the specified parameters, returning a single result.
+Specify the scripts directory by setting the <code class="inline">scripts</code> directive in the config.
+Pass the file name as an atom, without extension.</p>
+<pre><code class="elixir">result = sql_file(:save_user, [1])</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="sql_file_command/2">
+  <div class="detail-header">
+    <a href="#sql_file_command/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">sql_file_command(file, params)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L730" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Creates a SQL File command</p>
+
+  </section>
+</div>
+<div class="detail" id="to_list/2">
+  <div class="detail-header">
+    <a href="#to_list/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">to_list(cmd, cols \\ &quot;*&quot;)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L353" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Executes a given pipeline and returns all results. An alias for <a href="#all/2"><code class="inline">all/2</code></a></p>
+<p>cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.</p>
+<pre><code class="elixir">For example `now() as current_time, name, description`. Defaults to &quot;*&quot;</code></pre>
+<p>Example:</p>
+<pre><code class="elixir">all_users = db(:users)
+  |&gt; to_list(&quot;first, last, email&quot;)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="transaction/1">
+  <div class="detail-header">
+    <a href="#transaction/1" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">transaction(fun)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L895" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Opens a transaction, returning a <code class="inline">pid</code> (Process ID) that you can pass to each of your queries that take part in the transaction.
+If an error occurs, it is passed back to you with <code class="inline">{:error, message}</code>. The transaction will automatically COMMIT on completion.</p>
+<p>Example:</p>
+<pre><code class="elixir">result = transaction fn(pid) -&gt;
+  new_user = with(:users)
+    |&gt; insert(pid, email: &quot;frodo@test.com&quot;)
+
+  with(:logs)
+    |&gt; insert(pid, user_id: new_user.id, log: &quot;Hi Frodo&quot;)
+
+  new_user
+end</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="update/2">
+  <div class="detail-header">
+    <a href="#update/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">update(cmd, criteria)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L615" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>A bulk update based on the criteria you specify. All changed records are returned.</p>
+<p>Example:</p>
+<pre><code class="elixir">db(:users)
+  |&gt; filter(company: &quot;Test Company&quot;)
+  |&gt; update(status: &quot;preferred&quot;)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="update/3">
+  <div class="detail-header">
+    <a href="#update/3" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">update(cmd, atom, criteria)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L602" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>A simple update based on the criteria you specify. This is a partial update.
+Returns a single record as a result when you pass <code class="inline">:single</code></p>
+<p>pid:        -    The process id of the transaction (retrieved from the <code class="inline">transaction</code> callback)
+criteria:   -    A list or map of data to be saved</p>
+<p>Example:</p>
+<pre><code class="elixir">updated_user = db(:users)
+    |&gt; update(:single, email: &quot;test@test.com&quot;, first: &quot;Test&quot;, last: &quot;User&quot;)</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="update/4">
+  <div class="detail-header">
+    <a href="#update/4" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">update(cmd, pid, atom, criteria)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L584" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>A simple update that is part of a transaction based on the criteria you specify. This is a partial update.
+Returns a single record as a result when you pass <code class="inline">:single</code></p>
+<p>pid:        -    The process id of the transaction (retrieved from the <code class="inline">transaction</code> callback)
+criteria:   -    A list or map of data to be saved</p>
+<p>Example:</p>
+<pre><code class="elixir">tranaction fn(pid) -&gt;
+  updated_user = db(:users)
+      |&gt; update(pid, :single, email: &quot;test@test.com&quot;, first: &quot;Test&quot;, last: &quot;User&quot;)
+end</code></pre>
+
+  </section>
+</div>
+<div class="detail" id="update_command/2">
+  <div class="detail-header">
+    <a href="#update_command/2" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">update_command(cmd, criteria)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L536" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Creates an update command based on the assembled pipeline.</p>
+
+  </section>
+</div>
+<div class="detail" id="with/1">
+  <div class="detail-header">
+    <a href="#with/1" class="detail-link" title="Link to this function">
+      <i class="icon-link"></i>
+    </a>
+    <span class="signature">with(table)</span>
+      
+      <a href="https://github.com/robconery/moebius/blob/v1.0.0/lib/moebius/query.ex#L23" class="view-source" rel="help" title="View Source">
+       <i class="icon-code"></i>
+     </a>
+    
+  </div>
+  
+  <section class="docstring">
+    <p>Specifies the table or view you want to query and is an alias for the <a href="#db/1"><code class="inline">db/1</code></a> function using
+a string as a table name. This is useful for specifying a table within a schema.</p>
+<p>“table”  -   the name of the table you want to query, such as <code class="inline">membership.users</code></p>
+<p>Example</p>
+<pre><code class="elixir">result = with(&quot;membership.users&quot;)
+  |&gt; to_list</code></pre>
+
+  </section>
+</div>
+
+        </section>
+      
+
+      
+
+      
+        <footer class="footer">
+      <p>
+        <span class="line">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" rel="help" target="_blank">ExDoc</a> (v0.10.0),
+        </span>
+        <span class="line">
+          designed by
+          <a href="https://twitter.com/dignifiedquire" target="_blank" title="@dignifiedquire">Friedel Ziegelmayer</a>.
+          </span>
+      </p>
+    </footer>
+  </div>
+</section>
+</div>
+    <script src="dist/app.js"></script>
+  </body>
+</html>
+
