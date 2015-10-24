@@ -6,7 +6,7 @@ drop table if exists user_docs;
 drop table if exists logs;
 drop table if exists users;
 drop table if exists products;
-drop table if exists products;
+drop table if exists artists;
 
 create table users(
   id serial primary key,
