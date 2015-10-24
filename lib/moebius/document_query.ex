@@ -134,6 +134,7 @@ defmodule Moebius.DocumentQuery do
     res
   end
 
+
   def delete(cmd, id) when is_integer(id) do
     sql = "delete from #{cmd.table_name} where id=#{id} returning *"
     %{cmd | sql: sql, type: :delete}
@@ -150,12 +151,25 @@ defmodule Moebius.DocumentQuery do
       |> execute(:single)
   end
 
-  def search(cmd, term) do
+  def search(cmd, term) when is_bitstring(term)  do
 
     sql = """
-    select id, body as rank from #{cmd.table_name}
+    select id, body from #{cmd.table_name}
   	where search @@ to_tsquery($1)
   	order by ts_rank_cd(search,to_tsquery($1))  desc
+    """
+
+    %{cmd | sql: sql, params: [term]}
+      |> execute
+  end
+
+  def search(cmd, for: term, in: fields) do
+    terms = Enum.map_join(fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
+
+    sql = """
+    select id, body from #{cmd.table_name}
+  	where to_tsvector(concat(#{terms})) @@ to_tsquery($1)
+  	order by ts_rank_cd(to_tsvector(concat(#{terms})),to_tsquery($1))  desc
     """
 
     %{cmd | sql: sql, params: [term]}

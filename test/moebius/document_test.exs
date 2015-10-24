@@ -11,7 +11,7 @@ defmodule Moebius.DocTest do
     monkey = %{sku: "stuff", name: "Chicken Wings", description: "duck dog lamb"}
     return = db(:monkies)
       |> save(monkey, [:name, :description])
-      
+
     res = db(:user_docs)
       |> save(doc)
 
@@ -147,6 +147,14 @@ defmodule Moebius.DocTest do
 
     res = db(:monkies)
       |> search("duck")
+
+    assert length(res) > 0
+  end
+
+  test "full text search on the fly works" do
+
+    res = db(:monkies)
+      |> search(for: "duck", in: [:name, :description])
 
     assert length(res) > 0
   end
