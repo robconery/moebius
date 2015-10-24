@@ -38,12 +38,15 @@ Installing Moebius is pretty straightforward:
 Next, in your config, specify how to connect. We just pass along the connection bits to Postgrex (the PG driver) so you can add whatever you want based on their options:
 
 ```
-config :moebius, connection: [database: "MY_DB", extensions: [{Postgrex.Extensions.JSON, library: Poison}]], scripts: "test/db"
+config :moebius, connection: [
+  database: "MY_DB",
+  extensions: [{Postgrex.Extensions.JSON, library: Poison}]
+], scripts: "test/db"
 ```
 
 ## Simple Examples
 
-Here are some very, very basic examples. I'm sure the API will be changing in a big way - so if you want to see what's happening (until I bake this a bit) please have a look at the test.
+The API is built around the concept of transforming raw data from your database into something you need. We lean on Elixir's pipe operator for this, and it's the core of the API.
 
 Everything starts with the db:
 
