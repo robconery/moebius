@@ -234,7 +234,7 @@ Deleting works exactly the same way as `update`, but returns the count of delete
 
 ```ex
 result = db(:users)
-    |> filter("email LIKE %$2", "test")
+    |> filter("email LIKE $2", "%test")
     |> delete
 
 #result.deleted = 10, for instance
