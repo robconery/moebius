@@ -17,7 +17,8 @@ create table users(
 );
 
 create table products(
-  sku varchar(50) not null primary key,
+  id serial primary key not null,
+  sku varchar(50) not null,
   name varchar(255) not null,
   price decimal(10,2) not null default 0,
   description text,
@@ -44,4 +45,7 @@ insert into users(email, first, last) values('mary@test.com','Mary','Muggtler');
 insert into users(email, first, last) values('mike@test.com','Mike','Ghruoisl');
 "
 
-Moebius.Runner.run_with_psql sql, "meebuss"
+case Moebius.Runner.run_with_psql sql, "meebuss" do
+  {_res, 0} -> true
+  {:error, err} -> raise err
+end

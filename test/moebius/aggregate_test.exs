@@ -6,7 +6,7 @@ defmodule Moebius.AggregateTest do
     res = db(:users)
       |> count
 
-    assert res > 1
+    assert is_integer res
   end
 
   test "sum returns integer for user ids" do
@@ -18,12 +18,12 @@ defmodule Moebius.AggregateTest do
 
   test "sum returns integer for user ids grouped by email" do
 
-    sum = db(:users)
+    sum = db(:products)
       |> map("id > 1")
-      |> group(:email)
+      |> group(:sku)
       |> reduce(:sum, :id)
 
-    assert sum > 1
+    assert is_integer sum
 
   end
 
@@ -34,7 +34,7 @@ defmodule Moebius.AggregateTest do
       |> group(:email)
       |> reduce(:sum, "id + order_count")
 
-    assert sum > 1
+    assert is_integer sum
 
   end
 

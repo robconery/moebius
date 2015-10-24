@@ -232,6 +232,7 @@ defmodule Moebius.Query do
 
     case res do
       {:error, err} -> {:error, err}
+      [] -> 0
       row -> Map.get(row, op)
     end
 
