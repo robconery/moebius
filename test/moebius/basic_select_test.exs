@@ -3,6 +3,15 @@ defmodule Moebius.BasicSelectTest do
   use ExUnit.Case
   import Moebius.Query
 
+  setup do
+    db(:logs) |> delete
+    db(:users) |> delete
+    db(:users) |> insert(email: "friend@test.com")
+    db(:users) |> insert(email: "enemy@test.com")
+    
+    {:ok, res: true}
+  end
+
   test "a basic select *" do
 
     cmd = db(:users)
@@ -113,14 +122,14 @@ defmodule Moebius.BasicSelectTest do
     res = db(:users)
       |> first
 
-    assert res.id
+    assert res.email == "friend@test.com"
   end
 
   test "last returns last" do
     res = db(:users)
       |> last(:id)
 
-    assert res.id
+    assert res.email == "enemy@test.com"
   end
 
 end

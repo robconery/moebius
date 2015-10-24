@@ -176,6 +176,7 @@ defmodule Moebius.DocumentQuery do
       |> execute
   end
 
+
   def to_list(cmd),  do: all(cmd)
 
   def all(cmd) do

@@ -10,5 +10,6 @@ defmodule Moebius.DocumentCommand do
     order: "",
     limit: "",
     offset: "",
+    group_by: nil
   ]
 end
