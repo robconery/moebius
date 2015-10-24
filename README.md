@@ -194,7 +194,7 @@ This will allow you to query embeded documents and arrays rather easily, but aga
 
 I built this for [MassiveJS](https://github.com/robconery/massive-js) and I liked the idea, which is this: *some people love SQL*. I'm one of those people. I'd much rather work with a SQL file than muscle through some weird abstraction.
 
-With this library you can do that. Just create a scripts directory and specify it in the config (see above), then execute:
+With this library you can do that. Just create a scripts directory and specify it in the config (see above), then execute your file without an extension. Pass in whatever parameters you need:
 
 ```ex
 result = sql_file(:my_groovy_query, "a param")
