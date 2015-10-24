@@ -127,11 +127,29 @@ defmodule Moebius.DocumentQuery do
   end
 
   def run(cmd),  do: execute(cmd)
+
   def execute(cmd, opts \\ nil) do
-    cmd
-      |> Moebius.Runner.execute
-      |> parse_json_column(cmd)
-      |> return_results(opts)
+      case Moebius.Runner.execute(cmd) do
+        {:ok, res} -> parse_json_column({:ok, res}, cmd) 
+          |> return_results(opts)
+        {:error, "relation \"artists\" does not exist"}-> 
+          cond do
+            cmd.type == :insert || cmd.type == :update ->
+              create_document_table(cmd)
+              [new_doc | _] = cmd.params
+              insert(cmd, new_doc) |> execute(opts)
+            true -> raise "table #{cmd.table_name} is not defined"
+          end
+      end
+  end
+
+  def create_document_table(cmd) do
+    sql = "create table #{cmd.table_name} (
+      id serial primary key, 
+      body jsonb, 
+      created_at timestamptz not null default now(),
+      updated_at timestamptz)"
+    Moebius.Query.run(sql)
   end
 
   defp return_results({:error, err}), do: {:error, err}

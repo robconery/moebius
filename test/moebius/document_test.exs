@@ -167,4 +167,38 @@ defmodule Moebius.DocTest do
 
     assert return
   end
+
+  test "insert creates a new document table on execute if one doesn't exist" do
+    "drop table if exists artists" |> Moebius.Query.run
+    doc = %{name: "Sex Pistols"}
+    assert %{name: "Sex Pistols"} =
+      db(:artists)
+        |> insert(doc)
+        |> execute(:single)
+  end
+
+  test "update creates a new document table on execute if one doesn't exist" do
+    "drop table if exists artists" |> Moebius.Query.run
+    doc = %{name: "The Clash"}
+    assert %{name: "The Clash"} =
+      db(:artists)
+        |> insert(doc)
+        |> execute(:single)
+  end
+
+  test "save shortcut creates a new document table if one doesn't exist if inserting" do
+    doc = %{name: "Nirvana"}
+    assert %{name: "Nirvana"} =
+      db(:artists)
+        |> save(doc)
+  end
+
+  test "save shortcut creates a new document table if one doesn't exist if updating" do
+    "drop table if exists artists" |> Moebius.Query.run
+    doc = %{name: "Tool"}
+    assert %{name: "Tool"} =
+      db(:artists)
+        |> insert(doc)
+        |> execute(:single)
+  end
 end
