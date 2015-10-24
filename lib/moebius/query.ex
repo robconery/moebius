@@ -173,9 +173,14 @@ defmodule Moebius.Query do
       |> run
   ```
   """
-  def select(cmd, cols \\ "*") do
+  def select_command(cmd, cols \\ "*") do
     %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
+
+  # def select(cmd, cols \\ "*") do
+  #   select_command(cmd, cols)
+  #     |> execute
+  # end
 
   def count(cmd) do
 
@@ -193,19 +198,19 @@ defmodule Moebius.Query do
   Executes a given pipeline and returns a single result as a map.
   """
   def first(cmd, cols \\ "*") do
-    select(cmd, cols) |>
+    select_command(cmd, cols) |>
      execute(:single)
   end
 
   def last(cmd, sort_by) when is_atom(sort_by) do
     sort(cmd, sort_by, :desc)
-      |> select
+      |> select_command
       |> execute(:single)
   end
 
   def to_list(cmd), do: all(cmd)
   def all(cmd, cols \\ "*") do
-    select(cmd, cols) |>
+    select_command(cmd, cols) |>
      execute
   end
 

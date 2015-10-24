@@ -8,14 +8,14 @@ defmodule Moebius.BasicSelectTest do
     db(:users) |> delete
     db(:users) |> insert(email: "friend@test.com")
     db(:users) |> insert(email: "enemy@test.com")
-    
+
     {:ok, res: true}
   end
 
   test "a basic select *" do
 
     cmd = db(:users)
-        |> select
+        |> select_command
 
     assert cmd.sql == "select * from users;"
   end
@@ -23,7 +23,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select * using binary for tablename" do
 
     cmd = db("users")
-        |> select
+        |> select_command
 
     assert cmd.sql == "select * from users;"
   end
@@ -31,7 +31,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select with columns" do
 
     cmd = db(:users)
-        |> select("first, last")
+        |> select_command("first, last")
 
     assert cmd.sql == "select first, last from users;"
   end
@@ -39,7 +39,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select with where" do
     cmd = db(:users)
         |> filter(id: 1, name: "Steve")
-        |> select
+        |> select_command
 
     assert cmd.sql == "select * from users where id = $1 and name = $2;"
   end
@@ -47,7 +47,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select with a where string" do
     cmd = db(:users)
         |> filter("name=$1 OR thing=$2", ["Steve", "Bill"])
-        |> select
+        |> select_command
 
     assert cmd.sql == "select * from users where name=$1 OR thing=$2;"
   end
@@ -55,7 +55,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select with a where string and no parameters" do
     cmd = db(:users)
         |> filter("id > 100")
-        |> select
+        |> select_command
 
     assert cmd.sql == "select * from users where id > 100;"
   end
@@ -64,7 +64,7 @@ defmodule Moebius.BasicSelectTest do
     cmd = db(:users)
         |> filter(id: 1, name: "Steve")
         |> sort(:name, :desc)
-        |> select
+        |> select_command
 
     assert cmd.sql == "select * from users where id = $1 and name = $2 order by name desc;"
   end
@@ -74,7 +74,7 @@ defmodule Moebius.BasicSelectTest do
         |> filter(id: 1, name: "Steve")
         |> sort(:name, :desc)
         |> limit(10)
-        |> select
+        |> select_command
 
     assert cmd.sql == "select * from users where id = $1 and name = $2 order by name desc limit 10;"
   end
@@ -86,7 +86,7 @@ defmodule Moebius.BasicSelectTest do
         |> sort(:name, :desc)
         |> limit(10)
         |> offset(2)
-        |> select
+        |> select_command
 
     assert cmd.sql == "select * from users where id = $1 and name = $2 order by name desc limit 10 offset 2;"
   end
@@ -94,7 +94,7 @@ defmodule Moebius.BasicSelectTest do
   test "a simple IN query" do
     cmd = db(:users)
         |> filter(:name, ["mark", "biff", "skip"])
-        |> select
+        |> select_command
 
     assert cmd.sql == "select * from users where name IN($1, $2, $3);"
     assert length(cmd.params) == 3
@@ -103,7 +103,7 @@ defmodule Moebius.BasicSelectTest do
   test "a simple IN query, specified" do
     cmd = db(:users)
         |> filter(:name, in: ["mark", "biff", "skip"])
-        |> select
+        |> select_command
 
     assert cmd.sql == "select * from users where name IN($1, $2, $3);"
     assert length(cmd.params) == 3
@@ -112,7 +112,7 @@ defmodule Moebius.BasicSelectTest do
   test "a simple NOT IN query, specified" do
     cmd = db(:users)
         |> filter(:name, not_in: ["mark", "biff", "skip"])
-        |> select
+        |> select_command
 
     assert cmd.sql == "select * from users where name NOT IN($1, $2, $3);"
     assert length(cmd.params) == 3
