@@ -42,8 +42,7 @@ defmodule Moebius.DocTest do
   test "a simple document query with the DocumentQuery lib" do
     assert %{email: "steve@test.com", id: _id} =
       db(:user_docs)
-        |> select
-        |> execute(:single)
+        |> first
   end
 
   test "updating a document", %{res: res} do
@@ -70,7 +69,6 @@ defmodule Moebius.DocTest do
   test "delete works with just an id", %{res: res} do
     res = db(:user_docs)
       |> delete(res.id)
-      |> execute(:single)
 
     assert res.id
   end
@@ -80,7 +78,6 @@ defmodule Moebius.DocTest do
     res = db(:user_docs)
       |> contains(email: res.email)
       |> delete
-      |> execute
 
     assert length(res) > 0
   end
@@ -88,8 +85,7 @@ defmodule Moebius.DocTest do
   test "select works with filter", %{res: res} do
     return = db(:user_docs)
       |> contains(email: res.email)
-      |> select
-      |> execute(:single)
+      |> first
 
     assert return.email == res.email
 
@@ -98,8 +94,7 @@ defmodule Moebius.DocTest do
   test "select works with string criteria", %{res: res} do
     return = db(:user_docs)
       |> filter("body -> 'email' = $1", res.email)
-      |> select
-      |> execute(:single)
+      |> first
 
     assert return.email == res.email
 
@@ -109,8 +104,7 @@ defmodule Moebius.DocTest do
 
     return = db(:user_docs)
       |> filter(:money_spent, ">", 100)
-      |> select
-      |> execute()
+      |> to_list
 
     assert length(return) > 0
 

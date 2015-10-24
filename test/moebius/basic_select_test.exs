@@ -132,4 +132,14 @@ defmodule Moebius.BasicSelectTest do
     assert res.email == "enemy@test.com"
   end
 
+  test "a basic query with a string parameter" do
+
+    res = db(:users)
+      |> filter("email LIKE $1", "%test.com%")
+      |> to_list
+
+    assert length(res) > 0
+
+  end
+
 end

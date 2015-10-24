@@ -4,11 +4,11 @@ defmodule Moebius.FullTextSearch do
 
   test "a simple full text query" do
 
-    {:ok, res} = db(:users)
-          |> search("Mike", [:first, :last, :email])
-          |> run
-    
-    assert length(res) > 0
+    result = db(:users)
+          |> search(for: "Mike", in: [:first, :last, :email])
+          |> to_list
+
+    assert length(result) > 0
   end
 
 end

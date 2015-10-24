@@ -1,5 +1,11 @@
 defmodule Moebius.Runner do
+  @moduledoc """
+  The main execution bits are in here.
+  """
 
+  @doc """
+  Spawn a Postgrex worker to run our query using the config specified in /config
+  """
   def connect do
     db = Application.get_env(:moebius, :connection)
     Postgrex.Connection.start_link(db)
@@ -16,10 +22,11 @@ defmodule Moebius.Runner do
     end
   end
 
+  @doc """
+  Executes a command for a given transaction specified with `pid`. If the execution fails, it will be caught in `Query.transaction/1`
+  and reported back using `{:error, err}`.
+  """
   def execute(cmd, pid) do
-
-    #TODO: A commit will succeed no matter what - we have no way of knowing right
-    #now if a tx fails.
     case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
       {:ok, result} -> {:ok, result}
       {:error, err} ->
@@ -29,6 +36,9 @@ defmodule Moebius.Runner do
     end
   end
 
+  @doc """
+  A convenience tool for assembling large queries with multiple commands. Not used currently.
+  """
   def run_with_psql(sql, db) do
     #TODO: Read the DB from the config
     args = ["-d", db, "-c", sql, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
