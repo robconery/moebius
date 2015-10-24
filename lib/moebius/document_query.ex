@@ -81,7 +81,7 @@ defmodule Moebius.DocumentQuery do
     %{cmd | sql: sql, type: :update}
   end
 
-  def insert(cmd, doc) when is_bitstring(doc) do
+  defp insert(cmd, doc) when is_bitstring(doc) do
     sql = """
     insert into #{cmd.table_name}(#{cmd.json_field})
     VALUES('#{doc}')
@@ -90,16 +90,49 @@ defmodule Moebius.DocumentQuery do
     %{cmd | sql: sql, params: [doc], type: :insert}
   end
 
-  def insert(cmd, doc) when is_list(doc) or is_map(doc) do
+  defp insert(cmd, doc) when is_list(doc) or is_map(doc) do
     {:ok, encoded} = JSON.encode(doc)
     insert(cmd, encoded)
   end
 
-  def save(cmd, doc) do
-    cond do
+  def create_document_table(cmd, doc) do
+    sql = """
+    create table #{cmd.table_name}(
+      id serial primary key not null,
+      body jsonb not null,
+      search tsvector,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz
+    );
+    """
+    res = %Moebius.QueryCommand{sql: sql} |> Moebius.Runner.execute
+    %Moebius.QueryCommand{sql: "create index idx_#{cmd.table_name}_search on #{cmd.table_name} using GIN(search);"} |> Moebius.Runner.execute
+    %Moebius.QueryCommand{sql: "create index idx_#{cmd.table_name} on #{cmd.table_name} using GIN(body jsonb_path_ops);"} |> Moebius.Runner.execute
+
+    cmd
+  end
+
+  def save(cmd, doc, search_params \\ []) do
+    if is_list(doc),  do: doc =  Enum.into(doc, %{})
+
+    res = cond do
       Map.has_key? doc, :id -> update(cmd, Map.delete(doc, :id), doc.id) |> execute(:single)
       true -> insert(cmd, doc) |> execute(:single)
     end
+
+    res = cond do
+      res == {:error, "relation \"#{cmd.table_name}\" does not exist"} -> create_document_table(cmd, doc) |> save(doc)
+      true -> res
+    end
+
+    if is_list(search_params) && length(search_params) > 0 do
+      terms = Enum.map_join(search_params, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
+      stoof = "update #{cmd.table_name} set search = to_tsvector(concat(#{terms})) where id=#{res.id}"
+        |> Moebius.Query.run
+      IO.inspect stoof
+    end
+
+    res
   end
 
   def delete(cmd, id) when is_integer(id) do

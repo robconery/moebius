@@ -1,33 +1,3 @@
-# Transactions suck, just use anon fn
-# aggregates
-# docs with search etc - make your api apparent from pg_docs
-# push this shit and rebuild blackbook
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 defmodule Moebius.DocTest do
 
   use ExUnit.Case
@@ -35,11 +5,18 @@ defmodule Moebius.DocTest do
 
   setup do
     "delete from user_docs;" |> Moebius.Query.run
+    "drop table if exists monkies;" |> Moebius.Query.run
     doc = [email: "steve@test.com", first: "Steve", money_spent: 500, pets: ["poopy", "skippy"]]
+
     res = db(:user_docs)
-      |> insert(doc)
-      |> execute(:single)
+      |> save(doc)
+
     {:ok, res: res}
+  end
+
+  test "save creates table if it doesn't exist" do
+    res = db(:monkies)
+      |> save(%{name: "Spiff"})
   end
 
   test "a simple insert as a list returns the record", %{res: res} do
@@ -55,17 +32,7 @@ defmodule Moebius.DocTest do
 
     assert %{email: "steve@test.com", first: "Steve", id: _id} =
       db(:user_docs)
-        |> insert(doc)
-        |> execute(:single)
-  end
-
-  test "a simple insert as a string" do
-    doc = "{\"email\":\"steve@test.com\"}"
-
-    assert %{email: "steve@test.com", id: _id} =
-      db(:user_docs)
-        |> insert(doc)
-        |> execute(:single)
+        |> save(doc)
   end
 
   test "a simple document query with the DocumentQuery lib" do
@@ -76,12 +43,10 @@ defmodule Moebius.DocTest do
   end
 
   test "updating a document", %{res: res} do
-    change = %{email: "blurgh@test.com"}
+    change = %{email: "blurgh@test.com", id: res.id}
     assert %{email: "blurgh@test.com", id: _id} =
       db(:user_docs)
-        |> update(change, res.id)
-        |> execute(:single)
-
+        |> save(change)
   end
 
   test "the save shortcut inserts a document without an id" do
@@ -91,7 +56,7 @@ defmodule Moebius.DocTest do
         |> save(new_doc)
   end
 
-  test "the save shortcut works updating a document", %{res: res} do
+  test "the save shortcut works updating a document", %{res: _res} do
     change = %{email: "blurgh@test.com"}
     assert %{email: "blurgh@test.com", id: _id} =
       db(:user_docs)
@@ -136,7 +101,7 @@ defmodule Moebius.DocTest do
 
   end
 
-  test "select works with basic criteria", %{res: res} do
+  test "select works with basic criteria", %{res: _res} do
 
     return = db(:user_docs)
       |> filter(:money_spent, ">", 100)
@@ -155,6 +120,12 @@ defmodule Moebius.DocTest do
 
     assert return.id == res.id
 
+  end
+
+  test "setting search fields works" do
+    new_doc = %{sku: "stuff", name: "Chicken Wings", description: "duck dog lamb"}
+    return = db(:monkies)
+      |> save(new_doc, [:name, :description])
   end
 
   test "select works with sort limit offset" do
