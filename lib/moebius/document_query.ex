@@ -129,7 +129,6 @@ defmodule Moebius.DocumentQuery do
       terms = Enum.map_join(search_params, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
       stoof = "update #{cmd.table_name} set search = to_tsvector(concat(#{terms})) where id=#{res.id}"
         |> Moebius.Query.run
-      IO.inspect stoof
     end
 
     res
@@ -149,6 +148,18 @@ defmodule Moebius.DocumentQuery do
     res = cmd
       |> select
       |> execute(:single)
+  end
+
+  def search(cmd, term) do
+
+    sql = """
+    select id, body as rank from #{cmd.table_name}
+  	where search @@ to_tsquery($1)
+  	order by ts_rank_cd(search,to_tsquery($1))  desc
+    """
+
+    %{cmd | sql: sql, params: [term]}
+      |> execute
   end
 
   def to_list(cmd),  do: all(cmd)

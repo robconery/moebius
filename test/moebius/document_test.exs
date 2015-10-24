@@ -8,6 +8,10 @@ defmodule Moebius.DocTest do
     "drop table if exists monkies;" |> Moebius.Query.run
     doc = [email: "steve@test.com", first: "Steve", money_spent: 500, pets: ["poopy", "skippy"]]
 
+    monkey = %{sku: "stuff", name: "Chicken Wings", description: "duck dog lamb"}
+    return = db(:monkies)
+      |> save(monkey, [:name, :description])
+      
     res = db(:user_docs)
       |> save(doc)
 
@@ -138,4 +142,13 @@ defmodule Moebius.DocTest do
 
     assert return
   end
+
+  test "full text search works" do
+
+    res = db(:monkies)
+      |> search("duck")
+
+    assert length(res) > 0
+  end
+
 end
