@@ -8,15 +8,15 @@ defmodule Moebius.ConnectionReleaseTest do
     {:ok, res: true}
   end
 
-  test "loading 100 at once" do
-    res = write_benchmark(100)
-    IO.puts "Finished"
-  end
-
-  test "loading 1000 at once" do
-    res = write_benchmark(1000)
-    IO.puts "Finished"
-  end
+  # test "loading 100 at once" do
+  #   res = write_benchmark(100)
+  #   IO.puts "Finished"
+  # end
+  #
+  # test "loading 1000 at once" do
+  #   res = write_benchmark(1000)
+  #   IO.puts "Finished"
+  # end
 
   def people(qty) do
     Enum.map(1..qty, &(
