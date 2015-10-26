@@ -19,8 +19,13 @@ defmodule Moebius.DocTest do
   end
 
   test "save creates table if it doesn't exist" do
-    res = db(:monkies)
-      |> save(%{name: "Spiff"})
+    "drop table if exists artists;" |> Moebius.Query.run
+    assert %{name: "Spiff"} = db(:artists) |> save(%{name: "Spiff"})
+  end
+
+  test "save creates table if it doesn't exist even when an id is included" do
+    "drop table if exists artists;" |> Moebius.Query.run
+    assert %{name: "jeff", id: 1} = db(:artists) |> save(%{name: "jeff", id: 100})
   end
 
   test "a simple insert as a list returns the record", %{res: res} do
