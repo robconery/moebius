@@ -31,11 +31,9 @@ defmodule Moebius.Runner do
   def execute(cmd, pid) do
     case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
       {:ok, result} ->
-        Postgrex.Connection.stop(pid)
         {:ok, result}
       {:error, err} ->
         Postgrex.Connection.query pid, "ROLLBACK", []
-        Postgrex.Connection.stop(pid)
         #this will get caught by the transactor
         raise err.postgres.message
     end

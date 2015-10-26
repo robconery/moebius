@@ -901,6 +901,7 @@ defmodule Moebius.Query do
       e in RuntimeError -> {:error, e.message}
     end
     Postgrex.Connection.query(pid, "COMMIT;",[])
+    Postgrex.Connection.stop(pid)
     res
   end
 
