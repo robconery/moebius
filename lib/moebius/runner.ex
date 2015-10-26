@@ -49,4 +49,11 @@ defmodule Moebius.Runner do
     System.cmd "psql", args
   end
 
+  def run_file_with_psql(file, db) do
+    #TODO: Read the DB from the config
+    args = ["-d", db, "-f", file, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
+    IO.inspect args
+    #hand off to PSQL because Postgrex can't run more than one command per query
+    System.cmd "psql", args
+  end
 end

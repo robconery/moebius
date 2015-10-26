@@ -523,7 +523,6 @@ defmodule Moebius.Query do
   def insert_command(cmd, criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
-
     sql = "insert into #{cmd.table_name}(" <> Enum.map_join(cols, ", ", &"#{&1}") <> ")" <>
     " values(" <> Enum.map_join(1..length(cols), ", ", &"$#{&1}") <> ") returning *;"
 
@@ -856,6 +855,7 @@ defmodule Moebius.Query do
   def execute(cmd, :single, pid) do
     Moebius.Runner.execute(cmd, pid)
       |> Moebius.Transformer.to_single
+
   end
 
   @doc """
