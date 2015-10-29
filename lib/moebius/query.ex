@@ -311,8 +311,12 @@ defmodule Moebius.Query do
   ```
   """
   def first(cmd, cols \\ "*") do
-    select_command(cmd, cols) |>
+    res = select_command(cmd, cols) |>
      execute(:single)
+    cond do
+      res == [] -> nil
+      true -> res
+    end
   end
 
   @doc """
@@ -848,23 +852,15 @@ defmodule Moebius.Query do
     res = Moebius.Runner.execute(cmd)
       |> Moebius.Transformer.to_single
 
-    cond do
-      res == [] -> nil
-      true -> res
-    end
   end
 
   @doc """
   Executes a pass-through query and returns a single result as part of a transaction
   """
   def execute(cmd, :single, pid) do
-    res = Moebius.Runner.execute(cmd, pid)
+    Moebius.Runner.execute(cmd, pid)
       |> Moebius.Transformer.to_single
 
-    cond do
-      res == [] -> nil
-      true -> res
-    end
   end
 
   @doc """
