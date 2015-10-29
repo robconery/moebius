@@ -845,17 +845,26 @@ defmodule Moebius.Query do
   Executes a pass-through query and returns a single result
   """
   def execute(cmd, :single) do
-    Moebius.Runner.execute(cmd)
+    res = Moebius.Runner.execute(cmd)
       |> Moebius.Transformer.to_single
+
+    cond do
+      res == [] -> nil
+      true -> res
+    end
   end
 
   @doc """
   Executes a pass-through query and returns a single result as part of a transaction
   """
   def execute(cmd, :single, pid) do
-    Moebius.Runner.execute(cmd, pid)
+    res = Moebius.Runner.execute(cmd, pid)
       |> Moebius.Transformer.to_single
 
+    cond do
+      res == [] -> nil
+      true -> res
+    end
   end
 
   @doc """

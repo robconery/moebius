@@ -125,6 +125,14 @@ defmodule Moebius.BasicSelectTest do
     assert res.email == "friend@test.com"
   end
 
+  test "first returns nil when no match" do
+    res = db(:users)
+      |> filter(id: 10000)
+      |> first
+
+    assert res == nil
+  end
+
   test "last returns last" do
     res = db(:users)
       |> last(:id)

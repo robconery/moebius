@@ -37,16 +37,16 @@ defmodule Moebius.ConnectionReleaseTest do
   #   IO.inspect res
   # end
 
-  test "50K concurrent writes" do
-    Enum.map(1..200, fn(n) ->
-      sql="insert into users(first, last email) values($1, $2, $3);"
-      user = [email: "test#{n}@test.com", first: "First #{n}", last: "Last #{n}"]
-      cmd = %Moebius.QueryCommand{table_name: "users" }
-      res = spawn(Moebius.Query, :insert, [cmd, user])
-      end
-    )
-    IO.puts "Done"
-  end
+  # test "50K concurrent writes" do
+  #   Enum.map(1..200, fn(n) ->
+  #     sql="insert into users(first, last email) values($1, $2, $3);"
+  #     user = [email: "test#{n}@test.com", first: "First #{n}", last: "Last #{n}"]
+  #     cmd = %Moebius.QueryCommand{table_name: "users" }
+  #     res = spawn(Moebius.Query, :insert, [cmd, user])
+  #     end
+  #   )
+  #   IO.puts "Done"
+  # end
 
   def user_write_commands(qty) do
     Enum.map(1..qty, fn(n) ->
