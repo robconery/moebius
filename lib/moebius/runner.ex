@@ -16,11 +16,13 @@ defmodule Moebius.Runner do
   """
   def execute(cmd) do
     {:ok, pid} = connect()
-    case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
-      {:ok, result} ->
-        Postgrex.Connection.stop(pid)
-        {:ok, result}
-      {:error, err} -> {:error, err.postgres.message}
+    try do
+      case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
+        {:ok, result} -> {:ok, result}
+        {:error, err} -> {:error, err.postgres.message}
+      end
+    after
+      Postgrex.Connection.stop(pid)
     end
   end
 
