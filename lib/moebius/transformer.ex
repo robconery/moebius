@@ -5,46 +5,32 @@ defmodule Moebius.Transformer do
   """
 
   @doc """
-  Returns the first result from a Postgrex.Result
-  """
-  def get_first_result(res) do
-    cols = res.columns
-    [first_row | _] = res.rows
-    {cols, first_row}
-  end
-
-  @doc """
-  Pushes the columns and rows together
-  """
-  def zip_columns_and_row({cols, row}) do
-    List.zip([cols,row])
-  end
-
-  @doc """
-  We want a map as a result, so let's make one
-  """
-  def create_map_from_list(list) do
-    Enum.into(list, %{})
-  end
-
-  @doc """
   String keys are a pain, atom maps are nicer
   """
-  def coerce_atoms(string_key_map) do
-    for {key, val} <- string_key_map, into: %{}, do: {String.to_atom(key), val}
+  def to_map(list, acc \\ %{})
+
+  def to_map([], acc), do: acc
+  def to_map([{key, val}|rest], acc) when is_list(val) do
+    val = to_map(val, %{})
+    acc = Map.put(acc, String.to_atom(key), [val])
+    to_map(rest, acc)
+  end
+  def to_map([{key, val}|rest], acc) do
+    acc = Map.put(acc, String.to_atom(key), val)
+    to_map(rest, acc)
   end
 
   @doc """
   Coerce a large result set into an array of atom-keyed maps
   """
-  def to_list({:error, err}), do: {:error, err}
-  def to_list({:ok, res}) do
-    cond do
-      res.rows ->  Enum.map res.rows, fn(r) ->
-        List.zip([res.columns, r])
-          |> coerce_atoms
-        end
-      true -> []
+  def to_list({:error, err}),
+    do: {:error, err}
+  def to_list({:ok, %{rows: nil}}),
+    do: []
+  def to_list({:ok, %{rows: rows, columns: cols}}) do
+    Enum.map rows, fn(r) ->
+      zip_columns_and_row({cols, r})
+      |> to_map
     end
   end
 
@@ -61,8 +47,15 @@ defmodule Moebius.Transformer do
   def to_single({:ok, %{num_rows: count} = res}) when count > 0 do
     get_first_result(res)
     |> zip_columns_and_row
-    |> create_map_from_list
-    |> coerce_atoms
+    |> to_map
   end
+
+  defp get_first_result(%{columns: cols, rows: rows}) do
+    [first_row | _] = rows
+    {cols, first_row}
+  end
+
+  defp zip_columns_and_row({cols, row}),
+    do: List.zip([cols,row])
 
 end
