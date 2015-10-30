@@ -7,9 +7,11 @@ defmodule Moebius.Runner do
   Spawn a Postgrex worker to run our query using the config specified in /config
   """
   def connect do
-    db = Application.get_env(:moebius, :connection)
-    
-    Postgrex.Connection.start_link(db)
+
+    opts = Application.get_env(:moebius, :connection)
+    extensions = [{Postgrex.Extensions.JSON, library: Poison}]
+    opts = opts |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
+    Postgrex.Connection.start_link(opts)
   end
 
   @doc """

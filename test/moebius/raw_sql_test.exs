@@ -3,6 +3,11 @@ defmodule MoebiusTest do
   #doctest Moebius
   import Moebius.Query
 
+  setup do
+    db(:users) |> insert(email: "flippy@test.com", first: "Flip", last: "Sullivan")
+    {:ok, res: true}
+  end
+
   test "returning single returns map" do
     assert %{email: _email, first: _first, id: _id, last: _last} =
       run("select id, email, first, last from users limit 1", :single)
