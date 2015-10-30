@@ -168,4 +168,11 @@ defmodule Moebius.DocTest do
   end
 
 
+  test "finds by id", %{res: res} do
+    monkey = db(:user_docs)
+            |> find(res.id)
+
+    assert monkey.id == res.id
+  end
+
 end

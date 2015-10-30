@@ -278,6 +278,14 @@ defmodule Moebius.DocumentQuery do
   end
 
 
+  def find(cmd, id) when is_integer id do
+    #no need to param this, it's an integer
+    sql = "select id, body from #{cmd.table_name} where id=#{id}"
+    %{cmd | sql: sql}
+      |> first
+  end
+
+
   @doc """
   Performs a highly-tuned Full Text query on the indexed `search` column. This is set on `save/3`.
 

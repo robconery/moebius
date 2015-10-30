@@ -175,6 +175,27 @@ defmodule Moebius.Query do
   end
 
   @doc """
+  Searches for a record based on an `id` primary key.
+
+  id      -   The primary key value
+
+  Example:
+
+  ```
+  result = db(:users)
+      |> find(1)
+  ```
+  """
+
+  def find(cmd, id) do
+    cmd
+      |> filter(id: id)
+      |> select_command
+      |> first
+  end
+
+
+  @doc """
   Sets the order by. Ascending using `:asc` is the default, you can send in `:desc` if you like.
 
   cols      -   The atomized name of the columns, such as `:company`
@@ -489,6 +510,7 @@ defmodule Moebius.Query do
 
     %{cmd | sql: sql, params: [term]}
   end
+
 
   @doc """
   A simple insert that is part of a transaction that returns the inserted record. Create your list of data and send it on in.

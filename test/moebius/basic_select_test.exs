@@ -6,10 +6,10 @@ defmodule Moebius.BasicSelectTest do
   setup do
     db(:logs) |> delete
     db(:users) |> delete
-    db(:users) |> insert(email: "friend@test.com")
+    user = db(:users) |> insert(email: "friend@test.com")
     db(:users) |> insert(email: "enemy@test.com")
 
-    {:ok, res: true}
+    {:ok, res: user}
   end
 
   test "a basic select *" do
@@ -148,6 +148,14 @@ defmodule Moebius.BasicSelectTest do
 
     assert length(res) > 0
 
+  end
+
+  test "find returns a single record", %{res: user} do
+
+    found = db(:users)
+          |> find(user.id)
+
+    assert found.id == user.id
   end
 
 end
