@@ -29,7 +29,6 @@ use Mix.Config
 #
 #     import_config "#{Mix.env}.exs"
 config :moebius, connection: [
-    database: "meebuss",
-    extensions: [{Postgrex.Extensions.JSON, library: Poison}]
+    database: "meebuss"
   ],
   scripts: "test/db"

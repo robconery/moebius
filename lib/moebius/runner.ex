@@ -8,6 +8,7 @@ defmodule Moebius.Runner do
   """
   def connect do
     db = Application.get_env(:moebius, :connection)
+    
     Postgrex.Connection.start_link(db)
   end
 
