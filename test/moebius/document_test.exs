@@ -132,11 +132,12 @@ defmodule Moebius.DocTest do
   end
 
   test "select works with sort limit offset" do
+
     return = db(:user_docs)
       |> exists(:pets, "poopy")
       |> sort(:money_spent)
       |> limit(1)
-      |> offset(1)
+      |> offset(0)
       |> first
 
     assert return
@@ -156,6 +157,14 @@ defmodule Moebius.DocTest do
       |> search(for: "duck", in: [:name, :description])
 
     assert length(res) > 0
+  end
+
+  test "first returns nil when no match" do
+    res = db(:monkies)
+      |> contains(email: "dog@dog.comdog")
+      |> first
+
+    assert res == nil
   end
 
 

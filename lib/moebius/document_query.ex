@@ -213,7 +213,7 @@ defmodule Moebius.DocumentQuery do
     end
 
     res = cond do
-      res == {:error, "relation \"#{cmd.table_name}\" does not exist"} -> 
+      res == {:error, "relation \"#{cmd.table_name}\" does not exist"} ->
       # this will force a doc passed in with an id to be inserted if the table didn't exist:
       create_document_table(cmd, doc) |> save(Map.delete(doc, :id), search_params)
       true -> res
@@ -270,6 +270,11 @@ defmodule Moebius.DocumentQuery do
     res = cmd
       |> select_command
       |> execute(:single)
+
+    cond do
+      res == [] -> nil
+      true -> res
+    end
   end
 
 
