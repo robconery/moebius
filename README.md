@@ -25,7 +25,7 @@ Installing Moebius is pretty straightforward:
   1. Add moebius to your list of dependencies in `mix.exs`:
 
         def deps do
-          [{:moebius, "~> 1.0.2"}]
+          [{:moebius, "~> 1.0.6"}]
         end
 
   2. Ensure moebius is started before your application:
@@ -39,8 +39,7 @@ Next, in your config, specify how to connect. We just pass along the connection 
 
 ```
 config :moebius, connection: [
-  database: "MY_DB",
-  extensions: [{Postgrex.Extensions.JSON, library: Poison}]
+  database: "MY_DB"
 ], scripts: "test/db"
 ```
 
@@ -145,16 +144,17 @@ create index idx_NAME_search on NAME using GIN(search);
 create index idx_NAME on NAME using GIN(body jsonb_path_ops);
 ```
 
-The entire `DocumentQuery` module works off the premise that this is how you will store your JSONB docs. Note the `tsvector` field? That's PostgreSQL's built in full text indexing. We can use that if we want during save by flexing `save/3`:
+The entire `DocumentQuery` module works off the premise that this is how you will store your JSONB docs. Note the `tsvector` field? That's PostgreSQL's built in full text indexing. We can use that if we want during by adding `searchable/1` to the pipe:
 
 ```ex
 import Moebius.DocumentQuery
 
 new_user = db(:friends)
-  |> save(email: "test@test.com", name: "Moe Test", [:name])
+  |> searchable([:name])
+  |> save(email: "test@test.com", name: "Moe Test")
 ```
 
-By adding `[:name]` as the final argument, the `search` field will be updated with the values of the name field.
+By specifying the searchable fields, the `search` field will be updated with the values of the name field.
 
 Now, we can query our document using full text indexing which is optimized to use the GIN index created above:
 
