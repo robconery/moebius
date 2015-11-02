@@ -1,13 +1,13 @@
 defmodule Moebius.ConnectionReleaseTest do
   use ExUnit.Case
-  import Moebius.Query
+  #import Moebius.Query
 
-  setup do
-    "delete from users cascade;" |> Moebius.Query.run
-    "delete from people"
-      |> Moebius.Query.run
-    {:ok, res: true}
-  end
+  # setup do
+  #   "delete from users cascade;" |> Moebius.Query.run
+  #   "delete from people"
+  #     |> Moebius.Query.run
+  #   {:ok, res: true}
+  # end
 
   # test "loading 100 at once" do
   #   res = write_benchmark(100)
@@ -48,35 +48,35 @@ defmodule Moebius.ConnectionReleaseTest do
   #   IO.puts "Done"
   # end
 
-  def user_write_commands(qty) do
-    Enum.map(1..qty, fn(n) ->
-        db(:users)
-          |> insert(email: "test#{n}@test.com", first: "First #{n}", last: "Last #{n}")
-      end
-    )
-  end
-
-  def user_write_sql(qty) do
-    Enum.map(1..qty, fn(n) ->
-        "insert into users(first, last, email) values('first #{n}', 'last #{n}', 'test#{n}@test.com')"
-      end
-    )
-  end
-
-  def user_pulls(qty) do
-    Enum.map(1..qty, fn(n) ->
-        "select * from users where id= 1"
-      end
-    )
-  end
-
-  def write_batch_to_file(sql_blob) do
-    build_file = "db.sql"
-    {:ok, file} = File.open build_file, [:write]
-    IO.binwrite file, sql_blob
-    File.close file
-    build_file
-  end
+  # def user_write_commands(qty) do
+  #   Enum.map(1..qty, fn(n) ->
+  #       db(:users)
+  #         |> insert(email: "test#{n}@test.com", first: "First #{n}", last: "Last #{n}")
+  #     end
+  #   )
+  # end
+  #
+  # def user_write_sql(qty) do
+  #   Enum.map(1..qty, fn(n) ->
+  #       "insert into users(first, last, email) values('first #{n}', 'last #{n}', 'test#{n}@test.com')"
+  #     end
+  #   )
+  # end
+  #
+  # def user_pulls(qty) do
+  #   Enum.map(1..qty, fn(n) ->
+  #       "select * from users where id= 1"
+  #     end
+  #   )
+  # end
+  #
+  # def write_batch_to_file(sql_blob) do
+  #   build_file = "db.sql"
+  #   {:ok, file} = File.open build_file, [:write]
+  #   IO.binwrite file, sql_blob
+  #   File.close file
+  #   build_file
+  # end
 
   # def people(qty) do
   #   Enum.map(1..qty, &(

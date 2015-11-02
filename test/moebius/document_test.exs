@@ -9,8 +9,10 @@ defmodule Moebius.DocTest do
     doc = [email: "steve@test.com", first: "Steve", money_spent: 500, pets: ["poopy", "skippy"]]
 
     monkey = %{sku: "stuff", name: "Chicken Wings", description: "duck dog lamb"}
-    return = db(:monkies)
-      |> save(monkey, [:name, :description])
+
+    db(:monkies)
+      |> searchable([:name, :description])
+      |> save(monkey)
 
     res = db(:user_docs)
       |> save(doc)
@@ -127,8 +129,9 @@ defmodule Moebius.DocTest do
 
   test "setting search fields works" do
     new_doc = %{sku: "stuff", name: "Chicken Wings", description: "duck dog lamb"}
-    return = db(:monkies)
-      |> save(new_doc, [:name, :description])
+    db(:monkies)
+      |> searchable([:name, :description])
+      |> save(new_doc)
   end
 
   test "select works with sort limit offset" do
@@ -173,6 +176,22 @@ defmodule Moebius.DocTest do
             |> find(res.id)
 
     assert monkey.id == res.id
+  end
+
+
+  test "executes a transaction" do
+
+    transaction fn(pid) ->
+      with(:monkies)
+        |> save(pid, name: "Peaches", company: "Microsoft")
+
+      with(:cars)
+        |> save(pid, name: "Toyota")
+
+      with(:user_docs)
+        |> save(pid, name: "bubbles")
+
+    end
   end
 
 end

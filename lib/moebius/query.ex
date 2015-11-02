@@ -919,16 +919,16 @@ defmodule Moebius.Query do
   ```
   """
 
+
+
   def transaction(fun) do
-    {:ok, pid} = Moebius.Runner.connect()
-    Postgrex.Connection.query(pid, "BEGIN;",[])
+    pid = Moebius.Runner.open_transaction()
     res = try do
       fun.(pid)
     rescue
       e in RuntimeError -> {:error, e.message}
     end
-    Postgrex.Connection.query(pid, "COMMIT;",[])
-    Postgrex.Connection.stop(pid)
+    Moebius.Runner.commit_and_close_transaction(pid)
     res
   end
 

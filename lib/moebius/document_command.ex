@@ -10,6 +10,7 @@ defmodule Moebius.DocumentCommand do
     order: "",
     limit: "",
     offset: "",
+    search_fields: [],
     group_by: nil
   ]
 end
