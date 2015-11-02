@@ -45,6 +45,18 @@ defmodule Moebius.Runner do
     end
   end
 
+
+  def open_transaction() do
+    {:ok, pid} = Moebius.Runner.connect()
+    Postgrex.Connection.query(pid, "BEGIN;",[])
+    pid
+  end
+
+  def commit_and_close_transaction(pid) do
+    Postgrex.Connection.query(pid, "COMMIT;",[])
+    Postgrex.Connection.stop(pid)
+  end
+
   @doc """
   A convenience tool for assembling large queries with multiple commands. Not used
   currently. These functions hand off to PSQL because Postgrex can't run more than

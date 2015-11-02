@@ -5,9 +5,17 @@ defmodule Moebius.TransactionTest do
   import Moebius.Query
 
   setup do
+    "drop table if exists flags" |> run
     db(:logs) |> delete
     db(:users) |> delete
     {:ok, res: true}
+  end
+
+  test "transactions with creating a document table" do
+    res = Moebius.DocumentQuery.db(:flags)
+      |> Moebius.DocumentQuery.save(stars: 50, stripes: 13)
+
+    assert res.id
   end
 
   test "using a callback without errors" do
@@ -42,6 +50,6 @@ defmodule Moebius.TransactionTest do
     end
 
   end
-  
+
 
 end
