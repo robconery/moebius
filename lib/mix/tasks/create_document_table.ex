@@ -22,7 +22,6 @@ defmodule Mix.Tasks.Moebius.CreateDocumentTable do
     "create index idx_#{table_name}_search on #{table_name} using GIN(search);" |> Moebius.Query.run
     "create index idx_#{table_name} on #{table_name} using GIN(body jsonb_path_ops);" |> Moebius.Query.run
 
-    IO.puts "Created table #{table_name}"
   end
 
 end
