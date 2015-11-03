@@ -1,7 +1,6 @@
 defmodule Mix.Tasks.Moebius.CreateDocumentTable do
 
   use Mix.Task
-  import Moebius.Query
 
   def run(args) do
     Application.ensure_all_started(:moebius)

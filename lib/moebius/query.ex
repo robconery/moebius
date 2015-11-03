@@ -2,29 +2,14 @@ defmodule Moebius.Query do
 
   import Inflex, only: [singularize: 1]
 
-  import Moebius.Runner, only: [connect: 0]
-
   @moduledoc """
   The main query interface for Moebius. Import this module into your code and query like a champ
   """
 
   @doc """
-  Specifies the table or view you want to query and is an alias for the `db/1` function.
+  Specifies the table or view you want to query and returns a QueryCommand struct.
 
-  :table  -   the name of the table you want to query, such as `:users`
-
-  Example
-
-  ```
-  result = with(:users)
-    |> to_list
-  ```
-  """
-  def with(table) when is_atom(table), do: db(table)
-
-  @doc """
-  Specifies the table or view you want to query and is an alias for the `with/1` function.
-
+  "table"  -   the name of the table you want to query, such as `membership.users`
   :table  -   the name of the table you want to query, such as `:users`
 
   Example
@@ -32,42 +17,40 @@ defmodule Moebius.Query do
   ```
   result = db(:users)
     |> to_list
+
+  result = db("membership.users")
+    |> to_list
   ```
   """
   def db(table) when is_atom(table),
     do: db(Atom.to_string(table))
 
+  def db(table),
+    do: %Moebius.QueryCommand{table_name: table}
+
 
   @doc """
   Specifies the table or view you want to query and is an alias for the `db/1` function using
-  a string as a table name. This is useful for specifying a table within a schema.
+  a string or atom as a table name. This is useful for specifying a table within a schema.
 
   "table"  -   the name of the table you want to query, such as `membership.users`
+  :table  -   the name of the table you want to query, such as `:users`
 
   Example
 
   ```
   result = with("membership.users")
     |> to_list
-  ```
-  """
-  def with(table), do: db(table)
 
-  @doc """
-  Specifies the table or view you want to query and is an alias for the `with/1` function using
-  a string as a table name. This is useful for specifying a table within a schema.
-
-  "table"  -   the name of the table you want to query, such as `membership.users`
-
-  Example
-
-  ```
-  result = db("membership.users")
+  result = with(:users)
     |> to_list
   ```
   """
-  def db(table),
-    do: %Moebius.QueryCommand{table_name: table}
+  def with(table) when is_atom(table),
+    do: db(table)
+
+  def with(table),
+    do: db(table)
 
   @doc """
   A basic "WHERE" statement builder that builds a NOT IN statement using the supplied list.
@@ -90,6 +73,26 @@ defmodule Moebius.Query do
   end
 
   @doc """
+  Builds a parameterized WHERE statement based on the passed in string.
+  This is useful for queries that pass in string information that you want to protect from SQL Injection.
+
+  criteria  -   "name LIKE $1"
+  params    -   "%steve%"
+  Example:
+
+  ```
+  result = db(:products)
+      |> filter("name LIKE %$1%", "steve")
+      |> to_list
+  ```
+  """
+  def filter(cmd, criteria, params) when not is_list(params),
+    do: filter(cmd, criteria, [params])
+
+  def filter(cmd, criteria, params) when is_bitstring(criteria),
+    do: %{cmd | params: params, where: " where " <> criteria}
+
+  @doc """
   A basic "WHERE" statement builder that builds an IN statement using the supplied list.
 
   in:  -  a list of terms to exclude from the query
@@ -102,7 +105,9 @@ defmodule Moebius.Query do
       |> to_list
   ```
   """
-  def filter(cmd, criteria, in: params) when is_atom(criteria) and is_list(params),  do: filter(cmd, criteria, params)
+  def filter(cmd, criteria, in: params) when is_atom(criteria) and is_list(params),
+    do: filter(cmd, criteria, params)
+
   def filter(cmd, criteria, params) when is_atom(criteria) and is_list(params) do
     #this is an IN query
     in_list = Enum.map_join(1..length(params), ", ", &"$#{&1}")
@@ -124,28 +129,8 @@ defmodule Moebius.Query do
       |> to_list
   ```
   """
-  def filter(cmd, criteria) when is_bitstring(criteria), do: filter(cmd, criteria, [])
-
-  @doc """
-  Builds a parameterized WHERE statement based on the passed in string.
-  This is useful for queries that pass in string information that you want to protect from SQL Injection.
-
-  criteria  -   "name LIKE $1"
-  params    -   "%steve%"
-  Example:
-
-  ```
-  result = db(:products)
-      |> filter("name LIKE %$1%", "steve")
-      |> to_list
-  ```
-  """
-  def filter(cmd, criteria, params) when is_bitstring(criteria)  do
-    unless is_list params do
-      params = [params]
-    end
-    %{cmd | params: params, where: " where " <> criteria}
-  end
+  def filter(cmd, criteria) when is_bitstring(criteria),
+    do: filter(cmd, criteria, [])
 
   @doc """
   Builds a parameterized WHERE statement with ANDs for each passed list item.
@@ -186,14 +171,12 @@ defmodule Moebius.Query do
       |> find(1)
   ```
   """
-
   def find(cmd, id) do
     cmd
       |> filter(id: id)
       |> select_command
       |> first
   end
-
 
   @doc """
   Sets the order by. Ascending using `:asc` is the default, you can send in `:desc` if you like.
@@ -209,15 +192,13 @@ defmodule Moebius.Query do
       |> to_list
   ```
   """
-  def sort(cmd, cols, direction \\ :asc) do
-    order_column = cols
-    if is_atom(cols) do
-      order_column = Atom.to_string cols
-    end
-    sort_dir = Atom.to_string direction
-    %{cmd | order: " order by #{order_column} #{sort_dir}"}
-  end
+  def sort(cmd, cols, direction \\ :asc)
 
+  def sort(cmd, cols, direction) when is_atom(cols),
+    do: sort(cmd, Atom.to_string(cols), direction)
+
+  def sort(cmd, cols, direction) when is_binary(cols),
+    do: %{cmd | order: " order by #{cols} #{direction}"}
 
   @doc """
   Sets the limit of the return.
@@ -232,9 +213,8 @@ defmodule Moebius.Query do
       |> to_list
   ```
   """
-  def limit(cmd, bound) when is_integer(bound) do
-    %{cmd | limit: " limit #{bound}"}
-  end
+  def limit(cmd, bound) when is_integer(bound),
+    do: %{cmd | limit: " limit #{bound}"}
 
   @doc """
   Offsets the limit and is an alias for `skip/1`"
@@ -248,9 +228,8 @@ defmodule Moebius.Query do
       |> to_list
   ```
   """
-  def offset(cmd, n) do
-    %{cmd | offset: " offset #{n}"}
-  end
+  def offset(cmd, n),
+    do: %{cmd | offset: " offset #{n}"}
 
   @doc """
   Offsets the limit and is an alias for `offset/1`"
@@ -264,7 +243,8 @@ defmodule Moebius.Query do
       |> to_list
   ```
   """
-  def skip(cmd, n), do: offset(cmd, n)
+  def skip(cmd, n),
+    do: offset(cmd, n)
 
   @doc """
   Creates a SELECT command based on the assembled pipeline. Uses the QueryCommand as its core structure.
@@ -287,12 +267,6 @@ defmodule Moebius.Query do
     %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
-  # def select(cmd, cols \\ "*") do
-  #   select_command(cmd, cols)
-  #     |> execute
-  # end
-
-
   @doc """
   Executes a COUNT query based on the assembled pipeline. Analagous to `map/reduce(:count)`. Returns an integer.
 
@@ -305,7 +279,6 @@ defmodule Moebius.Query do
   #count == 20
   """
   def count(cmd) do
-
     res = %{cmd | sql: "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
       |> execute(:single)
 
@@ -313,7 +286,6 @@ defmodule Moebius.Query do
       {:error, err} -> {:error, err}
       row -> row.count
     end
-
   end
 
   @doc """
@@ -332,8 +304,9 @@ defmodule Moebius.Query do
   ```
   """
   def first(cmd, cols \\ "*") do
-    res = select_command(cmd, cols) |>
-     execute(:single)
+    res = select_command(cmd, cols)
+          |> execute(:single)
+
     cond do
       res == [] -> nil
       true -> res
@@ -357,8 +330,8 @@ defmodule Moebius.Query do
   """
   def last(cmd, sort_by) when is_atom(sort_by) do
     sort(cmd, sort_by, :desc)
-      |> select_command
-      |> execute(:single)
+    |> select_command
+    |> execute(:single)
   end
 
   @doc """
@@ -375,7 +348,8 @@ defmodule Moebius.Query do
     |> to_list("first, last, email")
   ```
   """
-  def to_list(cmd, cols \\ "*"), do: all(cmd, cols)
+  def to_list(cmd, cols \\ "*"),
+    do: all(cmd, cols)
 
   @doc """
   Executes a given pipeline and returns all results. An alias for `to_list/2`
@@ -392,8 +366,8 @@ defmodule Moebius.Query do
   ```
   """
   def all(cmd, cols \\ "*") do
-    select_command(cmd, cols) |>
-     execute
+    select_command(cmd, cols)
+    |> execute
   end
 
   @doc """
@@ -411,9 +385,8 @@ defmodule Moebius.Query do
     |> reduce(:sum, :money_spent)
   ```
   """
-  def group(cmd, cols) when is_atom(cols) do
-     group(cmd, Atom.to_string(cols))
-  end
+  def group(cmd, cols) when is_atom(cols),
+    do: group(cmd, Atom.to_string(cols))
 
   @doc """
   Specifies a GROUP BY for a `map/reduce` (aggregate) query that is a string.
@@ -429,9 +402,8 @@ defmodule Moebius.Query do
     |> reduce(:sum, :money_spent)
   ```
   """
-  def group(cmd, cols) do
-    %{cmd | group_by: cols}
-  end
+  def group(cmd, cols),
+    do: %{cmd | group_by: cols}
 
   @doc """
   An alias for `filter`, specifies a range to rollup on for an aggregate query using a WHERE statement.
@@ -446,7 +418,8 @@ defmodule Moebius.Query do
     |> reduce(:sum, :money_spent)
   ```
   """
-  def map(cmd, criteria), do: filter(cmd, criteria)
+  def map(cmd, criteria),
+    do: filter(cmd, criteria)
 
   @doc """
   A rollup operation that aggregates the mapped result set by the specified operation.
@@ -462,13 +435,15 @@ defmodule Moebius.Query do
     |> reduce(:sum, :money_spent)
   ```
   """
-  def reduce(cmd, op, column) when is_atom(column), do: reduce(cmd, op, Atom.to_string(column))
-  def reduce(cmd, op, column) when is_bitstring(column) do
-    rollup = Atom.to_string(op)
+  def reduce(cmd, op, column) when is_atom(column),
+    do: reduce(cmd, op, Atom.to_string(column))
 
+  def reduce(cmd, op, column) when is_bitstring(column) do
     sql = cond do
-      cmd.group_by ->  "select #{rollup}(#{column}), #{cmd.group_by} from #{cmd.table_name}#{cmd.join}#{cmd.where} GROUP BY #{cmd.group_by}"
-      true -> "select #{rollup}(#{column}) from #{cmd.table_name}#{cmd.join}#{cmd.where}"
+      cmd.group_by ->
+        "select #{op}(#{column}), #{cmd.group_by} from #{cmd.table_name}#{cmd.join}#{cmd.where} GROUP BY #{cmd.group_by}"
+      true ->
+        "select #{op}(#{column}) from #{cmd.table_name}#{cmd.join}#{cmd.where}"
     end
 
     res = %{cmd | sql: sql}
@@ -479,7 +454,6 @@ defmodule Moebius.Query do
       nil -> 0
       row -> Map.get(row, op)
     end
-
   end
 
   @doc """
@@ -527,7 +501,10 @@ defmodule Moebius.Query do
   end
   ```
   """
-  def insert(cmd, pid, criteria), do: insert_command(cmd, criteria) |> execute(:single, pid)
+  def insert(cmd, pid, criteria) do
+    insert_command(cmd, criteria)
+    |> execute(:single, pid)
+  end
 
   @doc """
   A simple insert that that returns the inserted record. Create your list of data and send it on in.
@@ -541,7 +518,10 @@ defmodule Moebius.Query do
       |> insert(email: "test@test.com", first: "Test", last: "User")
   ```
   """
-  def insert(cmd, criteria), do: insert_command(cmd, criteria) |> execute(:single)
+  def insert(cmd, criteria) do
+    insert_command(cmd, criteria)
+    |> execute(:single)
+  end
 
   @doc """
   Creates an insert command based on the assembled pipeline
@@ -606,7 +586,10 @@ defmodule Moebius.Query do
   end
   ```
   """
-  def update(cmd, pid, :single, criteria) when is_list(criteria), do: update_command(cmd, criteria) |> execute(:single, pid)
+  def update(cmd, pid, :single, criteria) when is_list(criteria) do
+    update_command(cmd, criteria)
+    |> execute(:single, pid)
+  end
 
   @doc """
   A simple update based on the criteria you specify. This is a partial update.
@@ -624,7 +607,10 @@ defmodule Moebius.Query do
 
   ```
   """
-  def update(cmd, :single, criteria) when is_list(criteria), do: update_command(cmd, criteria) |> execute(:single)
+  def update(cmd, :single, criteria) when is_list(criteria) do
+    update_command(cmd, criteria)
+    |> execute(:single)
+  end
 
   @doc """
   A bulk update based on the criteria you specify. All changed records are returned.
@@ -637,7 +623,10 @@ defmodule Moebius.Query do
     |> update(status: "preferred")
   ```
   """
-  def update(cmd, criteria) when is_list(criteria), do: update_command(cmd, criteria) |> execute
+  def update(cmd, criteria) when is_list(criteria) do
+    update_command(cmd, criteria)
+    |> execute
+  end
 
   @doc """
   Creates a DELETE command
@@ -662,7 +651,10 @@ defmodule Moebius.Query do
   end
   ```
   """
-  def delete(cmd, pid), do: delete_command(cmd) |> execute(:single, pid)
+  def delete(cmd, pid) do
+    delete_command(cmd)
+    |> execute(:single, pid)
+  end
 
   @doc """
   Deletes a record based on your filter.
@@ -676,8 +668,10 @@ defmodule Moebius.Query do
 
   ```
   """
-  def delete(cmd), do: delete_command(cmd) |> execute(:single)
-
+  def delete(cmd) do
+    delete_command(cmd)
+    |> execute(:single)
+  end
 
   @doc """
   Build a table join for your query. There are a number of options to handle various joins.
@@ -728,16 +722,10 @@ defmodule Moebius.Query do
   ```
   result = sql_file(:simple)
   """
-  def sql_file(file), do: sql_file_command(file, []) |> execute
-
-  @doc """
-  Executes the SQL in a given SQL file with the specified parameters. Specify the scripts directory by setting the `scripts` directive in the config.
-  Pass the file name as an atom, without extension.
-
-  ```
-  result = sql_file(:save_user, [1])
-  """
-  def sql_file(file, params), do: sql_file_command(file, params) |> execute
+  def sql_file(file) do
+    sql_file_command(file, [])
+    |> execute
+  end
 
   @doc """
   Executes the SQL in a given SQL file with the specified parameters, returning a single result.
@@ -746,17 +734,36 @@ defmodule Moebius.Query do
 
   ```
   result = sql_file(:save_user, [1])
+  ```
   """
-  def sql_file(file, :single, params \\ []), do: sql_file_command(file, params) |> execute(:single)
+  def sql_file(file, :single, params) do
+    sql_file_command(file, params)
+    |> execute(:single)
+  end
+
+  @doc """
+  Executes the SQL in a given SQL file with the specified parameters. Specify the scripts
+  directory by setting the `scripts` directive in the config. Pass the file name as an atom,
+  without extension.
+
+  ```
+  result = sql_file(:save_user, [1])
+  ```
+  """
+  def sql_file(file, params) do
+    sql_file_command(file, params)
+    |> execute
+  end
 
   @doc """
   Creates a SQL File command
   """
-  def sql_file_command(file, params) do
-    unless is_list params do
-      params = [params]
-    end
+  def sql_file_command(file, params \\ [])
 
+  def sql_file_command(file, params) when not is_list(params),
+    do: sql_file_command(file, [params])
+
+  def sql_file_command(file, params) do
     #find the DB dir
     scripts_dir = Application.get_env(:moebius, :scripts)
     file_path = Path.join(scripts_dir, "#{Atom.to_string(file)}.sql")
@@ -776,7 +783,28 @@ defmodule Moebius.Query do
 
   ```
   """
-  def function(cmd, function_name), do: function_command(cmd, function_name, []) |> execute
+  def function(cmd, function_name) do
+    function_command(cmd, function_name, [])
+    |> execute
+  end
+
+  @doc """
+  Executes a function with the given name, passed as an atom, returning a single result.
+
+  params:   -   An array of values to be passed to the function.
+
+  Example:
+
+  ```
+  result = db(:users)
+    |> function(:friends, ["mike","jane"])
+
+  ```
+  """
+  def function(cmd, function_name, :single) do
+    function_command(cmd, function_name, [])
+    |> execute(:single)
+  end
 
   @doc """
   Executes a function with the given name, passed as an atom.
@@ -791,7 +819,10 @@ defmodule Moebius.Query do
 
   ```
   """
-  def function(cmd, function_name, params), do: function_command(cmd, function_name, params) |> execute
+  def function(cmd, function_name, params) do
+    function_command(cmd, function_name, params)
+    |> execute
+  end
 
   @doc """
   Executes a function with the given name, passed as an atom, returning a single result.
@@ -804,43 +835,26 @@ defmodule Moebius.Query do
 
   ```
   """
-  def function(cmd, function_name, :single, params), do: function_command(cmd, function_name, params) |> execute(:single)
-
-  @doc """
-  Executes a function with the given name, passed as an atom, returning a single result.
-
-  params:   -   An array of values to be passed to the function.
-
-  Example:
-
-  ```
-  result = db(:users)
-    |> function(:friends, ["mike","jane"])
-
-  ```
-  """
-  def function(cmd, function_name, :single), do: function_command(cmd, function_name, []) |> execute(:single)
+  def function(cmd, function_name, :single, params) do
+    function_command(cmd, function_name, params)
+    |> execute(:single)
+  end
 
   @doc """
   Creates a function command
   """
-  def function_command(cmd, function_name, params \\ []) do
-    fname = function_name
+  def function_command(cmd, function_name, params \\ [])
 
-    if is_atom(function_name) do
-      fname = Atom.to_string(function_name)
-    end
+  def function_command(cmd, function_name, params) when not is_list(params),
+    do: function_command(cmd, function_name, [params])
 
-    unless is_list params do
-      params = [params]
-    end
-
+  def function_command(cmd, function_name, params) do
     arg_list = cond do
       length(params) > 0 ->  Enum.map_join(1..length(params), ", ", &"$#{&1}")
       true -> ""
     end
 
-    sql = "select * from #{fname}(#{arg_list});"
+    sql = "select * from #{function_name}(#{arg_list});"
     %{cmd | sql: sql, params: params}
   end
 
@@ -848,32 +862,23 @@ defmodule Moebius.Query do
   @doc """
   Executes a raw SQL query without parameters
   """
-  def run(sql, :single) when is_bitstring(sql), do: run(sql, [], :single)
-  def run(sql) when is_bitstring(sql), do: run(sql, [])
+  def run(sql) when is_bitstring(sql),
+    do: run(sql, [])
+
+  def run(sql, :single) when is_bitstring(sql),
+    do: run(sql, [], :single)
+
+  def run(sql, params) when is_bitstring(sql) do
+    %Moebius.QueryCommand{sql: sql, params: params}
+    |> execute
+  end
 
   @doc """
   Executes a raw SQL query with parameters returning a single result
   """
   def run(sql, params, :single) when is_bitstring(sql) do
     %Moebius.QueryCommand{sql: sql, params: params}
-      |> execute(:single)
-  end
-
-  @doc """
-  Executes a raw SQL query with parameters
-  """
-  def run(sql, params) when is_bitstring(sql) do
-    %Moebius.QueryCommand{sql: sql, params: params}
-      |> execute
-  end
-
-  @doc """
-  Executes a pass-through query and returns a single result
-  """
-  def execute(cmd, :single) do
-    res = Moebius.Runner.execute(cmd)
-      |> Moebius.Transformer.to_single
-
+    |> execute(:single)
   end
 
   @doc """
@@ -881,8 +886,7 @@ defmodule Moebius.Query do
   """
   def execute(cmd, :single, pid) do
     Moebius.Runner.execute(cmd, pid)
-      |> Moebius.Transformer.to_single
-
+    |> Moebius.Transformer.to_single
   end
 
   @doc """
@@ -890,7 +894,15 @@ defmodule Moebius.Query do
   """
   def execute(cmd) do
     Moebius.Runner.execute(cmd)
-      |> Moebius.Transformer.to_list
+    |> Moebius.Transformer.to_list
+  end
+
+  @doc """
+  Executes a pass-through query and returns a single result
+  """
+  def execute(cmd, :single) do
+    Moebius.Runner.execute(cmd)
+    |> Moebius.Transformer.to_single
   end
 
   @doc """
@@ -898,8 +910,9 @@ defmodule Moebius.Query do
   """
   def execute(cmd, pid) do
     Moebius.Runner.execute(cmd, pid)
-      |> Moebius.Transformer.to_list
+    |> Moebius.Transformer.to_list
   end
+
   @doc """
   Opens a transaction, returning a `pid` (Process ID) that you can pass to each of your queries that take part in the transaction.
   If an error occurs, it is passed back to you with `{:error, message}`. The transaction will automatically COMMIT on completion.
@@ -918,8 +931,6 @@ defmodule Moebius.Query do
   end
   ```
   """
-
-
 
   def transaction(fun) do
     pid = Moebius.Runner.open_transaction()
