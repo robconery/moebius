@@ -3,14 +3,13 @@ defmodule Moebius.Runner do
   The main execution bits are in here.
   """
 
-  @opts Application.get_env(:moebius, :connection)
-
   @doc """
   Spawn a Postgrex worker to run our query using the config specified in /config
   """
   def connect do
     extensions = [{Postgrex.Extensions.JSON, library: Poison}]
-    @opts
+    
+    Application.get_env(:moebius, :connection)
     |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
     |> Postgrex.Connection.start_link
   end
