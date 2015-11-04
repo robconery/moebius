@@ -7,6 +7,7 @@ defmodule Moebius.Supervisor do
 
   def init([]) do
     children = [
+      worker(Moebius.Runner, [])
       # Define workers and child supervisors to be supervised
     ]
 
