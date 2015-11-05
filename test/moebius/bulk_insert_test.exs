@@ -1,7 +1,7 @@
 defmodule MoebiusBulkInsertTest do
   use ExUnit.Case
 
-  import Moebius.BulkInsert
+  # import Moebius.BulkInsert
   import Moebius.Query
 
   setup do
@@ -23,13 +23,13 @@ defmodule MoebiusBulkInsertTest do
   test "inserts a list of records within a transaction" do
     qty = 10000
     data = people(qty)
-    res = db(:people) |> bulk_insert(data)
+    res = db(:people) |> insert(data)
     assert qty == length(res)
   end
 
   test "bulk insert fails as a transaction" do
     data = flawed_people(3)
-    res = db(:people) |> bulk_insert(data)
+    res = db(:people) |> insert(data)
     assert {:error, "null value in column \"first_name\" violates not-null constraint"} == res
   end
 
