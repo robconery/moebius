@@ -486,12 +486,12 @@ defmodule Moebius.Query do
   end
 
 
-  def insert(cmd, [first | rest]) do
-    records = [first | rest]
+  def insert(cmd, [[h | t] | rest]) do
+    records = [[h | t] | rest]
+    [first | rest] = records
     transaction fn(pid) ->
       bulk_insert_batch(cmd, records, [])
-      |> Enum.map(fn(cmd) -> 
-        execute(cmd, pid) end)
+      |> Enum.map(fn(cmd) -> execute(cmd, pid) end)
       |> List.flatten        
     end
   end
