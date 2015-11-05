@@ -12,7 +12,7 @@
   end
 
 
- def bulk_insert_batch(cmd, records, acc) do
+ defp bulk_insert_batch(cmd, records, acc) do
     [first | rest] = records
 
     # 20,000 seems to be the optimal number here. Technically you can go up to 34,464, but I think Postgrex imposes a lower limit, as I
