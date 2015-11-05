@@ -31,6 +31,7 @@ defmodule MoebiusBulkInsertTest do
     data = flawed_people(3)
     res = db(:people) |> insert(data)
     assert {:error, "null value in column \"first_name\" violates not-null constraint"} == res
+    # no records were written to the db either...
   end
 
   defp people(qty) do
