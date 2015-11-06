@@ -20,22 +20,6 @@ defmodule MoebiusBulkInsertTest do
     {:ok, res: true}
   end
 
-  # # This passes but does slow the test suite down
-  # test "standard insert 10000 at once" do
-  #   assert 10000 = write_benchmark(10000) |> Enum.count
-  # end
-
-  # defp write_benchmark(qty) do
-  #   people(qty)
-  #   |> Enum.map(&save/1)
-  # end
-
-  # defp save(record) do
-  #   db(:people)
-  #   |> insert_command(record)
-  #   |> execute
-  # end
-
   test "inserts a list of records within a transaction" do
     qty = 10000
     data = people(qty)
@@ -44,7 +28,7 @@ defmodule MoebiusBulkInsertTest do
   end
 
   test "bulk insert fails as a transaction" do
-    data = flawed_people(10000)
+    data = flawed_people(4)
     res = db(:people) |> insert(data)
     assert {:error, "null value in column \"first_name\" violates not-null constraint"} == res
     # no records were written to the db either...
@@ -62,6 +46,7 @@ defmodule MoebiusBulkInsertTest do
       ]))
   end
 
+  # tests for trans failures dur to constraint violations:
   defp flawed_people(qty) do
     p = Enum.reverse(people(qty - 1))
     flawed = [
@@ -74,5 +59,18 @@ defmodule MoebiusBulkInsertTest do
     ]
     Enum.reverse([flawed | p])
   end
+
+  # tests for trans failures due to malformed inputs:
+  # defp flawed_people(qty) do
+  #   p = Enum.reverse(people(qty - 1))
+  #   flawed = [
+  #     first_name: "X",
+  #     last_name: "Y",
+  #     address: "Z",
+  #     city: "fucked city",
+  #     state: "BumFuck",
+  #   ]
+  #   Enum.reverse([flawed | p])
+  # end
 
 end

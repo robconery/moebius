@@ -486,23 +486,28 @@ defmodule Moebius.Query do
   end
 
 
-def insert(cmd, [[h | t] | rest]) do
+  def insert(cmd, [[h | t] | rest]) do
     records = [[h | t] | rest]
     [first | rest] = records
+
+    # need a single definitive column map to arrest and roll back Tx if
+    # and of the inputs are malformed (different cols vs. vals)
+    column_map = Keyword.keys(first)
+
     transaction fn(pid) ->
-      bulk_insert_batch(cmd, records, [])
+      bulk_insert_batch(cmd, records, [], column_map)
       |> Enum.map(fn(cmd) -> execute(cmd, pid) end)
       |> List.flatten        
     end
   end
 
-   defp bulk_insert_batch(cmd, records, acc) do
+   defp bulk_insert_batch(cmd, records, acc, column_map) do
     [first | rest] = records
 
     # 20,000 seems to be the optimal number here. Technically you can go up to 34,464, but I think Postgrex imposes a lower limit, as I
     # hit a wall at 34,000, but succeeded at 30,000. Perf on 100k records is best at 20,000. 
     max_params = 20000 
-    cmd = %{ cmd | columns: Keyword.keys(first)}
+    cmd = %{ cmd | columns: column_map}
     max_records_per_command = div(max_params, length(cmd.columns))
     
     { current, next_batch } = Enum.split(records, max_records_per_command)
@@ -510,7 +515,7 @@ def insert(cmd, [[h | t] | rest]) do
     case next_batch do
       [] -> Enum.reverse([this_cmd | acc])
       _ -> 
-        db(cmd.table_name) |> bulk_insert_batch(next_batch, [this_cmd | acc])
+        db(cmd.table_name) |> bulk_insert_batch(next_batch, [this_cmd | acc], column_map)
     end
   end
 
@@ -518,12 +523,11 @@ def insert(cmd, [[h | t] | rest]) do
   defp bulk_insert_command(cmd, [first | rest]) do
     records = [first | rest]
     cols = cmd.columns
-
     vals = Enum.reduce(Enum.reverse(records), [], fn(listitem, acc) -> 
-    Enum.concat(Keyword.values(listitem), acc) end)
+      Enum.concat(Keyword.values(listitem), acc) end)
 
     params_sql = elem(Enum.map_reduce(vals, 0, fn(v, acc) -> {"$#{acc + 1}", acc + 1} end),0)
-    |> Enum.chunk(length(cols))
+    |> Enum.chunk(length(cols), length(cols), [])
     |> Enum.map(fn(chunk) -> "(#{Enum.join(chunk, ", ")})" end)
     |> Enum.join(", ")
 
