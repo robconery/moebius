@@ -486,6 +486,23 @@ defmodule Moebius.Query do
   end
 
 
+  @doc """
+  Insert multiple rows at once, within a single transaction, returning the inserted records. Pass in a composite list, containing the rows  to be inserted. 
+  Note, the columns to be inserted are defined based on the first record in the list. All records to be inserted must adhere to the same schema.
+
+  Example:
+
+  ```
+  data = [
+    [first_name: "John", last_name: "Lennon", address: "123 Main St.", city: "Portland", state: "OR", zip: "98204"],
+    [first_name: "Paul", last_name: "McCartney", address: "456 Main St.", city: "Portland", state: "OR", zip: "98204"],
+    [first_name: "George", last_name: "Harrison", address: "789 Main St.", city: "Portland", state: "OR", zip: "98204"],
+    [first_name: "Paul", last_name: "Starkey", address: "012 Main St.", city: "Portland", state: "OR", zip: "98204"],
+
+  ]
+  result = db(:people) |> insert(data)
+  ```
+  """
   def insert(cmd, [[h | t] | rest]) do
     records = [[h | t] | rest]
     [first | rest] = records
@@ -501,7 +518,7 @@ defmodule Moebius.Query do
     end
   end
 
-   defp bulk_insert_batch(cmd, records, acc, column_map) do
+  defp bulk_insert_batch(cmd, records, acc, column_map) do
     [first | rest] = records
 
     # 20,000 seems to be the optimal number here. Technically you can go up to 34,464, but I think Postgrex imposes a lower limit, as I
@@ -518,7 +535,6 @@ defmodule Moebius.Query do
         db(cmd.table_name) |> bulk_insert_batch(next_batch, [this_cmd | acc], column_map)
     end
   end
-
 
   defp bulk_insert_command(cmd, [first | rest]) do
     records = [first | rest]
