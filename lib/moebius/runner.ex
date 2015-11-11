@@ -8,10 +8,10 @@ defmodule Moebius.Runner do
   """
   def connect do
     extensions = [{Postgrex.Extensions.JSON, library: Poison}]
-    
+
     Application.get_env(:moebius, :connection)
-    |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
-    |> Postgrex.Connection.start_link
+      |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
+      |> Postgrex.Connection.start_link
   end
 
   @doc """
@@ -61,12 +61,15 @@ defmodule Moebius.Runner do
   currently. These functions hand off to PSQL because Postgrex can't run more than
   one command per query.
   """
-  def run_with_psql(sql, db \\ @opts[:database]) do
+  def run_with_psql(sql, db \\ nil) do
+    if db == nil,  do: [database: db] = Application.get_env(:moebius, :connection)
     ["-d", db, "-c", sql, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
     |> call_psql
   end
 
-  def run_file_with_psql(file, db \\ @opts[:database]) do
+  def run_file_with_psql(file, db \\ nil) do
+    if db == nil,  do: [database: db] = Application.get_env(:moebius, :connection)
+
     ["-d", db, "-f", file, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
     |> call_psql
   end

@@ -487,7 +487,7 @@ defmodule Moebius.Query do
 
 
   @doc """
-  Insert multiple rows at once, within a single transaction, returning the inserted records. Pass in a composite list, containing the rows  to be inserted. 
+  Insert multiple rows at once, within a single transaction, returning the inserted records. Pass in a composite list, containing the rows  to be inserted.
   Note, the columns to be inserted are defined based on the first record in the list. All records to be inserted must adhere to the same schema.
 
   Example:
@@ -514,7 +514,7 @@ defmodule Moebius.Query do
     transaction fn(pid) ->
       bulk_insert_batch(cmd, records, [], column_map)
       |> Enum.map(fn(cmd) -> execute(cmd, pid) end)
-      |> List.flatten        
+      |> List.flatten
     end
   end
 
@@ -522,16 +522,16 @@ defmodule Moebius.Query do
     [first | rest] = records
 
     # 20,000 seems to be the optimal number here. Technically you can go up to 34,464, but I think Postgrex imposes a lower limit, as I
-    # hit a wall at 34,000, but succeeded at 30,000. Perf on 100k records is best at 20,000. 
-    max_params = 20000 
+    # hit a wall at 34,000, but succeeded at 30,000. Perf on 100k records is best at 20,000.
+    max_params = 20000
     cmd = %{ cmd | columns: column_map}
     max_records_per_command = div(max_params, length(cmd.columns))
-    
+
     { current, next_batch } = Enum.split(records, max_records_per_command)
     this_cmd = bulk_insert_command(cmd, current)
     case next_batch do
       [] -> Enum.reverse([this_cmd | acc])
-      _ -> 
+      _ ->
         db(cmd.table_name) |> bulk_insert_batch(next_batch, [this_cmd | acc], column_map)
     end
   end
@@ -539,7 +539,7 @@ defmodule Moebius.Query do
   defp bulk_insert_command(cmd, [first | rest]) do
     records = [first | rest]
     cols = cmd.columns
-    vals = Enum.reduce(Enum.reverse(records), [], fn(listitem, acc) -> 
+    vals = Enum.reduce(Enum.reverse(records), [], fn(listitem, acc) ->
       Enum.concat(Keyword.values(listitem), acc) end)
 
     params_sql = elem(Enum.map_reduce(vals, 0, fn(v, acc) -> {"$#{acc + 1}", acc + 1} end),0)
@@ -850,8 +850,8 @@ defmodule Moebius.Query do
 
   ```
   """
-  def function(cmd, function_name) do
-    function_command(cmd, function_name, [])
+  def function(function_name) do
+    function_command(function_name, [])
     |> execute
   end
 
@@ -868,8 +868,8 @@ defmodule Moebius.Query do
 
   ```
   """
-  def function(cmd, function_name, :single) do
-    function_command(cmd, function_name, [])
+  def function(function_name, :single) do
+    function_command(function_name, [])
     |> execute(:single)
   end
 
@@ -886,8 +886,8 @@ defmodule Moebius.Query do
 
   ```
   """
-  def function(cmd, function_name, params) do
-    function_command(cmd, function_name, params)
+  def function(function_name, params) do
+    function_command(function_name, params)
     |> execute
   end
 
@@ -902,27 +902,27 @@ defmodule Moebius.Query do
 
   ```
   """
-  def function(cmd, function_name, :single, params) do
-    function_command(cmd, function_name, params)
+  def function(function_name, :single, params) do
+    function_command(function_name, params)
     |> execute(:single)
   end
 
   @doc """
   Creates a function command
   """
-  def function_command(cmd, function_name, params \\ [])
+  def function_command(function_name, params \\ [])
 
-  def function_command(cmd, function_name, params) when not is_list(params),
-    do: function_command(cmd, function_name, [params])
+  def function_command(function_name, params) when not is_list(params),
+    do: function_command(function_name, [params])
 
-  def function_command(cmd, function_name, params) do
+  def function_command(function_name, params) do
     arg_list = cond do
       length(params) > 0 ->  Enum.map_join(1..length(params), ", ", &"$#{&1}")
       true -> ""
     end
 
     sql = "select * from #{function_name}(#{arg_list});"
-    %{cmd | sql: sql, params: params}
+    %Moebius.QueryCommand{sql: sql, params: params}
   end
 
 

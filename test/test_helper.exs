@@ -45,7 +45,7 @@ insert into users(email, first, last) values('mary@test.com','Mary','Muggtler');
 insert into users(email, first, last) values('mike@test.com','Mike','Ghruoisl');
 "
 
-case Moebius.Runner.run_with_psql sql, "meebuss" do
+case Moebius.Runner.run_with_psql sql do
   {_res, 0} -> true
   {:error, err} -> raise err
 end
