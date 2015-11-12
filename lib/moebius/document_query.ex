@@ -356,7 +356,7 @@ defmodule Moebius.DocumentQuery do
   def find(cmd, id) when is_integer id do
     #no need to param this, it's an integer
     sql = "select id, body from #{cmd.table_name} where id=#{id}"
-    %{cmd | sql: sql} |> first
+    %{cmd | sql: sql} |> execute(:single)
   end
 
 
