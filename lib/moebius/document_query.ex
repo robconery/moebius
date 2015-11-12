@@ -355,7 +355,7 @@ defmodule Moebius.DocumentQuery do
   """
   def find(cmd, id) when is_integer id do
     #no need to param this, it's an integer
-    sql = "select id, body from #{cmd.table_name} where id=#{id}"
+    sql = "select id, #{cmd.json_field}::text from #{cmd.table_name} where id=#{id}"
     %{cmd | sql: sql} |> execute(:single)
   end
 
@@ -373,7 +373,7 @@ defmodule Moebius.DocumentQuery do
   def search(cmd, term) when is_bitstring(term)  do
 
     sql = """
-    select id, body from #{cmd.table_name}
+    select id, #{cmd.json_field}::text from #{cmd.table_name}
   	where search @@ to_tsquery($1)
   	order by ts_rank_cd(search,to_tsquery($1))  desc
     """
@@ -398,7 +398,7 @@ defmodule Moebius.DocumentQuery do
     terms = Enum.map_join(fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
 
     sql = """
-    select id, body from #{cmd.table_name}
+    select id, #{cmd.json_field}::text from #{cmd.table_name}
   	where to_tsvector(concat(#{terms})) @@ to_tsquery($1)
   	order by ts_rank_cd(to_tsvector(concat(#{terms})),to_tsquery($1))  desc
     """
@@ -464,12 +464,12 @@ defmodule Moebius.DocumentQuery do
 
 
   defp delete_command(cmd, id) when is_integer(id) do
-    sql = "delete from #{cmd.table_name} where id=#{id} returning *"
+    sql = "delete from #{cmd.table_name} where id=#{id} returning id, body::text"
     %{cmd | sql: sql, type: :delete}
   end
 
   defp delete_command(cmd) do
-    sql = "delete from #{cmd.table_name} #{cmd.where} returning *;"
+    sql = "delete from #{cmd.table_name} #{cmd.where} returning id, body::text;"
     %{cmd | sql: sql, type: :delete}
   end
 
@@ -502,8 +502,7 @@ defmodule Moebius.DocumentQuery do
     decode_json(json) |> Map.put_new(:id, id)
   end
 
-  defp decode_json(json) when is_map(json), do: Moebius.Transformer.to_atom_map(json)
+  #defp decode_json(json) when is_map(json), do: Moebius.Transformer.to_atom_map(json)
   defp decode_json(json), do: decode!(json, keys: :atoms!)
-
 
 end

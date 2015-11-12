@@ -174,8 +174,11 @@ defmodule Moebius.DocTest do
   test "finds by id", %{res: res} do
     monkey = db(:user_docs)
             |> find(res.id)
-IO.inspect monkey
-    assert monkey.id == res.id
+    case monkey do
+      {:error, err} -> raise err
+      res -> assert monkey.id == res.id
+    end
+
   end
 
 
