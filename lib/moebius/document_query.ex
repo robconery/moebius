@@ -502,7 +502,7 @@ defmodule Moebius.DocumentQuery do
     decode_json(json) |> Map.put_new(:id, id)
   end
 
-  defp decode_json(json) when is_map(json), do: json
+  defp decode_json(json) when is_map(json), do: Moebius.Transformer.to_atom_map(json)
   defp decode_json(json), do: decode!(json, keys: :atoms!)
 
 

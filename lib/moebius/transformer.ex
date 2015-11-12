@@ -4,11 +4,14 @@ defmodule Moebius.Transformer do
   This module restructures the results.
   """
 
+  def to_atom_map(map) do
+    Enum.reduce(map, %{}, fn ({key, val}, acc) -> Map.put(acc, String.to_atom(key), val) end)
+  end
+
   @doc """
   String keys are a pain, atom maps are nicer
   """
   def to_map(list, acc \\ %{})
-
   def to_map([], acc), do: acc
   def to_map([{key, val}|rest], acc) when is_list(val) do
     val = to_map(val, %{})
