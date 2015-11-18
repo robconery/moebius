@@ -10,6 +10,7 @@ defmodule Moebius.Runner do
     extensions = [{Postgrex.Extensions.JSON, library: Poison}]
 
     Application.get_env(:moebius, :connection)
+      |> connection_options
       |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
       |> Postgrex.Connection.start_link
   end
@@ -76,4 +77,30 @@ defmodule Moebius.Runner do
 
   def call_psql(args),
     do: System.cmd "psql", args
+
+  defp connection_options([url: url]), do: parse_url(url)
+  defp connection_options(opts),       do: opts
+
+  defp parse_url(url) when is_binary(url) do
+    info = url |> URI.decode() |> URI.parse()
+
+    if is_nil(info.host) do
+      raise "invalid url #{url} host is not present"
+    end
+
+    if is_nil(info.path) or not (info.path =~ ~r"^/([^/])+$") do
+      raise "invalid url #{url} path should be a database name"
+    end
+
+    destructure [username, password], info.userinfo && String.split(info.userinfo, ":")
+    "/" <> database = info.path
+
+    opts = [username: username,
+            password: password,
+            database: database,
+            hostname: info.host,
+            port:     info.port]
+
+    Enum.reject(opts, fn {_k, v} -> is_nil(v) end)
+  end
 end
