@@ -1,6 +1,8 @@
 defmodule Moebius.QueryFilterTest do
   use ExUnit.Case
 
+  doctest Moebius.QueryFilter
+
   import Moebius.QueryFilter
 
   setup context do
@@ -59,6 +61,14 @@ defmodule Moebius.QueryFilterTest do
 
     assert " where name IN($1, $2, $3) and email LIKE $4" == query.where
     assert ["phillip", "lela", "bender", "%test.com%"] == query.params
+  end
+
+  @tag where: " where email LIKE $1", params: ["%test.com%"]
+  test "pipe multiple filters when second predicate is 'NOT IN'", %{query: query} do
+    query = filter(query, :name, not_in: ["phillip", "lela", "bender"])
+
+    assert " where email LIKE $1 and name NOT IN($2, $3, $4)" == query.where
+    assert ["%test.com%", "phillip", "lela", "bender"] == query.params
   end
 
   test "a basic select with a where string", %{query: query} do

@@ -1,5 +1,80 @@
 defmodule Moebius.QueryFilter do
 
+  @moduledoc """
+
+  The QueryFilter module is used to build WHERE clauses to be used in queries. You can
+  call it directly but in most cases it will be used through the Query module (see Query module).
+
+  Here is an example of adding a predicate to match an email address:
+
+    iex> cmd = %Moebius.QueryCommand{table_name: 'users'}
+    iex> cmd = Moebius.QueryFilter.filter(cmd, email: "test@test.com")
+    iex> cmd.where
+    " where email = $1"
+    iex> cmd.params
+    ["test@test.com"]
+
+  Although there are more examples in the Moebius.Query module here are a few to show filters in
+  action:
+
+    Basic Select:
+
+    iex> import Moebius.Query
+    iex> cmd = db(:users) |>
+    ...>   filter(email: "test@test.com") |>
+    ...>   select_command
+    iex> cmd.sql
+    "select * from users where email = $1;"
+    iex> cmd.params
+    ["test@test.com"]
+
+    Basic Select using 'IN':
+
+    iex> import Moebius.Query
+    iex> cmd = db(:users) |>
+    ...>   filter(:name, in: ["phillip", "lela", "bender"]) |>
+    ...>   select_command
+    iex> cmd.sql
+    "select * from users where name IN($1, $2, $3);"
+    iex> cmd.params
+    ["phillip", "lela", "bender"]
+
+    Basic Select using 'NOT IN':
+
+    iex> import Moebius.Query
+    iex> cmd = db(:users) |>
+    ...>   filter(:name, not_in: ["phillip", "lela", "bender"]) |>
+    ...>   select_command
+    iex> cmd.sql
+    "select * from users where name NOT IN($1, $2, $3);"
+    iex> cmd.params
+    ["phillip", "lela", "bender"]
+
+    Basic Select using string:
+
+    iex> import Moebius.Query
+    iex> cmd = db(:users) |>
+    ...>   filter("email LIKE $1", "%test.com%") |>
+    ...>   select_command
+    iex> cmd.sql
+    "select * from users where email LIKE $1;"
+    iex> cmd.params
+    ["%test.com%"]
+
+  Filters can also be piped:
+
+    iex> import Moebius.Query
+    iex> cmd = db(:users) |>
+    ...>  filter("email LIKE $1", "%test.com%") |>
+    ...>  filter(:name, not_in: ["phillip", "lela", "bender"]) |>
+    ...>  select_command
+    iex> cmd.sql
+    "select * from users where email LIKE $1 and name NOT IN($2, $3, $4);"
+    iex> cmd.params
+    ["%test.com%", "phillip", "lela", "bender"]
+
+  """
+
   defmacro __using__(_opts) do
     quote do
       def filter(cmd, criteria, params),
@@ -10,119 +85,10 @@ defmodule Moebius.QueryFilter do
     end
   end
 
-  @doc """
-  A basic "WHERE" statement builder that builds a NOT IN statement using the supplied list.
-
-  not_in:  -  a list of terms to exclude from the query
-
-  Example:
-
-  ```
-  result = db(:users)
-      |> filter(:name, not_in: ["mark", "biff", "skip"])
-      |> to_list
-  ```
-  """
-  def filter(cmd, criteria, not_in: params) when is_atom(criteria) and is_list(params) do
-    #this is a NOT IN query
-    in_list = Enum.map_join(1..length(params), ", ", &"$#{&1}")
-    where = " where #{Atom.to_string(criteria)} NOT IN(#{in_list})"
-    %{cmd | where: where, params: params}
-  end
-
-  @doc """
-  Builds a parameterized WHERE statement based on the passed in string.
-  This is useful for queries that pass in string information that you want to protect from SQL Injection.
-
-  criteria  -   "name LIKE $1"
-  params    -   "%steve%"
-  Example:
-
-  ```
-  result = db(:products)
-      |> filter("name LIKE %$1%", "steve")
-      |> to_list
-  ```
-  """
-  def filter(cmd, criteria, params) when not is_list(params),
-    do: filter(cmd, criteria, [params])
-
-  def filter(%{where: ""} = cmd, criteria, params) when is_bitstring(criteria),
-    do: %{cmd | params: params, where: " where " <> criteria}
-
-  @doc """
-  A basic "WHERE" statement builder that builds an IN statement using the supplied list.
-
-  in:  -  a list of terms to exclude from the query
-
-  Example:
-
-  ```
-  result = db(:users)
-      |> filter(:name, in: ["mark", "biff", "skip"])
-      |> to_list
-  ```
-  """
-  def filter(cmd, criteria, in: params) when is_atom(criteria) and is_list(params),
-    do: filter(cmd, criteria, params)
-
-  def filter(%{where: ""} = cmd, criteria, params) when is_atom(criteria) and is_list(params) do
-    #this is an IN query
-    in_list = Enum.map_join(1..length(params), ", ", &"$#{&1}")
-    where = " where #{Atom.to_string(criteria)} IN(#{in_list})"
-    %{cmd | where: where, params: params}
-  end
-
-  def filter(cmd, criteria, params) when is_atom(criteria) and is_list(params) do
-    current_params_length = cmd.params |> length
-    params_total_length = length(params) + current_params_length
-
-    in_list = Enum.map_join((current_params_length + 1)..params_total_length, ", ", &"$#{&1}")
-    where = "#{Atom.to_string(criteria)} IN(#{in_list})"
-    conditions = [cmd.where, where] |> Enum.join(" and ")
-    params = cmd.params ++ params
-
-    %{cmd | where: conditions, params: params}
-  end
-
-  @doc """
-  Builds a WHERE statement based on the passed in string. This is useful for ad-hoc queries, especially with
-  date and time operations.
-
-  criteria  -  "created_at > now()"
-
-  Example:
-
-  ```
-  result = db(:products)
-      |> filter("created_at > now()")
-      |> to_list
-  ```
-  """
   def filter(cmd, criteria) when is_bitstring(criteria),
     do: filter(cmd, criteria, [])
 
-  def filter(cmd, criteria, params) when is_bitstring(criteria) do
-    params = cmd.params ++ params
-    conditions = [cmd.where, criteria] |> Enum.join(" and ")
-    %{cmd | params: params, where: conditions}
-  end
-
-  @doc """
-  Builds a parameterized WHERE statement with ANDs for each passed list item.
-
-  criteria  -   `email: 'test@test.com', company: 'Test Company'`
-
-  Example:
-
-  ```
-  result = db(:products)
-      |> filter(email: 'test@test.com', company: 'Test Company')
-      |> to_list
-  ```
-  """
-  def filter(cmd, criteria) when is_list(criteria) do
-
+  def filter(%{where: ""} = cmd, criteria) when is_list(criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
 
@@ -130,9 +96,52 @@ defmodule Moebius.QueryFilter do
       {"#{col} = $#{acc}", acc + 1}
     end
 
-    where = " where " <> Enum.join(filters, " and ")
-
-    %{cmd | params: vals, where: where, where_columns: cols}
+    %{cmd | params: vals, where: " where #{Enum.join(filters, " and ")}", where_columns: cols}
   end
+
+  def filter(%{where: ""} = cmd, criteria, not_in: params) when is_list(params) do
+    %{cmd | where: " where #{criteria} NOT IN(#{map_params(params)})", params: params}
+  end
+
+  def filter(%{where: ""} = cmd, criteria, in: params) when is_list(params) do
+    %{cmd | where: " where #{criteria} IN(#{map_params(params)})", params: params}
+  end
+
+  def filter(%{where: ""} = cmd, criteria, params) when is_list(params),
+    do: %{cmd | params: params, where: " where #{criteria}"}
+
+  def filter(cmd, criteria, in: params) when is_list(params) do
+    current_params_length = cmd.params |> length
+
+    in_list = map_params(params, current_params_length)
+    predicates = join_predicates(cmd, "#{criteria} IN(#{in_list})")
+
+    %{cmd | where: predicates, params: cmd.params ++ params}
+  end
+
+  def filter(cmd, criteria, not_in: params) when is_list(params) do
+    current_params_length = cmd.params |> length
+
+    in_list = map_params(params, current_params_length)
+    predicates = join_predicates(cmd, "#{criteria} NOT IN(#{in_list})")
+
+    %{cmd | where: predicates, params: cmd.params ++ params}
+  end
+
+  def filter(cmd, criteria, params) when not is_list(params),
+    do: filter(cmd, criteria, [params])
+
+  def filter(cmd, criteria, params) when is_list(params) do
+    %{cmd | where: join_predicates(cmd, criteria), params: cmd.params ++ params}
+  end
+
+  def filter(cmd, criteria, params) when is_list(params),
+    do: filter(cmd, criteria, params)
+
+  defp map_params(params, seed \\ 0),
+    do: Enum.map_join((seed + 1)..(length(params) + seed), ", ", &"$#{&1}")
+
+  defp join_predicates(cmd, predicate),
+    do: [cmd.where, predicate] |> Enum.join(" and ")
 
 end
