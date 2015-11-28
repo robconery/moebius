@@ -1,5 +1,6 @@
 defmodule Moebius.DeleteTest do
   use ExUnit.Case
+
   import Moebius.Query
 
   test "a simple delete" do
