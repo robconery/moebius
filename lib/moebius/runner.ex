@@ -1,33 +1,50 @@
 defmodule Moebius.Runner do
+  use GenServer
+
+  def start_link do
+    GenServer.start_link(__MODULE__, open_connection, name: Moby)
+  end
+
   @moduledoc """
   The main execution bits are in here.
   """
 
-  @doc """
-  Spawn a Postgrex worker to run our query using the config specified in /config
-  """
-  def connect do
+  defp open_connection do
     extensions = [{Postgrex.Extensions.JSON, library: Poison}]
 
-    Application.get_env(:moebius, :connection)
-      |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
-      |> Postgrex.Connection.start_link
+    {:ok, pid} = Application.get_env(:moebius, :connection)
+              |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
+              |> Postgrex.Connection.start_link
+
+    %{pid: pid}
   end
 
   @doc """
   If there isn't a connection process started then one is added to the command
   """
-  def execute(cmd) do
-    {:ok, pid} = connect()
-    try do
-      case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
-        {:ok, result} -> {:ok, result}
-        {:error, err} -> {:error, err.postgres.message}
-      end
-    after
-      Postgrex.Connection.stop(pid)
+  def execute(cmd),
+    do: GenServer.call(Moby, {:execute, cmd})
+
+  def connect,
+    do: GenServer.call(Moby, {:connect})
+
+  def handle_call({:execute, cmd}, _from, state) do
+    case query(cmd, state) do
+      {:ok, results} ->
+        {:reply, {:ok, results}, state}
+      {:error, err} ->
+        {:reply, {:error, err}, state}
     end
   end
+
+  def handle_call({:connect}, _from, %{pid: pid} = state),
+    do: {:reply, {:ok, pid}, state}
+
+  def terminate(_reason, %{pid: pid}),
+    do: Postgrex.Connection.stop pid
+
+  defp query(cmd, %{pid: pid}),
+    do: Postgrex.Connection.query(pid, cmd.sql, cmd.params)
 
   @doc """
   Executes a command for a given transaction specified with `pid`. If the execution fails,
@@ -44,16 +61,15 @@ defmodule Moebius.Runner do
     end
   end
 
-
   def open_transaction() do
-    {:ok, pid} = Moebius.Runner.connect()
+    {:ok, pid} = Moebius.Runner.connect
+
     Postgrex.Connection.query(pid, "BEGIN;",[])
     pid
   end
 
   def commit_and_close_transaction(pid) do
     Postgrex.Connection.query(pid, "COMMIT;",[])
-    Postgrex.Connection.stop(pid)
   end
 
   @doc """
