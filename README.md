@@ -25,7 +25,7 @@ Installing Moebius is pretty straightforward:
   1. Add moebius to your list of dependencies in `mix.exs`:
 
         def deps do
-          [{:moebius, "~> 1.0.6"}]
+          [{:moebius, "~> 1.0.8"}]
         end
 
   2. Ensure moebius is started before your application:
