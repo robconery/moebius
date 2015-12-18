@@ -2,11 +2,12 @@ defmodule Moebius.Supervisor do
   use Supervisor
 
   def start_link(_type, _args) do
-    :supervisor.start_link(__MODULE__, [])
+    :supervisor.start_link({:local, __MODULE__}, __MODULE__, [])
   end
 
   def init([]) do
     children = [
+      worker(Moebius.Runner, [])
       # Define workers and child supervisors to be supervised
     ]
 

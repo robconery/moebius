@@ -214,10 +214,9 @@ defmodule Moebius.DocumentQuery do
   """
   def save(cmd, doc) when is_list(doc), do: save(cmd, Enum.into(doc, %{}))
   def save(cmd, doc) when is_map(doc) do
-    pid = Moebius.Runner.open_transaction
-    res = save(cmd, pid, doc)
-    Moebius.Runner.commit_and_close_transaction(pid)
-    res
+    Moebius.Runner.transaction(fn(conn) ->
+      save(cmd, conn, doc)
+    end)
   end
 
   def save(cmd, pid, doc) when is_list(doc), do: save(cmd, pid, Enum.into(doc, %{}))
@@ -479,7 +478,7 @@ defmodule Moebius.DocumentQuery do
     VALUES('#{doc}')
     RETURNING id, #{cmd.json_field}::text;
     """
-    %{cmd | sql: sql, params: [doc], type: :insert}
+    %{cmd | sql: sql, params: [], type: :insert}
   end
 
   defp insert_command(cmd, doc) when is_list(doc) or is_map(doc) do

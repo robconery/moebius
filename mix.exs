@@ -29,7 +29,8 @@ defmodule Moebius.Mixfile do
   end
 
   defp deps do
-    [{:postgrex, "~> 0.9.1"},
+    [{:postgrex, "~> 0.10", github: "fishcakez/postgrex", branch: "db_connection"},
+     {:poolboy, "~> 1.5"},
      {:timex, "~> 0.19.4"},
      {:inflex, "~> 1.5.0"},
      {:poison, "~> 1.5"},
