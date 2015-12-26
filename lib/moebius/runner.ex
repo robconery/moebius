@@ -10,8 +10,8 @@ defmodule Moebius.Runner do
     extensions = [{Postgrex.Extensions.JSON, library: Poison}]
 
     Application.get_env(:moebius, :connection)
-      |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
-      |> Postgrex.Connection.start_link
+    |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
+    |> Postgrex.Connection.start_link
   end
 
   @doc """

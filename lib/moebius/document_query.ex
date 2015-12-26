@@ -304,8 +304,8 @@ defmodule Moebius.DocumentQuery do
   @doc """
   Deletes a document with the given id
   """
-  def delete(cmd, id), do: delete_command(cmd, id) |> execute(:single)
-  def delete(cmd, pid, id), do: delete_command(cmd, id) |> execute(pid)
+  def delete(cmd, id), do: cmd |> delete_command(id) |> execute(:single)
+  def delete(cmd, pid, id), do: cmd |> delete_command(id) |> execute(pid)
 
   @doc """
   An alias for `delete/1`, removes a document based on the filter setup.
@@ -316,8 +316,8 @@ defmodule Moebius.DocumentQuery do
   @doc """
   Deletes a document based on the filter (if any)
   """
-  def delete(cmd),  do: delete_command(cmd) |> execute
-  def delete(cmd, pid),  do: delete_command(cmd) |> execute(pid)
+  def delete(cmd),  do: cmd |> delete_command |> execute
+  def delete(cmd, pid),  do: cmd |> delete_command |> execute(pid)
 
 
   @doc """
@@ -499,7 +499,9 @@ defmodule Moebius.DocumentQuery do
   end
 
   defp handle_row([id, json]) do
-    decode_json(json) |> Map.put_new(:id, id)
+    json
+    |> decode_json
+    |> Map.put_new(:id, id)
   end
 
   #defp decode_json(json) when is_map(json), do: Moebius.Transformer.to_atom_map(json)

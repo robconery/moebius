@@ -200,7 +200,8 @@ defmodule Moebius.Query do
   ```
   """
   def first(cmd, cols \\ "*") do
-    res = select_command(cmd, cols)
+    res = cmd
+          |> select_command(cols)
           |> execute(:single)
 
     cond do
@@ -225,7 +226,8 @@ defmodule Moebius.Query do
   ```
   """
   def last(cmd, sort_by) when is_atom(sort_by) do
-    sort(cmd, sort_by, :desc)
+    cmd
+    |> sort(sort_by, :desc)
     |> select_command
     |> execute(:single)
   end
@@ -262,7 +264,8 @@ defmodule Moebius.Query do
   ```
   """
   def all(cmd, cols \\ "*") do
-    select_command(cmd, cols)
+    cmd
+    |> select_command(cols)
     |> execute
   end
 
@@ -407,7 +410,8 @@ defmodule Moebius.Query do
     column_map = records |> hd |> Keyword.keys
 
     transaction fn(pid) ->
-      bulk_insert_batch(cmd, records, [], column_map)
+      cmd
+      |> bulk_insert_batch(records, [], column_map)
       |> Enum.map(fn(cmd) -> execute(cmd, pid) end)
       |> List.flatten
     end
@@ -465,7 +469,8 @@ defmodule Moebius.Query do
   ```
   """
   def insert(cmd, pid, criteria) when is_pid(pid) do
-    insert_command(cmd, criteria)
+    cmd
+    |> insert_command(cmd, criteria)
     |> execute(:single, pid)
   end
 
@@ -482,7 +487,8 @@ defmodule Moebius.Query do
   ```
   """
   def insert(cmd, criteria) do
-    insert_command(cmd, criteria)
+    cmd
+    |> insert_command(cmd, criteria)
     |> execute(:single)
   end
 
@@ -550,7 +556,8 @@ defmodule Moebius.Query do
   ```
   """
   def update(cmd, pid, :single, criteria) when is_list(criteria) do
-    update_command(cmd, criteria)
+    cmd
+    |> update_command(criteria)
     |> execute(:single, pid)
   end
 
@@ -571,7 +578,8 @@ defmodule Moebius.Query do
   ```
   """
   def update(cmd, :single, criteria) when is_list(criteria) do
-    update_command(cmd, criteria)
+    cmd
+    |> update_command(criteria)
     |> execute(:single)
   end
 
@@ -587,7 +595,8 @@ defmodule Moebius.Query do
   ```
   """
   def update(cmd, criteria) when is_list(criteria) do
-    update_command(cmd, criteria)
+    cmd
+    |> update_command(criteria)
     |> execute
   end
 
@@ -615,7 +624,8 @@ defmodule Moebius.Query do
   ```
   """
   def delete(cmd, pid) do
-    delete_command(cmd)
+    cmd
+    |> delete_command
     |> execute(:single, pid)
   end
 
@@ -632,7 +642,8 @@ defmodule Moebius.Query do
   ```
   """
   def delete(cmd) do
-    delete_command(cmd)
+    cmd
+    |> delete_command
     |> execute(:single)
   end
 
@@ -686,7 +697,8 @@ defmodule Moebius.Query do
   result = sql_file(:simple)
   """
   def sql_file(file) do
-    sql_file_command(file, [])
+    file
+    |> sql_file_command([])
     |> execute
   end
 
@@ -700,7 +712,8 @@ defmodule Moebius.Query do
   ```
   """
   def sql_file(file, :single, params) do
-    sql_file_command(file, params)
+    file
+    |> sql_file_command(params)
     |> execute(:single)
   end
 
@@ -714,7 +727,8 @@ defmodule Moebius.Query do
   ```
   """
   def sql_file(file, params) do
-    sql_file_command(file, params)
+    file
+    |> sql_file_command(params)
     |> execute
   end
 
@@ -747,7 +761,8 @@ defmodule Moebius.Query do
   ```
   """
   def function(function_name) do
-    function_command(function_name, [])
+    function_name
+    |> function_command([])
     |> execute
   end
 
@@ -765,7 +780,8 @@ defmodule Moebius.Query do
   ```
   """
   def function(function_name, :single) do
-    function_command(function_name, [])
+    function_name
+    |> function_command([])
     |> execute(:single)
   end
 
@@ -783,7 +799,8 @@ defmodule Moebius.Query do
   ```
   """
   def function(function_name, params) do
-    function_command(function_name, params)
+    function_name
+    |> function_command(params)
     |> execute
   end
 
@@ -799,7 +816,8 @@ defmodule Moebius.Query do
   ```
   """
   def function(function_name, :single, params) do
-    function_command(function_name, params)
+    function_name
+    |> function_command(params)
     |> execute(:single)
   end
 
@@ -848,7 +866,8 @@ defmodule Moebius.Query do
   Executes a pass-through query and returns a single result as part of a transaction
   """
   def execute(cmd, :single, pid) do
-    Moebius.Runner.execute(cmd, pid)
+    cmd
+    |> Moebius.Runner.execute(pid)
     |> Moebius.Transformer.to_single
   end
 
@@ -856,7 +875,8 @@ defmodule Moebius.Query do
   Executes a command, returning a list of results
   """
   def execute(cmd) do
-    Moebius.Runner.execute(cmd)
+    cmd
+    |> Moebius.Runner.execute
     |> Moebius.Transformer.to_list
   end
 
@@ -864,7 +884,8 @@ defmodule Moebius.Query do
   Executes a pass-through query and returns a single result
   """
   def execute(cmd, :single) do
-    Moebius.Runner.execute(cmd)
+    cmd
+    |> Moebius.Runner.execute
     |> Moebius.Transformer.to_single
   end
 
@@ -872,7 +893,8 @@ defmodule Moebius.Query do
   Executes a command, returning a list of results as part of a transaction
   """
   def execute(cmd, pid) do
-    Moebius.Runner.execute(cmd, pid)
+    cmd
+    |> Moebius.Runner.execute(pid)
     |> Moebius.Transformer.to_list
   end
 
