@@ -555,7 +555,7 @@ defmodule Moebius.Query do
   end
   ```
   """
-  def update(cmd, pid, :single, criteria) when is_list(criteria) do
+  def update(cmd, pid, :single, criteria) when  is_pid(pid) and is_list(criteria) do
     cmd
     |> update_command(criteria)
     |> execute(:single, pid)
@@ -623,7 +623,7 @@ defmodule Moebius.Query do
   end
   ```
   """
-  def delete(cmd, pid) do
+  def delete(cmd, pid) when is_pid(pid) do
     cmd
     |> delete_command
     |> execute(:single, pid)
@@ -865,7 +865,7 @@ defmodule Moebius.Query do
   @doc """
   Executes a pass-through query and returns a single result as part of a transaction
   """
-  def execute(cmd, :single, pid) do
+  def execute(cmd, :single, pid) when is_pid(pid) do
     cmd
     |> Moebius.Runner.execute(pid)
     |> Moebius.Transformer.to_single
@@ -892,7 +892,7 @@ defmodule Moebius.Query do
   @doc """
   Executes a command, returning a list of results as part of a transaction
   """
-  def execute(cmd, pid) do
+  def execute(cmd, pid) when is_pid(pid) do
     cmd
     |> Moebius.Runner.execute(pid)
     |> Moebius.Transformer.to_list

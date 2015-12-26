@@ -220,8 +220,8 @@ defmodule Moebius.DocumentQuery do
     res
   end
 
-  def save(cmd, pid, doc) when is_list(doc), do: save(cmd, pid, Enum.into(doc, %{}))
-  def save(cmd, pid, doc) when is_map(doc) do
+  def save(cmd, pid, doc) when is_pid(pid) and is_list(doc), do: save(cmd, pid, Enum.into(doc, %{}))
+  def save(cmd, pid, doc) when is_pid(pid) and is_map(doc) do
     cmd = %{cmd | pid: pid}
     try do
 
@@ -299,25 +299,25 @@ defmodule Moebius.DocumentQuery do
   An alias for `delete/2`, removes a document with the specified ID.
   """
   def remove(cmd, id), do: delete(cmd, id)
-  def remove(cmd, pid, id), do: delete(cmd, pid, id)
+  def remove(cmd, pid, id) when is_pid(pid), do: delete(cmd, pid, id)
 
   @doc """
   Deletes a document with the given id
   """
   def delete(cmd, id), do: cmd |> delete_command(id) |> execute(:single)
-  def delete(cmd, pid, id), do: cmd |> delete_command(id) |> execute(pid)
+  def delete(cmd, pid, id) when is_pid(pid), do: cmd |> delete_command(id) |> execute(pid)
 
   @doc """
   An alias for `delete/1`, removes a document based on the filter setup.
   """
   def remove(cmd), do: delete(cmd)
-  def remove(cmd, pid), do: delete(cmd, pid)
+  def remove(cmd, pid) when is_pid(pid), do: delete(cmd, pid)
 
   @doc """
   Deletes a document based on the filter (if any)
   """
   def delete(cmd),  do: cmd |> delete_command |> execute
-  def delete(cmd, pid),  do: cmd |> delete_command |> execute(pid)
+  def delete(cmd, pid) when is_pid(pid),  do: cmd |> delete_command |> execute(pid)
 
 
   @doc """
