@@ -402,7 +402,6 @@ defmodule Moebius.Query do
   result = db(:people) |> insert(data)
   ```
   """
-  #def insert(cmd, records) when is_list(records) and not is_tuple(hd(records)) do
   def insert(cmd, [[hd | _] | _] = records) when is_tuple(hd) do
 
     # need a single definitive column map to arrest and roll back Tx if
