@@ -1,6 +1,7 @@
 defmodule Moebius.Query do
 
   import Inflex, only: [singularize: 1]
+  alias Moebius.QueryCommand
   use Moebius.QueryFilter
 
   @moduledoc """
@@ -27,7 +28,7 @@ defmodule Moebius.Query do
     do: db(Atom.to_string(table))
 
   def db(table),
-    do: %Moebius.QueryCommand{table_name: table}
+    do: %QueryCommand{table_name: table}
 
 
   @doc """
@@ -67,7 +68,7 @@ defmodule Moebius.Query do
       |> find(1)
   ```
   """
-  def find(cmd, id) do
+  def find(%QueryCommand{} = cmd, id) do
     cmd
       |> filter(id: id)
       |> select_command
@@ -88,12 +89,12 @@ defmodule Moebius.Query do
       |> to_list
   ```
   """
-  def sort(cmd, cols, direction \\ :asc)
+  #def sort(%QueryCommand{} = cmd, cols, direction \\ :asc)
 
-  def sort(cmd, cols, direction) when is_atom(cols),
+  def sort(%QueryCommand{} = cmd, cols, direction) when is_atom(cols),
     do: sort(cmd, Atom.to_string(cols), direction)
 
-  def sort(cmd, cols, direction) when is_binary(cols),
+  def sort(%QueryCommand{} = cmd, cols, direction) when is_binary(cols),
     do: %{cmd | order: " order by #{cols} #{direction}"}
 
   @doc """
@@ -139,7 +140,7 @@ defmodule Moebius.Query do
       |> to_list
   ```
   """
-  def skip(cmd, n),
+  def skip(%QueryCommand{} = cmd, n),
     do: offset(cmd, n)
 
   @doc """
@@ -159,7 +160,7 @@ defmodule Moebius.Query do
   #command is a QueryCommand object with all of the pipelined settings applied
   ```
   """
-  def select_command(cmd, cols \\ "*") when is_bitstring(cols) do
+  def select_command(%QueryCommand{} = cmd, cols \\ "*") when is_bitstring(cols) do
     %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
@@ -174,7 +175,7 @@ defmodule Moebius.Query do
 
   #count == 20
   """
-  def count(cmd) do
+  def count(%QueryCommand{} = cmd) do
     res = %{cmd | sql: "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
       |> execute(:single)
 
@@ -199,7 +200,7 @@ defmodule Moebius.Query do
     |> first("first, last, email")
   ```
   """
-  def first(cmd, cols \\ "*") do
+  def first(%QueryCommand{} = cmd, cols \\ "*") do
     res = cmd
           |> select_command(cols)
           |> execute(:single)
@@ -225,7 +226,7 @@ defmodule Moebius.Query do
     |> last("first, last, email")
   ```
   """
-  def last(cmd, sort_by) when is_atom(sort_by) do
+  def last(%QueryCommand{} = cmd, sort_by) when is_atom(sort_by) do
     cmd
     |> sort(sort_by, :desc)
     |> select_command
@@ -246,7 +247,7 @@ defmodule Moebius.Query do
     |> to_list("first, last, email")
   ```
   """
-  def to_list(cmd, cols \\ "*"),
+  def to_list(%QueryCommand{} = cmd, cols \\ "*"),
     do: all(cmd, cols)
 
   @doc """
@@ -263,7 +264,7 @@ defmodule Moebius.Query do
     |> all("first, last, email")
   ```
   """
-  def all(cmd, cols \\ "*") do
+  def all(%QueryCommand{} = cmd, cols \\ "*") do
     cmd
     |> select_command(cols)
     |> execute
@@ -284,7 +285,7 @@ defmodule Moebius.Query do
     |> reduce(:sum, :money_spent)
   ```
   """
-  def group(cmd, cols) when is_atom(cols),
+  def group(%QueryCommand{} = cmd, cols) when is_atom(cols),
     do: group(cmd, Atom.to_string(cols))
 
   @doc """
@@ -301,7 +302,7 @@ defmodule Moebius.Query do
     |> reduce(:sum, :money_spent)
   ```
   """
-  def group(cmd, cols),
+  def group(%QueryCommand{} = cmd, cols),
     do: %{cmd | group_by: cols}
 
   @doc """
@@ -317,7 +318,7 @@ defmodule Moebius.Query do
     |> reduce(:sum, :money_spent)
   ```
   """
-  def map(cmd, criteria),
+  def map(%QueryCommand{} = cmd, criteria),
     do: filter(cmd, criteria)
 
   @doc """
@@ -334,10 +335,10 @@ defmodule Moebius.Query do
     |> reduce(:sum, :money_spent)
   ```
   """
-  def reduce(cmd, op, column) when is_atom(column),
+  def reduce(%QueryCommand{} = cmd, op, column) when is_atom(column),
     do: reduce(cmd, op, Atom.to_string(column))
 
-  def reduce(cmd, op, column) when is_bitstring(column) do
+  def reduce(%QueryCommand{} = cmd, op, column) when is_bitstring(column) do
     sql = cond do
       cmd.group_by ->
         "select #{op}(#{column}), #{cmd.group_by} from #{cmd.table_name}#{cmd.join}#{cmd.where} GROUP BY #{cmd.group_by}"
@@ -373,7 +374,7 @@ defmodule Moebius.Query do
         |> run
   ```
   """
-  def search(cmd, for: term, in: columns) when is_list columns do
+  def search(%QueryCommand{} = cmd, for: term, in: columns) when is_list columns do
     concat_list = Enum.map_join(columns, ", ' ',  ", &"#{&1}")
     sql = """
     select *, ts_rank_cd(to_tsvector(concat(#{concat_list})),to_tsquery($1)) as rank from #{cmd.table_name}
@@ -402,7 +403,7 @@ defmodule Moebius.Query do
   result = db(:people) |> insert(data)
   ```
   """
-  def insert(cmd, [[hd | _] | _] = records) when is_tuple(hd) do
+  def insert(%QueryCommand{} = cmd, [[hd | _] | _] = records) when is_tuple(hd) do
 
     # need a single definitive column map to arrest and roll back Tx if
     # and of the inputs are malformed (different cols vs. vals)
@@ -417,8 +418,7 @@ defmodule Moebius.Query do
 
   end
 
-  defp bulk_insert_batch(cmd, records, acc, column_map) do
-    [first | rest] = records
+  defp bulk_insert_batch(%QueryCommand{} = cmd, records, acc, column_map) do
 
     # 20,000 seems to be the optimal number here. Technically you can go up to 34,464, but I think Postgrex imposes a lower limit, as I
     # hit a wall at 34,000, but succeeded at 30,000. Perf on 100k records is best at 20,000.
@@ -435,7 +435,7 @@ defmodule Moebius.Query do
     end
   end
 
-  defp bulk_insert_command(cmd, [first | rest]) do
+  defp bulk_insert_command(%QueryCommand{} = cmd, [first | rest]) do
     records = [first | rest]
     cols = cmd.columns
     vals = Enum.reduce(Enum.reverse(records), [], fn(listitem, acc) ->
@@ -467,7 +467,7 @@ defmodule Moebius.Query do
   end
   ```
   """
-  def insert(cmd, pid, criteria) when is_pid(pid) do
+  def insert(%QueryCommand{} = cmd, pid, criteria) when is_pid(pid) do
     cmd
     |> insert_command(criteria)
     |> execute(:single, pid)
@@ -485,7 +485,7 @@ defmodule Moebius.Query do
       |> insert(email: "test@test.com", first: "Test", last: "User")
   ```
   """
-  def insert(cmd, criteria) do
+  def insert(%QueryCommand{} = cmd, criteria) do
     cmd
     |> insert_command(criteria)
     |> execute(:single)
@@ -494,7 +494,7 @@ defmodule Moebius.Query do
   @doc """
   Creates an insert command based on the assembled pipeline
   """
-  def insert_command(cmd, criteria) do
+  def insert_command(%QueryCommand{} = cmd, criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
     sql = "insert into #{cmd.table_name}(" <> Enum.map_join(cols, ", ", &"#{&1}") <> ")" <>
@@ -506,7 +506,7 @@ defmodule Moebius.Query do
   @doc """
   Creates an update command based on the assembled pipeline.
   """
-  def update_command(cmd, criteria) do
+  def update_command(%QueryCommand{} = cmd, criteria) do
 
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
@@ -554,7 +554,7 @@ defmodule Moebius.Query do
   end
   ```
   """
-  def update(cmd, pid, :single, criteria) when  is_pid(pid) and is_list(criteria) do
+  def update(%QueryCommand{} = cmd, pid, :single, criteria) when  is_pid(pid) and is_list(criteria) do
     cmd
     |> update_command(criteria)
     |> execute(:single, pid)
@@ -576,7 +576,7 @@ defmodule Moebius.Query do
 
   ```
   """
-  def update(cmd, :single, criteria) when is_list(criteria) do
+  def update(%QueryCommand{} = cmd, :single, criteria) when is_list(criteria) do
     cmd
     |> update_command(criteria)
     |> execute(:single)
@@ -593,7 +593,7 @@ defmodule Moebius.Query do
     |> update(status: "preferred")
   ```
   """
-  def update(cmd, criteria) when is_list(criteria) do
+  def update(%QueryCommand{} = cmd, criteria) when is_list(criteria) do
     cmd
     |> update_command(criteria)
     |> execute
@@ -602,7 +602,7 @@ defmodule Moebius.Query do
   @doc """
   Creates a DELETE command
   """
-  def delete_command(cmd) do
+  def delete_command(%QueryCommand{} = cmd) do
     sql = "delete from #{cmd.table_name}" <> cmd.where <> ";"
     %{cmd | sql: sql, type: :delete}
   end
@@ -622,7 +622,7 @@ defmodule Moebius.Query do
   end
   ```
   """
-  def delete(cmd, pid) when is_pid(pid) do
+  def delete(%QueryCommand{} = cmd, pid) when is_pid(pid) do
     cmd
     |> delete_command
     |> execute(:single, pid)
@@ -640,7 +640,7 @@ defmodule Moebius.Query do
 
   ```
   """
-  def delete(cmd) do
+  def delete(%QueryCommand{} = cmd) do
     cmd
     |> delete_command
     |> execute(:single)
@@ -671,7 +671,7 @@ defmodule Moebius.Query do
         |> select
   ```
   """
-  def join(cmd, table, opts \\ []) do
+  def join(%QueryCommand{} = cmd, table, opts \\ []) do
     join_type   = Keyword.get(opts, :join, "inner")
     join_table  = Keyword.get(opts, :on, cmd.table_name)
     foreign_key = Keyword.get(opts, :foreign_key, "#{singularize(join_table)}_id")
@@ -864,7 +864,7 @@ defmodule Moebius.Query do
   @doc """
   Executes a pass-through query and returns a single result as part of a transaction
   """
-  def execute(cmd, :single, pid) when is_pid(pid) do
+  def execute(%QueryCommand{} = cmd, :single, pid) when is_pid(pid) do
     cmd
     |> Moebius.Runner.execute(pid)
     |> Moebius.Transformer.to_single
@@ -873,7 +873,7 @@ defmodule Moebius.Query do
   @doc """
   Executes a command, returning a list of results
   """
-  def execute(cmd) do
+  def execute(%QueryCommand{} = cmd) do
     cmd
     |> Moebius.Runner.execute
     |> Moebius.Transformer.to_list
@@ -882,7 +882,7 @@ defmodule Moebius.Query do
   @doc """
   Executes a pass-through query and returns a single result
   """
-  def execute(cmd, :single) do
+  def execute(%QueryCommand{} = cmd, :single) do
     cmd
     |> Moebius.Runner.execute
     |> Moebius.Transformer.to_single
@@ -891,7 +891,7 @@ defmodule Moebius.Query do
   @doc """
   Executes a command, returning a list of results as part of a transaction
   """
-  def execute(cmd, pid) when is_pid(pid) do
+  def execute(%QueryCommand{} = cmd, pid) when is_pid(pid) do
     cmd
     |> Moebius.Runner.execute(pid)
     |> Moebius.Transformer.to_list
