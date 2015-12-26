@@ -470,7 +470,7 @@ defmodule Moebius.Query do
   """
   def insert(cmd, pid, criteria) when is_pid(pid) do
     cmd
-    |> insert_command(cmd, criteria)
+    |> insert_command(criteria)
     |> execute(:single, pid)
   end
 
@@ -488,7 +488,7 @@ defmodule Moebius.Query do
   """
   def insert(cmd, criteria) do
     cmd
-    |> insert_command(cmd, criteria)
+    |> insert_command(criteria)
     |> execute(:single)
   end
 
