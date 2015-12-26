@@ -1,4 +1,6 @@
-%{"combine": {:hex, :combine, "0.5.2"},
+%{"bunt": {:hex, :bunt, "0.1.4"},
+  "combine": {:hex, :combine, "0.5.2"},
+  "credo": {:hex, :credo, "0.2.4"},
   "decimal": {:hex, :decimal, "1.1.0"},
   "earmark": {:hex, :earmark, "0.1.18"},
   "ex_doc": {:hex, :ex_doc, "0.10.0"},

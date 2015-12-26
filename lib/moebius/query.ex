@@ -399,19 +399,19 @@ defmodule Moebius.Query do
   result = db(:people) |> insert(data)
   ```
   """
-  def insert(cmd, [[h | t] | rest]) do
-    records = [[h | t] | rest]
-    [first | rest] = records
+  #def insert(cmd, records) when is_list(records) and not is_tuple(hd(records)) do
+  def insert(cmd, [[hd | _] | _] = records) when is_tuple(hd) do
 
     # need a single definitive column map to arrest and roll back Tx if
     # and of the inputs are malformed (different cols vs. vals)
-    column_map = Keyword.keys(first)
+    column_map = records |> hd |> Keyword.keys
 
     transaction fn(pid) ->
       bulk_insert_batch(cmd, records, [], column_map)
       |> Enum.map(fn(cmd) -> execute(cmd, pid) end)
       |> List.flatten
     end
+
   end
 
   defp bulk_insert_batch(cmd, records, acc, column_map) do
@@ -464,7 +464,7 @@ defmodule Moebius.Query do
   end
   ```
   """
-  def insert(cmd, pid, criteria) do
+  def insert(cmd, pid, criteria) when is_pid(pid) do
     insert_command(cmd, criteria)
     |> execute(:single, pid)
   end
@@ -506,7 +506,7 @@ defmodule Moebius.Query do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
 
-    {cols, count} = Enum.map_reduce cols, 1, fn col, acc ->
+    {cols, col_count} = Enum.map_reduce cols, 1, fn col, acc ->
       {"#{col} = $#{acc}", acc + 1}
     end
 
@@ -514,7 +514,7 @@ defmodule Moebius.Query do
     where = cond do
 
       length(cmd.where_columns) > 0 ->
-        {filters, _count} = Enum.map_reduce cmd.where_columns, count, fn col, acc ->
+        {filters, _count} = Enum.map_reduce cmd.where_columns, col_count, fn col, acc ->
           {"#{col} = $#{acc}", acc + 1}
         end
         " where " <> Enum.join(filters, " and ")

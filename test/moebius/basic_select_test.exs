@@ -6,7 +6,7 @@ defmodule Moebius.BasicSelectTest do
   setup do
     db(:logs) |> delete
     db(:users) |> delete
-    user = db(:users) |> insert(email: "friend@test.com")
+    user = db(:users) |> insert([email: "friend@test.com"])
     db(:users) |> insert(email: "enemy@test.com")
 
     {:ok, res: user}

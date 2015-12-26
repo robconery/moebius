@@ -170,11 +170,11 @@ defmodule Moebius.DocumentQuery do
   @doc """
   Alias for Query limit
   """
-  def limit(cmd, length), do: Moebius.Query.limit(cmd, length)
+  def limit(cmd, len), do: Moebius.Query.limit(cmd, len)
   @doc """
   Alias for Query offset
   """
-  def offset(cmd, length), do: Moebius.Query.offset(cmd, length)
+  def offset(cmd, len), do: Moebius.Query.offset(cmd, len)
   @doc """
   Alias for function
   """

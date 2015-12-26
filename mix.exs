@@ -35,7 +35,8 @@ defmodule Moebius.Mixfile do
      {:poison, "~> 1.5"},
      {:json, "~> 0.3.0"},
      {:ex_doc, "~> 0.10", only: [:dev, :docs]},
-     {:earmark, "~> 0.1.18", only: [:dev, :docs]}]
+     {:earmark, "~> 0.1.18", only: [:dev, :docs]},
+     {:credo, "~> 0.2", only: [:dev, :test]}]
   end
 
   def package do
