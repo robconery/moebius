@@ -403,20 +403,8 @@ defmodule Moebius.Query do
   result = db(:people) |> insert(data)
   ```
   """
-  def insert(%QueryCommand{} = cmd, [[hd | _] | _] = records) when is_tuple(hd) do
-
-    # need a single definitive column map to arrest and roll back Tx if
-    # and of the inputs are malformed (different cols vs. vals)
-    column_map = records |> hd |> Keyword.keys
-
-    transaction fn(pid) ->
-      cmd
-      |> bulk_insert_batch(records, [], column_map)
-      |> Enum.map(fn(cmd) -> execute(cmd, pid) end)
-      |> List.flatten
-    end
-
-  end
+  def insert(%QueryCommand{} = cmd, [[hd | _] | _] = records) when is_tuple(hd),
+    do: bulk_insert(cmd, records)
 
   @doc """
   A simple insert that that returns the inserted record. Create your list of data and send it on in.
@@ -463,10 +451,24 @@ defmodule Moebius.Query do
   def insert_command(%QueryCommand{} = cmd, criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
-    sql = "insert into #{cmd.table_name}(" <> Enum.map_join(cols, ", ", &"#{&1}") <> ")" <>
-    " values(" <> Enum.map_join(1..length(cols), ", ", &"$#{&1}") <> ") returning *;"
+    column_names = Enum.map_join(cols,", ", &"#{&1}")
+    parameter_placeholders = Enum.map_join(1..length(cols), ", ", &"$#{&1}")
+    sql = "insert into #{cmd.table_name}(#{column_names}) values(#{parameter_placeholders}) returning *;"
 
     %{cmd | sql: sql, params: vals, type: :insert}
+  end
+
+  defp bulk_insert(%QueryCommand{} = cmd, records) do
+    # need a single definitive column map to arrest and roll back Tx if
+    # and of the inputs are malformed (different cols vs. vals)
+    column_map = records |> hd |> Keyword.keys
+
+    transaction fn(pid) ->
+      cmd
+      |> bulk_insert_batch(records, [], column_map)
+      |> Enum.map(fn(cmd) -> execute(cmd, pid) end)
+      |> List.flatten
+    end
   end
 
   defp bulk_insert_batch(%QueryCommand{} = cmd, records, acc, column_map) do
