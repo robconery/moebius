@@ -29,7 +29,7 @@ defmodule Moebius.Mixfile do
   end
 
   defp deps do
-    [{:postgrex, "~> 0.9.1"},
+    [{:postgrex, "~> 0.10"},
      {:timex, "~> 1.0.0-rc4"},
      {:inflex, "~> 1.5.0"},
      {:poison, "~> 1.5"},

@@ -493,7 +493,7 @@ defmodule Moebius.DocumentQuery do
     VALUES('#{doc}')
     RETURNING id, #{cmd.json_field}::text;
     """
-    %{cmd | sql: sql, params: [doc], type: :insert}
+    %{cmd | sql: sql, params: [], type: :insert}
   end
 
   defp insert_command(%DocumentCommand{} = cmd, doc) when is_list(doc) or is_map(doc) do
