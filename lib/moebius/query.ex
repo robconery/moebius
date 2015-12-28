@@ -524,7 +524,7 @@ defmodule Moebius.Query do
         {filters, _count} = Enum.map_reduce cmd.where_columns, col_count, fn col, acc ->
           {"#{col} = $#{acc}", acc + 1}
         end
-        "where " <> Enum.join(filters, " and ")
+        " where " <> Enum.join(filters, " and ")
 
       cmd.where -> cmd.where
     end
@@ -537,7 +537,7 @@ defmodule Moebius.Query do
 
     columns = Enum.join(cols, ", ")
 
-    sql = "update #{cmd.table_name} set #{columns} #{where} returning *;"
+    sql = "update #{cmd.table_name} set #{columns}#{where} returning *;"
     %{cmd | sql: sql, type: :update, params: params}
   end
 
