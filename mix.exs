@@ -30,13 +30,13 @@ defmodule Moebius.Mixfile do
 
   defp deps do
     [{:postgrex, "~> 0.10"},
-     {:timex, "~> 1.0.0-rc4"},
+     {:timex, "~> 1.0.0"},
      {:inflex, "~> 1.5.0"},
      {:poison, "~> 1.5"},
      {:json, "~> 0.3.0"},
      {:ex_doc, "~> 0.11.2", only: [:dev, :docs]},
      {:earmark, "~> 0.2.0", only: [:dev, :docs]},
-     {:credo, "~> 0.2", only: [:dev, :test]}]
+     {:credo, "~> 0.2.5", only: [:dev, :test]}]
   end
 
   def package do

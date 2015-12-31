@@ -1,8 +1,8 @@
 %{"bunt": {:hex, :bunt, "0.1.4"},
   "certifi": {:hex, :certifi, "0.3.0"},
-  "combine": {:hex, :combine, "0.6.0"},
+  "combine": {:hex, :combine, "0.7.0"},
   "connection": {:hex, :connection, "1.0.2"},
-  "credo": {:hex, :credo, "0.2.4"},
+  "credo": {:hex, :credo, "0.2.5"},
   "decimal": {:hex, :decimal, "1.1.1"},
   "earmark": {:hex, :earmark, "0.2.0"},
   "ex_doc": {:hex, :ex_doc, "0.11.2"},
@@ -14,5 +14,5 @@
   "poison": {:hex, :poison, "1.5.0"},
   "postgrex": {:hex, :postgrex, "0.10.0"},
   "ssl_verify_hostname": {:hex, :ssl_verify_hostname, "1.0.5"},
-  "timex": {:hex, :timex, "1.0.0-rc4"},
+  "timex": {:hex, :timex, "1.0.0"},
   "tzdata": {:hex, :tzdata, "0.5.6"}}
