@@ -4,28 +4,28 @@ defmodule Moebius.Runner do
   """
 
   @doc """
-  Spawn a Postgrex worker to run our query using the config specified in /config
+  Spawn a Postgrex pool to run our queries using the config specified in /config
   """
-  def connect do
-    extensions = [{Postgrex.Extensions.JSON, library: Poison}]
+  def start_link() do
+     extensions = [{Postgrex.Extensions.JSON, library: Poison}]
+     opts = Keyword.update(opts(), :extensions, extensions, &(&1 ++ extensions))
+     Postgrex.Connection.start_link([name: __MODULE__] ++ opts)
+  end
 
+  defp opts() do
     Application.get_env(:moebius, :connection)
-      |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
-      |> Postgrex.Connection.start_link
+    |> Keyword.put_new(:pool_mod, DBConnection.Poolboy)
+    |> Keyword.put_new(:pool_size, 10)
+    |> Keyword.put_new(:pool_overflow, 0)
   end
 
   @doc """
   If there isn't a connection process started then one is added to the command
   """
   def execute(cmd) do
-    {:ok, pid} = connect()
-    try do
-      case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
-        {:ok, result} -> {:ok, result}
-        {:error, err} -> {:error, err.postgres.message}
-      end
-    after
-      Postgrex.Connection.stop(pid)
+    case Postgrex.Connection.query(__MODULE__, cmd.sql, cmd.params, opts()) do
+      {:ok, result} -> {:ok, result}
+      {:error, err} -> {:error, err.postgres.message}
     end
   end
 
@@ -44,16 +44,18 @@ defmodule Moebius.Runner do
     end
   end
 
-
-  def open_transaction() do
-    {:ok, pid} = Moebius.Runner.connect()
-    Postgrex.Connection.query(pid, "BEGIN;",[])
-    pid
-  end
-
-  def commit_and_close_transaction(pid) do
-    Postgrex.Connection.query(pid, "COMMIT;",[])
-    Postgrex.Connection.stop(pid)
+  @doc """
+  Opens a transaction, runs a function, commits the transaction and returns the
+  result.
+  """
+  def transaction(fun) do
+    run = fn(conn) ->
+      Postgrex.Connection.query(conn, "BEGIN;",[])
+      res = fun.(conn)
+      Postgrex.Connection.query(conn, "COMMIT;",[])
+      res
+    end
+    DBConnection.run(__MODULE__, run, opts())
   end
 
   @doc """

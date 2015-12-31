@@ -896,14 +896,14 @@ defmodule Moebius.Query do
   """
 
   def transaction(fun) do
-    pid = Moebius.Runner.open_transaction()
-    res = try do
-      fun.(pid)
-    rescue
-      e in RuntimeError -> {:error, e.message}
-    end
-    Moebius.Runner.commit_and_close_transaction(pid)
-    res
+    Moebius.Runner.transaction(fn(conn) ->
+      res = try do
+        fun.(conn)
+      rescue
+        e in RuntimeError -> {:error, e.message}
+      end
+      res
+    end)
   end
 
 end
