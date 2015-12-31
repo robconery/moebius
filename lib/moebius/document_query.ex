@@ -465,7 +465,7 @@ defmodule Moebius.DocumentQuery do
 
 
   defp update_command(%DocumentCommand{} = cmd, change, id) when is_map(change) and is_integer(id) do
-    {:ok, encoded} = JSON.encode(change)
+    {:ok, encoded} = Poison.encode(change)
     sql = """
     update #{cmd.table_name}
     set #{cmd.json_field} = '#{encoded}'
@@ -497,7 +497,7 @@ defmodule Moebius.DocumentQuery do
   end
 
   defp insert_command(%DocumentCommand{} = cmd, doc) when is_list(doc) or is_map(doc) do
-    {:ok, encoded} = JSON.encode(doc)
+    {:ok, encoded} = Poison.encode(doc)
     insert_command(cmd, encoded)
   end
 
