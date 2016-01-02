@@ -22,10 +22,10 @@ defmodule Moebius.TransactionTest do
 
     result = transaction fn(pid) ->
 
-      new_user = with(:users)
+      new_user = db(:users)
         |> insert(pid, email: "frodo@test.com")
 
-      with(:logs)
+      db(:logs)
         |> insert(pid, user_id: new_user.id, log: "Hi Frodo")
 
       new_user
@@ -40,10 +40,10 @@ defmodule Moebius.TransactionTest do
     assert{:error, "insert or update on table \"logs\" violates foreign key constraint \"logs_user_id_fkey\""}
       = transaction fn(pid) ->
 
-      new_user = with(:users)
+      new_user = db(:users)
         |> insert(pid,email: "bilbo@test.com")
 
-      with(:logs)
+      db(:logs)
         |> insert(pid,user_id: 22222, log: "Hi Bilbo")
 
       new_user

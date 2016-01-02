@@ -29,32 +29,6 @@ defmodule Moebius.Query do
   def db(table),
     do: %Moebius.QueryCommand{table_name: table}
 
-
-  @doc """
-  Specifies the table or view you want to query and is an alias for the `db/1` function using
-  a string or atom as a table name. This is useful for specifying a table within a schema.
-
-  "table"  -   the name of the table you want to query, such as `membership.users`
-  :table  -   the name of the table you want to query, such as `:users`
-
-  Example
-
-  ```
-  result = with("membership.users")
-    |> to_list
-
-  result = with(:users)
-    |> to_list
-  ```
-  """
-  def with(table) when is_atom(table),
-    do: db(table)
-
-  def with(table),
-    do: db(table)
-
-
-
   @doc """
   Searches for a record based on an `id` primary key.
 

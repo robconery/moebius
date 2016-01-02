@@ -65,11 +65,6 @@ defmodule Moebius.DocumentQuery do
     do: %Moebius.DocumentCommand{table_name: table}
 
   @doc """
-  An alias for db
-  """
-  def with(table),  do: db(table)
-
-  @doc """
   This is analagous to `filter` with the Query module, however this method is highly optimized for JSONB as it uses the `@` (contains)
   operator. This flexes the GIN index created for your table (see above).
 
