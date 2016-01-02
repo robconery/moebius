@@ -10,8 +10,8 @@ defmodule Moebius.Runner do
     extensions = [{Postgrex.Extensions.JSON, library: Poison}]
 
     Application.get_env(:moebius, :connection)
-      |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
-      |> Postgrex.Connection.start_link
+    |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
+    |> Postgrex.Connection.start_link
   end
 
   @doc """
@@ -33,7 +33,7 @@ defmodule Moebius.Runner do
   Executes a command for a given transaction specified with `pid`. If the execution fails,
   it will be caught in `Query.transaction/1` and reported back using `{:error, err}`.
   """
-  def execute(cmd, pid) do
+  def execute(cmd, pid) when is_pid(pid) do
     case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
       {:ok, result} ->
         {:ok, result}
@@ -51,7 +51,7 @@ defmodule Moebius.Runner do
     pid
   end
 
-  def commit_and_close_transaction(pid) do
+  def commit_and_close_transaction(pid) when is_pid(pid) do
     Postgrex.Connection.query(pid, "COMMIT;",[])
     Postgrex.Connection.stop(pid)
   end

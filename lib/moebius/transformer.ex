@@ -26,13 +26,12 @@ defmodule Moebius.Transformer do
   @doc """
   Coerce a large result set into an array of atom-keyed maps
   """
-  def to_list({:error, err}),
-    do: {:error, err}
-  def to_list({:ok, %{rows: nil}}),
-    do: []
+  def to_list({:error, err}), do: {:error, err}
+  def to_list({:ok, %{rows: nil}}), do: []
   def to_list({:ok, %{rows: rows, columns: cols}}) do
     Enum.map rows, fn(r) ->
-      zip_columns_and_row({cols, r})
+      {cols, r}
+      |> zip_columns_and_row
       |> to_map
     end
   end
@@ -40,15 +39,15 @@ defmodule Moebius.Transformer do
   @doc """
   Coerces a Postgrex.Result into a single atom-keyed map
   """
-  def to_single({:error, err}),
-    do: {:error, err}
+  def to_single({:error, err}), do: {:error, err}
   def to_single({:ok, %{command: :delete, num_rows: count}}),
     do: %{deleted: count}
 
   def to_single({:ok, %{num_rows: count}}) when count == 0,
     do: nil
   def to_single({:ok, %{num_rows: count} = res}) when count > 0 do
-    get_first_result(res)
+    res
+    |> get_first_result
     |> zip_columns_and_row
     |> to_map
   end
