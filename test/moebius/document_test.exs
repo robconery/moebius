@@ -185,13 +185,13 @@ defmodule Moebius.DocTest do
   test "executes a transaction" do
 
     transaction fn(pid) ->
-      with(:monkies)
+      db(:monkies)
         |> save(pid, name: "Peaches", company: "Microsoft")
 
-      with(:cars)
+      db(:cars)
         |> save(pid, name: "Toyota")
 
-      with(:user_docs)
+      db(:user_docs)
         |> save(pid, name: "bubbles")
 
     end
