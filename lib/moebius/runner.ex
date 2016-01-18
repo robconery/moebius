@@ -7,11 +7,38 @@ defmodule Moebius.Runner do
   Spawn a Postgrex worker to run our query using the config specified in /config
   """
   def connect do
-    extensions = [{Postgrex.Extensions.JSON, library: Poison}]
+    #extensions = [{Postgrex.Extensions.JSON, library: Poison}]
 
-    Application.get_env(:moebius, :connection)
-      |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
-      |> Postgrex.Connection.start_link
+    # Application.get_env(:moebius, :connection)
+    #   |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
+    #   |> Postgrex.Connection.start_link
+    Application.get_env(:moebius, :connection) |> parse_connection_args
+  end
+
+  def parse_connection_args, do: raise "Please specify a connection in your config"
+  def parse_connection_args(args) when is_list(args), do: args |> Enum.into(%{})
+  def parse_connection_args(""), do: []
+  def parse_connection_args(url) when is_binary(url) do
+    info = url |> URI.decode() |> URI.parse()
+
+    if is_nil(info.host) do
+      raise "Invalid URL: host is not present"
+    end
+
+    if is_nil(info.path) or not (info.path =~ ~r"^/([^/])+$") do
+      raise "Invalid URL: path should be a database name"
+    end
+
+    destructure [username, password], info.userinfo && String.split(info.userinfo, ":")
+    "/" <> database = info.path
+
+    opts = [username: username,
+            password: password,
+            database: database,
+            hostname: info.host,
+            port:     info.port]
+
+    Enum.reject(opts, fn {_k, v} -> is_nil(v) end) |> Enum.into(%{})
   end
 
   @doc """

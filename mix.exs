@@ -1,7 +1,7 @@
 defmodule Moebius.Mixfile do
   use Mix.Project
 
-  @version "1.0.8"
+  @version "1.0.9"
 
   def project do
     [app: :moebius,
@@ -30,6 +30,8 @@ defmodule Moebius.Mixfile do
 
   defp deps do
     [{:postgrex, "~> 0.9.1"},
+     {:epgsql, "~> 3.1.1"},
+     {:poolboy, "~> 1.5.1"},
      {:timex, "~> 0.19.4"},
      {:inflex, "~> 1.5.0"},
      {:poison, "~> 1.5"},
