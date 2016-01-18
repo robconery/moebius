@@ -1,6 +1,6 @@
 defmodule MoebiusInsertTest do
   use ExUnit.Case
-
+  use Timex
   import Moebius.Query
 
   setup_all do
@@ -23,5 +23,14 @@ defmodule MoebiusInsertTest do
         |> insert(email: "test@test.com", first: "Test", last: "User")
 
   end
+
+  test "It works with dates" do
+    {:ok, the_date} = Date.local |> DateFormat.format("%Y-%m-%d", :strftime)
+    blurg= %Postgrex.Timestamp{year: 2013, month: 10, day: 12, hour: 0, min: 37, sec: 14, usec: 0}
+    res = db(:users)
+      |> insert(email: "testX@test.com", first: "Test", last: "User", last_login: blurg)
+    IO.inspect res
+  end
+
 
 end

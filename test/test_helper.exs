@@ -13,6 +13,7 @@ create table users(
   first varchar(50),
   last varchar(50),
   order_count integer not null default 10,
+  last_login timestamptz,
   profile jsonb
 );
 

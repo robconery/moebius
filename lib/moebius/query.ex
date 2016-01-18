@@ -29,7 +29,6 @@ defmodule Moebius.Query do
   def db(table),
     do: %Moebius.QueryCommand{table_name: table}
 
-
   @doc """
   Specifies the table or view you want to query and is an alias for the `db/1` function using
   a string or atom as a table name. This is useful for specifying a table within a schema.

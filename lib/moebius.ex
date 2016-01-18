@@ -5,5 +5,4 @@ defmodule Moebius do
   def start(type, args) do
     Moebius.Supervisor.start_link(type, args)
   end
-
 end
