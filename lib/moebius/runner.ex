@@ -12,11 +12,22 @@ defmodule Moebius.Runner do
     # Application.get_env(:moebius, :connection)
     #   |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
     #   |> Postgrex.Connection.start_link
-    Application.get_env(:moebius, :connection) |> parse_connection_args
+    opts = Application.get_env(:moebius, :connection)
+      |> parse_connection_args
+
+    #TODO: Feeling a bit fugly about this but it works .. and :epgsql is a bit finicky about connections
+    case opts do
+      %{hostname: host, username: user, password: pass, database: database} -> :epgsql.connect opts.hostname, user, pass, database: opts.database
+      %{hostname: host, username: user, database: database} -> :epgsql.connect opts.hostname, user, database: opts.database
+      %{hostname: host, database: database} -> :epgsql.connect opts.hostname, database: opts.database
+      %{database: database} -> :epgsql.connect 'localhost', database: opts.database
+    end
   end
 
   def parse_connection_args, do: raise "Please specify a connection in your config"
-  def parse_connection_args(args) when is_list(args), do: args |> Enum.into(%{})
+  def parse_connection_args(args) when is_list(args) do
+    for {k, v} <- args, into: %{}, do: {k, String.to_char_list(v)}
+  end
   def parse_connection_args(""), do: []
   def parse_connection_args(url) when is_binary(url) do
     info = url |> URI.decode() |> URI.parse()
@@ -32,11 +43,11 @@ defmodule Moebius.Runner do
     destructure [username, password], info.userinfo && String.split(info.userinfo, ":")
     "/" <> database = info.path
 
-    opts = [username: username,
-            password: password,
-            database: database,
-            hostname: info.host,
-            port:     info.port]
+    opts = [username: String.to_char_list(username),
+            password: String.to_char_list(password),
+            database: String.to_char_list(database),
+            hostname: String.to_char_list(info.host),
+            port:     String.to_char_list(info.port)]
 
     Enum.reject(opts, fn {_k, v} -> is_nil(v) end) |> Enum.into(%{})
   end
@@ -45,14 +56,15 @@ defmodule Moebius.Runner do
   If there isn't a connection process started then one is added to the command
   """
   def execute(cmd) do
-    {:ok, pid} = connect()
+    {:ok, pid} = connect
     try do
-      case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
-        {:ok, result} -> {:ok, result}
+      case :epgsql.equery pid, cmd.sql, cmd.params do
+        {:ok, num} -> {:ok, num}
+        {:ok, num, cols, rows} -> {:ok, cols, rows}
         {:error, err} -> {:error, err.postgres.message}
       end
     after
-      Postgrex.Connection.stop(pid)
+      :epgsql.close pid
     end
   end
 
