@@ -84,4 +84,5 @@ defmodule Moebius.BasicSelectTest do
 
     assert found.id == user.id
   end
+
 end

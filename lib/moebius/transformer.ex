@@ -23,9 +23,17 @@ defmodule Moebius.Transformer do
   end
 
   def to_map(list) do
+    list = Enum.map list, fn({k,v}) ->
+      fixed = case v do
+        :null -> nil
+        v -> v
+      end
+      {k,fixed}
+    end
     Enum.into(list, %{})
   end
 
+  #GRRRRRRRRRRRRRRRRRRR
   def merge_columns_row(cols, row) do
     List.zip([cols, row])
   end

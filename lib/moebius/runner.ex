@@ -43,13 +43,16 @@ defmodule Moebius.Runner do
     destructure [username, password], info.userinfo && String.split(info.userinfo, ":")
     "/" <> database = info.path
 
-    opts = [username: String.to_char_list(username),
-            password: String.to_char_list(password),
-            database: String.to_char_list(database),
-            hostname: String.to_char_list(info.host),
-            port:     String.to_char_list(info.port)]
+    opts = [username: username,
+            password: password,
+            database: database,
+            hostname: info.host,
+            port:     info.port]
 
-    Enum.reject(opts, fn {_k, v} -> is_nil(v) end) |> Enum.into(%{})
+    #strip off any nils
+    opts = Enum.reject(opts, fn {_k, v} -> is_nil(v) end)
+    #send the values to a char list because that's what :epgsql likes
+    opts = for {k, v} <- opts, into: %{}, do: {k, String.to_char_list(v)}
   end
 
   @doc """
@@ -58,10 +61,12 @@ defmodule Moebius.Runner do
   def execute(cmd) do
     {:ok, pid} = connect
     try do
+      params = handle_nils(cmd.params)
       case :epgsql.equery pid, cmd.sql, cmd.params do
         {:ok, num} -> {:ok, num}
+        {:ok, cols, rows} -> {:ok, cols, rows}
         {:ok, num, cols, rows} -> {:ok, cols, rows}
-        {:error, err} -> {:error, err.postgres.message}
+        {:error, { _, _, _, message, _}} -> {:error, message}
       end
     after
       :epgsql.close pid
@@ -72,27 +77,49 @@ defmodule Moebius.Runner do
   Executes a command for a given transaction specified with `pid`. If the execution fails,
   it will be caught in `Query.transaction/1` and reported back using `{:error, err}`.
   """
-  def execute(cmd, pid) do
-    case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
-      {:ok, result} ->
-        {:ok, result}
-      {:error, err} ->
-        Postgrex.Connection.query pid, "ROLLBACK", []
-        #this will get caught by the transactor
-        raise err.postgres.message
+  def execute(%Moebius.DocumentCommand{sql: sql, params: params}, pid) do
+    params = handle_nils(params)
+    :epgsql.equery(pid, sql, params) |> handle_tx_result(pid)
+  end
+  def execute(%Moebius.DocumentCommand{sql: sql, params: nil}, pid) do
+    :epgsql.squery(pid, sql) |> handle_tx_result(pid)
+  end
+  def execute(%Moebius.QueryCommand{sql: sql, params: params}, pid) do
+    params = handle_nils(params)
+    :epgsql.equery(pid, sql, params) |> handle_tx_result(pid)
+  end
+
+  #FIXME: THIS IS SUCH A HACK
+  def handle_nils(params) do
+    Enum.map params, fn(p) ->
+      case p do
+        nil -> :null
+        p -> p
+      end
     end
   end
 
+  def handle_tx_result(res, pid) do
+    case res do
+      {:ok, [], []} -> {:ok, 0}
+      {:ok, num} -> {:ok, num}
+      {:ok, num, cols, rows} -> {:ok, cols, rows}
+      {:error, { _, _, _, message, _}} ->
+        :epgsql.equery pid, "ROLLBACK", []
+        #this will get caught by the transactor
+        raise message
+    end
+  end
 
   def open_transaction() do
-    {:ok, pid} = Moebius.Runner.connect()
-    Postgrex.Connection.query(pid, "BEGIN;",[])
+    {:ok, pid} = connect
+    :epgsql.equery pid, "BEGIN;", []
     pid
   end
 
   def commit_and_close_transaction(pid) do
-    Postgrex.Connection.query(pid, "COMMIT;",[])
-    Postgrex.Connection.stop(pid)
+    :epgsql.equery pid, "COMMIT;", []
+    :epgsql.close pid
   end
 
   @doc """

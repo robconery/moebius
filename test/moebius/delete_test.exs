@@ -30,12 +30,4 @@ defmodule Moebius.DeleteTest do
     assert length(cmd.params) == 1
   end
 
-  test "it actually works" do
-    res = db(:logs)
-      |> filter("id > $1", 1)
-      |> delete
-
-    assert res.deleted
-  end
-
 end

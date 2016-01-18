@@ -89,7 +89,7 @@ defmodule Moebius.DocumentQuery do
 
     #TODO: Do we need to parameterize this? I don't think so
     where = " where #{cmd.json_field} @> '#{encoded}'"
-    %{cmd | where: where, params: []}
+    %{cmd | where: where}
   end
 
   @doc """
@@ -104,13 +104,11 @@ defmodule Moebius.DocumentQuery do
     |> first
   ```
   """
-  def filter(cmd, criteria, params \\ []) when is_bitstring(criteria) do
-    unless is_list(params) do
-      params = [params]
-    end
-    where = " where #{criteria}"
-    %{cmd | where: where, params: params}
-  end
+  # def filter(cmd, criteria, params \\ []) when is_bitstring(criteria) do
+  #   where = " where (#{criteria})::jsonb"
+  #   encoded = encode!(params)
+  #   %{cmd | where: where, params: encoded}
+  # end
 
   @doc """
   Queries a table using matching criteria. Not a good query to run on a large table as it needs to do a full scan in order to match,
@@ -158,11 +156,7 @@ defmodule Moebius.DocumentQuery do
   def select_command(cmd) do
     sql = """
     select id, #{cmd.json_field}::text
-    from #{cmd.table_name}
-    #{cmd.where}
-    #{cmd.order}
-    #{cmd.limit}
-    #{cmd.offset};
+    from #{cmd.table_name} #{cmd.where} #{cmd.order} #{cmd.limit}#{cmd.offset};
     """
     %{cmd | sql: sql}
   end
@@ -460,9 +454,6 @@ defmodule Moebius.DocumentQuery do
     %{cmd | sql: sql, type: :update}
   end
 
-
-
-
   defp delete_command(cmd, id) when is_integer(id) do
     sql = "delete from #{cmd.table_name} where id=#{id} returning id, body::text"
     %{cmd | sql: sql, type: :delete}
@@ -477,9 +468,9 @@ defmodule Moebius.DocumentQuery do
     sql = """
     insert into #{cmd.table_name}(#{cmd.json_field})
     VALUES('#{doc}')
-    RETURNING id, #{cmd.json_field}::text;
+    RETURNING id, #{cmd.json_field}::text as body;
     """
-    %{cmd | sql: sql, params: [doc], type: :insert}
+    %{cmd | sql: sql, type: :insert}
   end
 
   defp insert_command(cmd, doc) when is_list(doc) or is_map(doc) do
@@ -493,16 +484,14 @@ defmodule Moebius.DocumentQuery do
   defp return_results(results, :single), do: results
   defp return_results(results), do: results
 
-  defp parse_json_column({:error, err}, cmd), do: {:error, err}
-  defp parse_json_column({:ok, res}, cmd) do
-    Enum.map(res.rows, &handle_row/1)
+  defp parse_json_column({:error, err}, cmd), do: {:error, "Error: #{err}. SQL: #{cmd.sql}"}
+  defp parse_json_column({:ok, _, rows}, cmd) do
+    for {id, body} <- rows, do: decode_json(body) |> apply_key_to_document(id)
   end
 
-  defp handle_row([id, json]) do
-    decode_json(json) |> Map.put_new(:id, id)
-  end
+  def apply_key_to_document(doc, id) when is_integer(id), do: Map.put_new(doc, :id, id)
+  def apply_key_to_document(doc, id) when is_binary(id), do: Map.put_new(doc, :id, String.to_integer(id))
 
-  #defp decode_json(json) when is_map(json), do: Moebius.Transformer.to_atom_map(json)
   defp decode_json(json), do: decode!(json, keys: :atoms!)
-
+  defp encode_json(json), do: encode!(json)
 end

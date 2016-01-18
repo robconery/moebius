@@ -22,7 +22,9 @@ defmodule Moebius.DocTest do
 
   test "save creates table if it doesn't exist" do
     "drop table if exists artists;" |> Moebius.Query.run
-    assert %{name: "Spiff"} = db(:artists) |> save(%{name: "Spiff"})
+    res = db(:artists) |> save(%{name: "Spiff"})
+
+    assert %{name: "Spiff"} = res
   end
 
   test "save creates table if it doesn't exist even when an id is included" do
@@ -98,14 +100,14 @@ defmodule Moebius.DocTest do
 
   end
 
-  test "select works with string criteria", %{res: res} do
-    return = db(:user_docs)
-      |> filter("body -> 'email' = $1", res.email)
-      |> first
-
-    assert return.email == res.email
-
-  end
+  # test "select works with string criteria", %{res: res} do
+  #   return = db(:user_docs)
+  #     |> filter("body -> 'email' = $1", res.email)
+  #     |> first
+  #
+  #   assert return.email == res.email
+  #
+  # end
 
   test "select works with basic criteria", %{res: _res} do
 
