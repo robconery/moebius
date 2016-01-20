@@ -11,7 +11,7 @@ defmodule Moebius.Runner do
 
     Application.get_env(:moebius, :connection)
     |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
-    |> Postgrex.Connection.start_link
+    |> Postgrex.start_link
   end
 
   @doc """
@@ -19,14 +19,12 @@ defmodule Moebius.Runner do
   """
   def execute(cmd) do
     {:ok, pid} = connect()
-    try do
-      case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
-        {:ok, result} -> {:ok, result}
-        {:error, err} -> {:error, err.postgres.message}
-      end
-    after
-      Postgrex.Connection.stop(pid)
+
+    case Postgrex.query(pid, cmd.sql, cmd.params) do
+      {:ok, result} -> {:ok, result}
+      {:error, err} -> {:error, err.postgres.message}
     end
+
   end
 
   @doc """
@@ -34,11 +32,11 @@ defmodule Moebius.Runner do
   it will be caught in `Query.transaction/1` and reported back using `{:error, err}`.
   """
   def execute(cmd, pid) when is_pid(pid) do
-    case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
+    case Postgrex.query(pid, cmd.sql, cmd.params) do
       {:ok, result} ->
         {:ok, result}
       {:error, err} ->
-        Postgrex.Connection.query pid, "ROLLBACK", []
+        Postgrex.query pid, "ROLLBACK", []
         #this will get caught by the transactor
         raise err.postgres.message
     end
@@ -47,13 +45,12 @@ defmodule Moebius.Runner do
 
   def open_transaction() do
     {:ok, pid} = Moebius.Runner.connect()
-    Postgrex.Connection.query(pid, "BEGIN;",[])
+    Postgrex.query(pid, "BEGIN;",[])
     pid
   end
 
   def commit_and_close_transaction(pid) when is_pid(pid) do
-    Postgrex.Connection.query(pid, "COMMIT;",[])
-    Postgrex.Connection.stop(pid)
+    Postgrex.query(pid, "COMMIT;",[])
   end
 
   @doc """
