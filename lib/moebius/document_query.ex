@@ -211,30 +211,32 @@ defmodule Moebius.DocumentQuery do
   """
   def save(%DocumentCommand{} = cmd, doc) when is_list(doc), do: save(cmd, Enum.into(doc, %{}))
   def save(%DocumentCommand{} = cmd, doc) when is_map(doc) do
-    pid = Moebius.Runner.open_transaction
-    res = save(cmd, pid, doc)
-    Moebius.Runner.commit_and_close_transaction(pid)
-    res
-  end
+    res = cmd
+      |> decide_command(doc)
+      |> execute(:single)
+      |> update_search(cmd)
 
-  def save(%DocumentCommand{} = cmd, pid, doc) when is_pid(pid) and is_list(doc), do: save(cmd, pid, Enum.into(doc, %{}))
-  def save(%DocumentCommand{} = cmd, pid, doc) when is_pid(pid) and is_map(doc) do
-    cmd = %{cmd | pid: pid}
-    try do
-
-      cmd
-        |> decide_command(doc)
-        |> execute(cmd.pid)
-        |> update_search(cmd)
-
-    rescue
-      RuntimeError -> create_document_table(cmd, doc)
-        |> save(cmd.pid, Map.delete(doc, :id))
-
+    case res do
+      {:error, err} -> create_document_table(cmd, doc) |> save(Map.delete(doc, :id))
+      res -> res
     end
-
   end
 
+  def save(%DocumentCommand{} = cmd, %DBConnection{} = meta, doc) when is_list(doc), do: save(cmd, meta, Enum.into(doc, %{}))
+  def save(%DocumentCommand{} = cmd, %DBConnection{} = meta, doc) when is_map(doc) do
+
+    res = cmd
+      |> decide_command(doc)
+      |> execute(meta, :single)
+      |> update_search(cmd)
+
+    case res do
+      {:error, err} -> create_document_table(cmd, doc) |> save(Map.delete(doc, :id))
+      res -> res
+    end
+  end
+
+  defp update_search({:error, err}, cmd), do: {:error, err}
   defp update_search([], _),  do: []
   defp update_search(query_result, cmd) do
 
@@ -243,7 +245,7 @@ defmodule Moebius.DocumentQuery do
       sql = "update #{cmd.table_name} set search = to_tsvector(concat(#{terms})) where id=#{query_result.id}"
 
       %Moebius.QueryCommand{sql: sql}
-        |> Moebius.Query.execute(cmd.pid)
+        |> Moebius.Query.execute
 
     end
 
@@ -267,9 +269,9 @@ defmodule Moebius.DocumentQuery do
     );
     """
 
-    %Moebius.QueryCommand{sql: sql} |> Moebius.Runner.execute(cmd.pid)
-    %Moebius.QueryCommand{sql: "create index idx_#{cmd.table_name}_search on #{cmd.table_name} using GIN(search);"} |> Moebius.Runner.execute(cmd.pid)
-    %Moebius.QueryCommand{sql: "create index idx_#{cmd.table_name} on #{cmd.table_name} using GIN(body jsonb_path_ops);"} |> Moebius.Runner.execute(cmd.pid)
+    %Moebius.QueryCommand{sql: sql} |> Moebius.Runner.execute
+    %Moebius.QueryCommand{sql: "create index idx_#{cmd.table_name}_search on #{cmd.table_name} using GIN(search);"} |> Moebius.Runner.execute
+    %Moebius.QueryCommand{sql: "create index idx_#{cmd.table_name} on #{cmd.table_name} using GIN(body jsonb_path_ops);"} |> Moebius.Runner.execute
 
     cmd
   end
@@ -447,15 +449,25 @@ defmodule Moebius.DocumentQuery do
       |> parse_json_column(cmd)
       |> return_results(:single)
   end
+  
+  @doc """
+  Executes a query as part of a transaction returning a list of items
+  """
+  def execute(%DocumentCommand{} = cmd, %DBConnection{} = meta, :single) do
+    cmd
+      |> Moebius.Runner.execute(meta)
+      |> parse_json_column(cmd)
+      |> return_results(:single)
+  end
 
   @doc """
   Executes a query as part of a transaction returning a list of items
   """
-  def execute(%DocumentCommand{} = cmd, pid) when is_pid(pid) do
+  def execute(%DocumentCommand{} = cmd, %DBConnection{} = meta) do
     cmd
-      |> Moebius.Runner.execute(pid)
+      |> Moebius.Runner.execute(meta)
       |> parse_json_column(cmd)
-      |> return_results(:single)
+      |> return_results()
   end
 
 

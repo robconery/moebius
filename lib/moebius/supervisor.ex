@@ -7,18 +7,9 @@ defmodule Moebius.Supervisor do
 
   def init([]) do
     args = Application.get_env(:moebius, :connection) |> parse_connection_args
-    IO.inspect args
-    Postgrex.start_link args
-    # case parse_connection_args(args) do
-    #   %{hostname: hostname, username: user, password: pass, database: database} -> :epgsql.connect hostname, user, pass, database: database
-    #   %{hostname: hostname, username: user, database: database} -> :epgsql.connect hostname, user, database: database
-    #   %{hostname: hostname, database: database} -> :epgsql.connect hostname, database: database
-    #   %{database: database} -> :epgsql.connect 'localhost', database: database
-    # end
-
 
     children = [
-      # Define workers and child supervisors to be supervised
+      worker(Moebius.Runner, [])
     ]
 
     # See http://elixir-lang.org/docs/stable/Supervisor.Behaviour.html

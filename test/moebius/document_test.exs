@@ -184,15 +184,16 @@ defmodule Moebius.DocTest do
 
   test "executes a transaction" do
 
-    transaction fn(pid) ->
+    transaction fn(tx) ->
+
       db(:monkies)
-        |> save(pid, name: "Peaches", company: "Microsoft")
+        |> save(tx, name: "Peaches", company: "Microsoft")
 
       db(:cars)
-        |> save(pid, name: "Toyota")
+        |> save(tx, name: "Toyota")
 
       db(:user_docs)
-        |> save(pid, name: "bubbles")
+        |> save(tx, name: "bubbles")
 
     end
   end

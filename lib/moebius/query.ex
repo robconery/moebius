@@ -413,10 +413,10 @@ defmodule Moebius.Query do
   end
   ```
   """
-  def insert(%QueryCommand{} = cmd, pid, criteria) when is_pid(pid) do
+  def insert(%QueryCommand{} = cmd, %DBConnection{} = meta, criteria) do
     cmd
     |> insert_command(criteria)
-    |> execute(:single, pid)
+    |> execute(:single, meta)
   end
 
   @doc """
@@ -437,10 +437,10 @@ defmodule Moebius.Query do
     # and of the inputs are malformed (different cols vs. vals)
     column_map = records |> hd |> Keyword.keys
 
-    transaction fn(pid) ->
+    transaction fn(meta) ->
       cmd
       |> bulk_insert_batch(records, [], column_map)
-      |> Enum.map(fn(cmd) -> execute(cmd, pid) end)
+      |> Enum.map(fn(cmd) -> execute(cmd, meta) end)
       |> List.flatten
     end
   end
@@ -842,10 +842,10 @@ defmodule Moebius.Query do
   @doc """
   Executes a pass-through query and returns a single result as part of a transaction
   """
-  def execute(%QueryCommand{} = cmd, :single, pid) when is_pid(pid) do
+  def execute(%QueryCommand{} = cmd, :single, pid) do
     cmd
-    |> Moebius.Runner.execute(pid)
-    |> Moebius.Transformer.to_single
+      |> Moebius.Runner.execute(pid)
+      |> Moebius.Transformer.to_single
   end
 
   @doc """
@@ -869,9 +869,9 @@ defmodule Moebius.Query do
   @doc """
   Executes a command, returning a list of results as part of a transaction
   """
-  def execute(%QueryCommand{} = cmd, pid) when is_pid(pid) do
+  def execute(%QueryCommand{} = cmd, %DBConnection{} = meta) do
     cmd
-    |> Moebius.Runner.execute(pid)
+    |> Moebius.Runner.execute(meta)
     |> Moebius.Transformer.to_list
   end
 
@@ -895,14 +895,13 @@ defmodule Moebius.Query do
   """
 
   def transaction(fun) do
-    pid = Moebius.Runner.open_transaction()
-    res = try do
-      fun.(pid)
-    rescue
-      e in RuntimeError -> {:error, e.message}
+    
+    try do 
+      {:ok, res} = Postgrex.transaction(Moebius.Runner, fun)
+      res
+    catch 
+      e, reason -> {:error, reason.message}
     end
-    Moebius.Runner.commit_and_close_transaction(pid)
-    res
   end
 
 end
