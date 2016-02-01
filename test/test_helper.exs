@@ -1,4 +1,6 @@
 ExUnit.start()
+defmodule TestDb,  do: use Moebius.Database
+TestDb.start_link {:database, "meebuss"}
 
 sql = "
 drop index if exists idx_docs;
@@ -45,7 +47,7 @@ insert into users(email, first, last) values('mary@test.com','Mary','Muggtler');
 insert into users(email, first, last) values('mike@test.com','Mike','Ghruoisl');
 "
 
-case Moebius.Runner.run_with_psql sql do
+case Moebius.run_with_psql sql, db: "meebuss" do
   {_res, 0} -> true
   {:error, err} -> raise err
 end

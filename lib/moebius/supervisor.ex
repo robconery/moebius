@@ -1,8 +1,9 @@
+
 defmodule Moebius.Supervisor do
   use Supervisor
 
   def start_link(_type, _args) do
-    :supervisor.start_link(__MODULE__, [])
+    Supervisor.start_link(__MODULE__, [])
   end
 
   def init([]) do

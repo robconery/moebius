@@ -2,12 +2,13 @@ defmodule Moebius.BasicSelectTest do
 
   use ExUnit.Case
   import Moebius.Query
+  import TestDb
 
   setup do
-    db(:logs) |> delete
-    db(:users) |> delete
-    user = db(:users) |> insert(email: "friend@test.com")
-    db(:users) |> insert(email: "enemy@test.com")
+    db(:logs) |> delete |> run
+    db(:users) |> delete |> run
+    user = db(:users) |> insert(email: "friend@test.com") |> run
+    db(:users) |> insert(email: "enemy@test.com") |> run
 
     {:ok, res: user}
   end
@@ -67,21 +68,15 @@ defmodule Moebius.BasicSelectTest do
   test "first returns first" do
     res = db(:users)
       |> first
+      |> single
 
     assert res.email == "friend@test.com"
-  end
-
-  test "last returns last" do
-    res = db(:users)
-      |> last(:id)
-
-    assert res.email == "enemy@test.com"
   end
 
   test "find returns a single record", %{res: user} do
     found = db(:users)
           |> find(user.id)
-
+          |> single
     assert found.id == user.id
   end
 end

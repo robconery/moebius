@@ -29,7 +29,7 @@ defmodule Moebius.Mixfile do
   end
 
   defp deps do
-    [{:postgrex, github: "ericmj/postgrex"},
+    [{:postgrex, "~> 0.11.0"},
      {:poolboy, "~> 1.5"},
      {:inflex, "~> 1.5.0"},
      {:poison, "~> 1.5"},

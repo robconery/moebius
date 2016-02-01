@@ -18,6 +18,7 @@ defmodule Moebius.QueryCommand do
       where_columns: [],
       join: [""],
       group_by: nil,
-      error: nil
+      error: nil,
+      conn: nil
     ]
 end
