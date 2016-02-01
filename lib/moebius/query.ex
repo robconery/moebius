@@ -30,23 +30,6 @@ defmodule Moebius.Query do
   def db(table),
     do: %QueryCommand{table_name: table}
 
-  @doc """
-  Searches for a record based on an `id` primary key.
-
-  id      -   The primary key value
-
-  Example:
-
-  ```
-  result = db(:users)
-      |> find(1)
-  ```
-  """
-  def find(%QueryCommand{} = cmd, id) do
-    cmd
-      |> filter(id: id)
-      |> select_command
-  end
 
 
   @doc """
@@ -60,7 +43,7 @@ defmodule Moebius.Query do
     |> first("first, last, email")
   ```
   """
-  def first(%QueryCommand{} = cmd, cols \\ "*"), do: cmd |> select_command(cols)
+  def first(%QueryCommand{} = cmd, cols \\ "*"), do: cmd |> select(cols)
 
 
   @doc """
@@ -77,7 +60,7 @@ defmodule Moebius.Query do
   def last(%QueryCommand{} = cmd, sort_by) when is_atom(sort_by) do
     cmd
     |> sort(sort_by, :desc)
-    |> select_command
+    |> select
 
   end
 
@@ -161,12 +144,12 @@ defmodule Moebius.Query do
   command = db(:users)
       |> limit(20)
       |> offset(2)
-      |> select_command("now() as current_time, name, description")
+      |> select("now() as current_time, name, description")
 
   #command is a QueryCommand object with all of the pipelined settings applied
   ```
   """
-  def select_command(%QueryCommand{} = cmd, cols \\ "*") when is_bitstring(cols) do
+  def select(%QueryCommand{} = cmd, cols \\ "*") when is_bitstring(cols) do
     %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 

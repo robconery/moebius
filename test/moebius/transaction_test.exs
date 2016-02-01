@@ -12,13 +12,6 @@ defmodule Moebius.TransactionTest do
     {:ok, res: true}
   end
 
-  test "transactions with creating a document table" do
-    res = Moebius.DocumentQuery.db(:flags)
-      |> Moebius.DocumentQuery.save(stars: 50, stripes: 13)
-
-    assert res.id
-  end
-
   test "using a callback without errors" do
 
     result = transaction fn(tx) ->

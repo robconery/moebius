@@ -39,7 +39,7 @@ defmodule Moebius.Database do
 
       def execute(%Moebius.DocumentCommand{sql: nil} = cmd) do
         %{cmd | conn: @name}
-          |> Moebius.DocumentQuery.select_command
+          |> Moebius.DocumentQuery.select
           |> Moebius.Database.execute
           |> Moebius.Transformer.from_json
       end
@@ -69,7 +69,7 @@ defmodule Moebius.Database do
 
       def single(%Moebius.DocumentCommand{} = cmd) do
         %{cmd | conn: @name}
-          |> Moebius.DocumentQuery.select_command
+          |> Moebius.DocumentQuery.select
           |> Moebius.Database.execute
           |> Moebius.Transformer.from_json(:single)
       end

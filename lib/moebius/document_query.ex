@@ -148,7 +148,7 @@ defmodule Moebius.DocumentQuery do
   @doc """
   Creates a SELECT command based on the assembled pipeline.
   """
-  def select_command(%DocumentCommand{} = cmd) do
+  def select(%DocumentCommand{} = cmd) do
     sql = """
     select id, #{cmd.json_field}::text
     from #{cmd.table_name}

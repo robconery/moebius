@@ -16,7 +16,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select *" do
 
     cmd = db(:users)
-        |> select_command
+        |> select
 
     assert cmd.sql == "select * from users;"
   end
@@ -24,7 +24,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select * using binary for tablename" do
 
     cmd = db("users")
-        |> select_command
+        |> select
 
     assert cmd.sql == "select * from users;"
   end
@@ -32,7 +32,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select with columns" do
 
     cmd = db(:users)
-        |> select_command("first, last")
+        |> select("first, last")
 
     assert cmd.sql == "select first, last from users;"
   end
@@ -40,7 +40,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select with order" do
     cmd = db(:users)
         |> sort(:name, :desc)
-        |> select_command
+        |> select
 
     assert cmd.sql == "select * from users order by name desc;"
   end
@@ -49,7 +49,7 @@ defmodule Moebius.BasicSelectTest do
     cmd = db(:users)
         |> sort(:name, :desc)
         |> limit(10)
-        |> select_command
+        |> select
 
     assert cmd.sql == "select * from users order by name desc limit 10;"
   end
@@ -60,7 +60,7 @@ defmodule Moebius.BasicSelectTest do
         |> sort(:name, :desc)
         |> limit(10)
         |> offset(2)
-        |> select_command
+        |> select
 
     assert cmd.sql == "select * from users order by name desc limit 10 offset 2;"
   end
@@ -76,7 +76,7 @@ defmodule Moebius.BasicSelectTest do
   test "find returns a single record", %{res: user} do
     found = db(:users)
           |> find(user.id)
-          |> single
+
     assert found.id == user.id
   end
 end
