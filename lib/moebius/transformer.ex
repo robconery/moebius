@@ -13,12 +13,24 @@ defmodule Moebius.Transformer do
   def to_list({:ok, %{rows: nil}}), do: []
   def to_list({:error, %{postgres: %{message: message}}}),  do: {:error, message}
   def to_list({:ok, %{rows: rows, columns: cols}}) do
-    for row <- rows, cols = atomize_columns(cols), do: match_columns_to_row(cols,row) |> to_map
+    for row <- rows, cols = atomize_columns(cols), do: fix_dates(cols, row) |> match_columns_to_row |> to_map
   end
 
   def atomize_columns(cols), do: for col <- cols, do: String.to_atom(col)
-  def match_columns_to_row(cols, row), do: List.zip([cols, row])
-  def to_map(list), do: Enum.into(list,%{})
+  def fix_dates(cols, row) do
+    row = Enum.map row, fn(v) ->
+      case v do
+        #%Postgrex.Timestamp{} -> {k, "#{v.year}-#{v.month}-#{v.day} #{v.hour}:#{v.min}:#{v.sec}"}
+        %Postgrex.Timestamp{} -> %Timex.DateTime{year: v.year, month: v.month, day: v.day, hour: v.hour, minute: v.min, second: v.sec}
+        v -> v
+      end
+    end
+    [cols, row]
+  end
+  def match_columns_to_row(fixed), do: List.zip(fixed)
+  def to_map(list) do
+    res = Enum.into(list,%{})
+  end
 
   def from_json({:error, err}, _), do: {:error, err}
   def from_json({:ok, res}) do
