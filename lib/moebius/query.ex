@@ -352,7 +352,7 @@ defmodule Moebius.Query do
     max_records_per_command = div(max_params, length(cmd.columns))
 
     { current, next_batch } = Enum.split(records, max_records_per_command)
-    this_cmd = bulk_insert_command(cmd, current)
+    this_cmd = bulk_insert(cmd, current)
     case next_batch do
       [] -> Enum.reverse([this_cmd | acc])
       _ ->
@@ -360,7 +360,7 @@ defmodule Moebius.Query do
     end
   end
 
-  defp bulk_insert_command(%QueryCommand{} = cmd, [first | rest]) do
+  defp bulk_insert(%QueryCommand{} = cmd, [first | rest]) do
     records = [first | rest]
     cols = cmd.columns
     vals = Enum.reduce(Enum.reverse(records), [], fn(listitem, acc) ->

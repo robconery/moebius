@@ -28,12 +28,8 @@ defmodule Moebius.DocumentQuery do
   this ability (and speed) is what sets PostgreSQL above other document systems.
   """
 
-  import Poison
   alias Moebius.DocumentCommand
   alias Moebius.Query
-
-
-  def transaction(fun), do: Query.transaction(fun)
 
   @doc """
   Specifies the table or view you want to query.
@@ -82,7 +78,7 @@ defmodule Moebius.DocumentQuery do
   """
   def contains(%DocumentCommand{} = cmd, criteria) do
     map = Enum.into(criteria, %{})
-    encoded = encode!(map)
+    encoded = Poison.encode!(map)
 
     #TODO: Do we need to parameterize this? I don't think so
     where = " where #{cmd.json_field} @> '#{encoded}'"
@@ -197,84 +193,13 @@ defmodule Moebius.DocumentQuery do
     %{cmd | order: " order by body -> '#{order_column}' #{sort_dir}"}
   end
 
-  @doc """
-  Saves a given document to the database. If an `id` is present, a full UPDATE will be performed (partial updates are not possible
-  with JSONB), otherwise an INSERT will happen.
-
-  Example:
-
-  ```
-  product = %{sku: "TEST_1", name: "Test Product", description: "Just a test"}
-  return = db(:products)
-    |> save(product)
-  ```
-  """
-  def save(%DocumentCommand{} = cmd, doc) when is_list(doc), do: save(cmd, Enum.into(doc, %{}))
-  def save(%DocumentCommand{} = cmd, doc) when is_map(doc) do
-    res = cmd
-      |> decide_command(doc)
-      |> execute(:single)
-      |> update_search(cmd)
-
-    case res do
-      {:error, err} -> create_document_table(cmd, doc) |> save(Map.delete(doc, :id))
-      res -> res
-    end
-  end
-
-  def save(%DocumentCommand{} = cmd, %DBConnection{} = meta, doc) when is_list(doc), do: save(cmd, meta, Enum.into(doc, %{}))
-  def save(%DocumentCommand{} = cmd, %DBConnection{} = meta, doc) when is_map(doc) do
-
-    res = cmd
-      |> decide_command(doc)
-      |> execute(meta, :single)
-      |> update_search(cmd)
-
-    case res do
-      {:error, err} -> create_document_table(cmd, doc) |> save(Map.delete(doc, :id))
-      res -> res
-    end
-  end
-
-  defp update_search({:error, err}, cmd), do: {:error, err}
-  defp update_search([], _),  do: []
-  defp update_search(query_result, cmd) do
-
-    if length(cmd.search_fields) > 0 do
-      terms = Enum.map_join(cmd.search_fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
-      sql = "update #{cmd.table_name} set search = to_tsvector(concat(#{terms})) where id=#{query_result.id}"
-
-      %Moebius.QueryCommand{sql: sql}
-        |> Moebius.Query.execute
-
-    end
-
-    query_result
-  end
-
-  defp decide_command(%DocumentCommand{} = cmd, doc) do
+  def decide_command(%DocumentCommand{} = cmd, doc) do
     cond do
       Map.has_key? doc, :id -> update_command(cmd, Map.delete(doc, :id), doc.id)
-      true -> insert_command(cmd, doc)
+      true -> insert(cmd, doc)
     end
   end
-  defp create_document_table(%DocumentCommand{} = cmd, _) do
-    sql = """
-    create table #{cmd.table_name}(
-      id serial primary key not null,
-      body jsonb not null,
-      search tsvector,
-      created_at timestamptz not null default now(),
-      updated_at timestamptz
-    );
-    """
 
-    %Moebius.QueryCommand{sql: sql} |> Moebius.Runner.execute
-    %Moebius.QueryCommand{sql: "create index idx_#{cmd.table_name}_search on #{cmd.table_name} using GIN(search);"} |> Moebius.Runner.execute
-    %Moebius.QueryCommand{sql: "create index idx_#{cmd.table_name} on #{cmd.table_name} using GIN(body jsonb_path_ops);"} |> Moebius.Runner.execute
-
-    cmd
-  end
 
   @doc """
   Marks a set of fields for indexing during save.
@@ -315,43 +240,20 @@ defmodule Moebius.DocumentQuery do
   @doc """
   Deletes a document based on the filter (if any)
   """
-  def delete(%DocumentCommand{} = cmd),  do: cmd |> delete_command |> execute
+  def delete(%DocumentCommand{} = cmd),  do: cmd |> delete_command
   @doc """
   Deletes a document based on the filter (if any)
   """
-  def delete(%DocumentCommand{} = cmd, pid) when is_pid(pid),  do: cmd |> delete_command |> execute(pid)
+  def delete(%DocumentCommand{} = cmd, pid) when is_pid(pid),  do: cmd |> delete_command
   @doc """
   Deletes a document with the given id
   """
-  def delete(%DocumentCommand{} = cmd, id), do: cmd |> delete_command(id) |> execute(:single)
+  def delete(%DocumentCommand{} = cmd, id), do: cmd |> delete_command(id)
   @doc """
   Deletes a document with the given id
   """
-  def delete(%DocumentCommand{} = cmd, pid, id) when is_pid(pid), do: cmd |> delete_command(id) |> execute(pid)
+  def delete(%DocumentCommand{} = cmd, pid, id) when is_pid(pid), do: cmd |> delete_command(id)
 
-
-  @doc """
-  Executes a query and returns the first matching record
-
-  Example:
-
-  ```
-  return = db(:user_docs)
-    |> exists(:pets, "skippy") # :pets is an array
-    |> sort(:city)
-    |> first
-  ```
-  """
-  def first(%DocumentCommand{} = cmd) do
-    res = cmd
-      |> select_command
-      |> execute(:single)
-
-    cond do
-      res == [] -> nil
-      true -> res
-    end
-  end
 
   @doc """
   Finds a document based on ID using the Primary Key index. An optimized query for finding a single document.
@@ -366,7 +268,7 @@ defmodule Moebius.DocumentQuery do
   def find(%DocumentCommand{} = cmd, id) when is_integer id do
     #no need to param this, it's an integer
     sql = "select id, #{cmd.json_field}::text from #{cmd.table_name} where id=#{id}"
-    %{cmd | sql: sql} |> execute(:single)
+    %{cmd | sql: sql}
   end
 
 
@@ -389,8 +291,6 @@ defmodule Moebius.DocumentQuery do
     """
 
     %{cmd | sql: sql, params: [term]}
-      |> execute
-
   end
 
   @doc """
@@ -414,62 +314,8 @@ defmodule Moebius.DocumentQuery do
     """
 
     %{cmd | sql: sql, params: [term]}
-      |> execute
+
   end
-
-  @doc """
-  Executes a query returning a list of items
-  """
-  def to_list(%DocumentCommand{} = cmd),  do: all(cmd)
-
-  def all(%DocumentCommand{} = cmd) do
-    cmd
-      |> select_command
-      |> execute
-  end
-
-
-  @doc """
-  Executes a query returning a list of items.
-  """
-  def execute(%DocumentCommand{} = cmd) do
-    cmd
-      |> Moebius.Runner.execute
-      |> parse_json_column(cmd)
-      |> return_results()
-  end
-
-
-  @doc """
-  Executes a query returning a single item
-  """
-  def execute(%DocumentCommand{} = cmd, :single) do
-    cmd
-      |> Moebius.Runner.execute
-      |> parse_json_column(cmd)
-      |> return_results(:single)
-  end
-  
-  @doc """
-  Executes a query as part of a transaction returning a list of items
-  """
-  def execute(%DocumentCommand{} = cmd, %DBConnection{} = meta, :single) do
-    cmd
-      |> Moebius.Runner.execute(meta)
-      |> parse_json_column(cmd)
-      |> return_results(:single)
-  end
-
-  @doc """
-  Executes a query as part of a transaction returning a list of items
-  """
-  def execute(%DocumentCommand{} = cmd, %DBConnection{} = meta) do
-    cmd
-      |> Moebius.Runner.execute(meta)
-      |> parse_json_column(cmd)
-      |> return_results()
-  end
-
 
   defp update_command(%DocumentCommand{} = cmd, change, id) when is_map(change) and is_integer(id) do
     {:ok, encoded} = Poison.encode(change)
@@ -481,9 +327,6 @@ defmodule Moebius.DocumentQuery do
     %{cmd | sql: sql, type: :update}
   end
 
-
-
-
   defp delete_command(%DocumentCommand{} = cmd, id) when is_integer(id) do
     sql = "delete from #{cmd.table_name} where id=#{id} returning id, body::text"
     %{cmd | sql: sql, type: :delete}
@@ -494,7 +337,7 @@ defmodule Moebius.DocumentQuery do
     %{cmd | sql: sql, type: :delete}
   end
 
-  defp insert_command(%DocumentCommand{} = cmd, doc) when is_bitstring(doc) do
+  defp insert(%DocumentCommand{} = cmd, doc) when is_bitstring(doc) do
     sql = """
     insert into #{cmd.table_name}(#{cmd.json_field})
     VALUES('#{doc}')
@@ -503,29 +346,10 @@ defmodule Moebius.DocumentQuery do
     %{cmd | sql: sql, params: [], type: :insert}
   end
 
-  defp insert_command(%DocumentCommand{} = cmd, doc) when is_list(doc) or is_map(doc) do
+  defp insert(%DocumentCommand{} = cmd, doc) when is_list(doc) or is_map(doc) do
     {:ok, encoded} = Poison.encode(doc)
-    insert_command(cmd, encoded)
+    insert(cmd, encoded)
   end
 
-
-  defp return_results({:error, err}), do: {:error, err}
-  defp return_results(results), do: results
-  defp return_results([results], :single), do: results
-  defp return_results(results, :single), do: results
-
-  defp parse_json_column({:error, err}, _), do: {:error, err}
-  defp parse_json_column({:ok, res}, _) do
-    Enum.map(res.rows, &handle_row/1)
-  end
-
-  defp handle_row([id, json]) do
-    json
-    |> decode_json
-    |> Map.put_new(:id, id)
-  end
-
-  #defp decode_json(json) when is_map(json), do: Moebius.Transformer.to_atom_map(json)
-  defp decode_json(json), do: decode!(json, keys: :atoms!)
 
 end

@@ -3,6 +3,7 @@ defmodule Moebius.Transformer do
   The results that come back from Postgrex are in a bit of a convoluted form with string key maps that aren't terribly useful.
   This module restructures the results.
   """
+  import Poison
 
   def to_atom_map(map) do
     Enum.reduce(map, %{}, fn ({key, val}, acc) -> Map.put(acc, String.to_atom(key), val) end)
@@ -59,5 +60,25 @@ defmodule Moebius.Transformer do
 
   defp zip_columns_and_row({cols, row}),
     do: List.zip([cols,row])
+
+
+  def from_json({:error, err}, _), do: {:error, err}
+  def from_json({:ok, res}) do
+    Enum.map(res.rows, &handle_row/1)
+  end
+  def from_json({:ok, %Postgrex.Result{rows: rows}}, :single) do
+    List.first(rows) |> handle_row
+  end
+
+  defp handle_row(nil), do: nil
+
+  defp handle_row([id, json]) do
+    json
+    |> decode_json
+    |> Map.put_new(:id, id)
+  end
+
+  #defp decode_json(json) when is_map(json), do: Moebius.Transformer.to_atom_map(json)
+  defp decode_json(json), do: decode!(json, keys: :atoms)
 
 end

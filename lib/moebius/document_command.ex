@@ -11,6 +11,7 @@ defmodule Moebius.DocumentCommand do
     limit: "",
     offset: "",
     search_fields: [],
-    group_by: nil
+    group_by: nil,
+    conn: nil
   ]
 end
