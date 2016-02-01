@@ -3,12 +3,13 @@ defmodule MoebiusBulkInsertTest do
 
   # import Moebius.BulkInsert
   import Moebius.Query
+  import TestDb
 
   setup do
     "drop table if exists people" |> run
 
     "create table people (
-      id serial primary key, 
+      id serial primary key,
       first_name text not null,
       last_name text not null,
       address text null,
@@ -21,10 +22,13 @@ defmodule MoebiusBulkInsertTest do
   end
 
   test "inserts a list of records within a transaction" do
-    qty = 10000
-    data = people(qty)
-    res = db(:people) |> insert(data)
-    assert qty == length(res)
+    data = 10000 |> people
+    res = db(:people)
+      |> insert(data)
+      |> TestDb.batch
+
+    IO.inspect res
+    #assert qty == length(res)
   end
 
   test "bulk insert fails as a transaction" do
@@ -42,7 +46,7 @@ defmodule MoebiusBulkInsertTest do
         address: "666 SW Pine St.",
         city: "Portland",
         state: "OR",
-        zip: "97209" 
+        zip: "97209"
       ]))
   end
 
@@ -55,7 +59,7 @@ defmodule MoebiusBulkInsertTest do
       address: nil,
       city: "fucked city",
       state: "BumFuck",
-      zip: "10011" 
+      zip: "10011"
     ]
     Enum.reverse([flawed | p])
   end

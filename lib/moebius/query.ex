@@ -318,46 +318,9 @@ defmodule Moebius.Query do
     do: bulk_insert(cmd, records)
 
   @doc """
-  A simple insert that that returns the inserted record. Create your list of data and send it on in.
-
-  criteria:   -    A list or map of data to be saved
-
-  Example:
-
-  ```
-  new_user = db(:users)
-      |> insert(email: "test@test.com", first: "Test", last: "User")
-  ```
-  """
-  def insert(%QueryCommand{} = cmd, criteria) do
-    cmd
-    |> insert_command(criteria)
-  end
-
-  @doc """
-  A simple insert that is part of a transaction that returns the inserted record. Create your list of data and send it on in.
-
-  pid:        -    The process id of the transaction (retrieved from the `transaction` callback)
-  criteria:   -    A list or map of data to be saved
-
-  Example:
-
-  ```
-  tranaction fn(pid) ->
-    new_user = db(:users)
-        |> insert(pid, email: "test@test.com", first: "Test", last: "User")
-  end
-  ```
-  """
-  def insert(%QueryCommand{} = cmd, %DBConnection{} = meta, criteria) do
-    cmd
-    |> insert_command(criteria)
-  end
-
-  @doc """
   Creates an insert command based on the assembled pipeline
   """
-  def insert_command(%QueryCommand{} = cmd, criteria) do
+  def insert(%QueryCommand{} = cmd, criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
     column_names = Enum.map_join(cols,", ", &"#{&1}")
@@ -370,8 +333,8 @@ defmodule Moebius.Query do
   defp bulk_insert(%QueryCommand{} = cmd, records) do
     # need a single definitive column map to arrest and roll back Tx if
     # and of the inputs are malformed (different cols vs. vals)
-    column_map = records |> hd |> Keyword.keys
-
+    #column_map = records |> hd |> Keyword.keys
+    {:batch, cmd, records}
     # transaction fn(meta) ->
     #   cmd
     #   |> bulk_insert_batch(records, [], column_map)

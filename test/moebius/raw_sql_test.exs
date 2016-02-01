@@ -10,12 +10,12 @@ defmodule MoebiusTest do
 
   test "returning single returns map" do
     assert %{email: _email, first: _first, id: _id, last: _last} =
-      run("select id, email, first, last from users limit 1", :single)
+      TestDb.run("select id, email, first, last from users limit 1")
   end
 
   test "returning multiple rows returns map list" do
     assert [%{email: _email, first: _first, id: _id, last: _last}] =
-      run "select id, email, first, last from users limit 1"
+      TestDb.all "select id, email, first, last from users limit 1"
   end
 
 end

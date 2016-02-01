@@ -34,6 +34,7 @@ defmodule Moebius.DeleteTest do
     res = db(:logs)
       |> filter("id > $1", 1)
       |> delete
+      |> TestDb.run
 
     assert res.deleted
   end

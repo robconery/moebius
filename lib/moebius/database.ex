@@ -22,8 +22,14 @@ defmodule Moebius.Database do
       def run(cmd), do: single(cmd)
       def run(cmd, %DBConnection{} = conn), do: single(cmd, conn)
 
-      def all(cmd), do: execute(cmd)
-      def all(cmd, %DBConnection{} = conn), do: execute(cmd, %DBConnection{} = conn)
+      def all(sql) when is_binary(sql), do: all(sql, [])
+      def all(sql, params) when is_binary(sql) do
+        %Moebius.QueryCommand{sql: sql, params: params} |> execute
+      end
+
+      def all(%Moebius.QueryCommand{} = cmd), do: execute(cmd)
+      def all(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: execute(cmd, %DBConnection{} = conn)
+
 
 
       def execute(cmd) do
@@ -44,14 +50,14 @@ defmodule Moebius.Database do
       end
 
       def single(cmd, %DBConnection{} = conn) do
-        Moebius.Database.execute(conn)
+        Moebius.Database.execute(cmd,conn)
           |> Moebius.Transformer.to_single
       end
 
       def transaction(fun) do
         try do
-          {:ok, res} = Postgrex.transaction(@name, fun)
-          res
+          {:ok, conn} = Postgrex.transaction(@name, fun)
+          conn
         catch
           e, reason -> {:error, reason.message}
         end
@@ -63,6 +69,7 @@ defmodule Moebius.Database do
   def start_link(opts) do
     Postgrex.start_link(opts)
   end
+
 
   def execute(cmd) do
     case Postgrex.query(cmd.conn, cmd.sql, cmd.params) do
