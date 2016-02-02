@@ -50,13 +50,13 @@ defmodule Moebius.DocTest do
   test "a simple document query with the DocumentQuery lib" do
     assert [%{email: "steve@test.com", id: _id}] =
       db(:user_docs)
-        |> TestDb.execute
+        |> TestDb.run
   end
 
   test "a simple single document query with the DocumentQuery lib" do
     assert %{email: "steve@test.com", id: _id} =
       db(:user_docs)
-        |> TestDb.single
+        |> TestDb.first
   end
 
   test "updating a document", %{res: res} do
@@ -83,7 +83,7 @@ defmodule Moebius.DocTest do
   test "delete works with just an id", %{res: res} do
     res = db(:user_docs)
       |> delete(res.id)
-      |> TestDb.run
+      |> TestDb.first
 
     assert res.id
   end
@@ -93,7 +93,7 @@ defmodule Moebius.DocTest do
     res = db(:user_docs)
       |> contains(email: res.email)
       |> delete
-      |> TestDb.execute
+      |> TestDb.run
 
     assert length(res) > 0
   end
@@ -101,7 +101,7 @@ defmodule Moebius.DocTest do
   test "select works with filter", %{res: res} do
     return = db(:user_docs)
       |> contains(email: res.email)
-      |> TestDb.single
+      |> TestDb.first
 
     assert return.email == res.email
 
@@ -110,7 +110,7 @@ defmodule Moebius.DocTest do
   test "select works with string criteria", %{res: res} do
     return = db(:user_docs)
       |> filter("body -> 'email' = $1", res.email)
-      |> TestDb.single
+      |> TestDb.first
 
     assert return.email == res.email
 
@@ -120,7 +120,7 @@ defmodule Moebius.DocTest do
 
     return = db(:user_docs)
       |> filter(:money_spent, ">", 100)
-      |> TestDb.execute
+      |> TestDb.run
 
     assert length(return) > 0
 
@@ -130,7 +130,7 @@ defmodule Moebius.DocTest do
 
     return = db(:user_docs)
       |> exists(:pets, "poopy")
-      |> TestDb.single
+      |> TestDb.first
 
     assert return.id == res.id
 
@@ -150,7 +150,7 @@ defmodule Moebius.DocTest do
       |> sort(:money_spent)
       |> limit(1)
       |> offset(0)
-      |> TestDb.single
+      |> TestDb.first
 
     assert return
   end
@@ -159,7 +159,7 @@ defmodule Moebius.DocTest do
 
     res = db(:monkies)
       |> search("duck")
-      |> TestDb.execute
+      |> TestDb.run
 
     assert length(res) > 0
   end
@@ -168,7 +168,7 @@ defmodule Moebius.DocTest do
 
     res = db(:monkies)
       |> search(for: "duck", in: [:name, :description])
-      |> TestDb.execute
+      |> TestDb.run
 
     assert length(res) > 0
   end
@@ -176,7 +176,7 @@ defmodule Moebius.DocTest do
   test "single returns nil when no match" do
     res = db(:monkies)
       |> contains(email: "dog@dog.comdog")
-      |> TestDb.single
+      |> TestDb.first
 
     assert res == nil
   end

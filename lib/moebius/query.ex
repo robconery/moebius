@@ -31,21 +31,6 @@ defmodule Moebius.Query do
     do: %QueryCommand{table_name: table}
 
 
-
-  @doc """
-  Executes a given pipeline and returns the first matching result. You should specify a `sort` to be sure first works as intended.
-  cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.
-            For example `now() as current_time, name, description`. Defaults to "*"
-  Example:
-  ```
-  top_spender = db(:users)
-    |> sort(:money_spent, :desc)
-    |> first("first, last, email")
-  ```
-  """
-  def first(%QueryCommand{} = cmd, cols \\ "*"), do: cmd |> select(cols)
-
-
   @doc """
   Executes a given pipeline and returns the last matching result. You should specify a `sort` to be sure first works as intended.
   cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.
@@ -166,7 +151,7 @@ defmodule Moebius.Query do
   #count == 20
   """
   def count(%QueryCommand{} = cmd) do
-    %{cmd | sql: "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
+    %{cmd | type: :count, sql: "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
 
@@ -305,7 +290,7 @@ defmodule Moebius.Query do
   """
   def insert(%QueryCommand{} = cmd, criteria) do
     cols = Keyword.keys(criteria)
-    vals = Keyword.values(criteria)
+    vals = Keyword.values(criteria) |> Moebius.Transformer.from_timex
     column_names = Enum.map_join(cols,", ", &"#{&1}")
     parameter_placeholders = Enum.map_join(1..length(cols), ", ", &"$#{&1}")
     sql = "insert into #{cmd.table_name}(#{column_names}) values(#{parameter_placeholders}) returning *;"
@@ -363,10 +348,10 @@ defmodule Moebius.Query do
   @doc """
   Creates an update command based on the assembled pipeline.
   """
-  def update_command(%QueryCommand{} = cmd, criteria) do
+  def update(%QueryCommand{} = cmd, criteria) do
 
     cols = Keyword.keys(criteria)
-    vals = Keyword.values(criteria)
+    vals = Keyword.values(criteria) |> Moebius.Transformer.from_timex
 
     {cols, col_count} = Enum.map_reduce cols, 1, fn col, acc ->
       {"#{col} = $#{acc}", acc + 1}
@@ -397,108 +382,16 @@ defmodule Moebius.Query do
   end
 
 
-  @doc """
-  A simple update that is part of a transaction based on the criteria you specify. This is a partial update.
-  Returns a single record as a result when you pass `:single`
-
-  pid:        -    The process id of the transaction (retrieved from the `transaction` callback)
-  criteria:   -    A list or map of data to be saved
-
-  Example:
-
-  ```
-  tranaction fn(pid) ->
-    updated_user = db(:users)
-        |> update(pid, :single, email: "test@test.com", first: "Test", last: "User")
-  end
-  ```
-  """
-  def update(%QueryCommand{} = cmd, pid, :single, criteria) when  is_pid(pid) and is_list(criteria) do
-    cmd
-    |> update_command(criteria)
-  end
-
-  @doc """
-  A simple update based on the criteria you specify. This is a partial update.
-  Returns a single record as a result when you pass `:single`
-
-  pid:        -    The process id of the transaction (retrieved from the `transaction` callback)
-  criteria:   -    A list or map of data to be saved
-
-  Example:
-
-  ```
-
-  updated_user = db(:users)
-      |> update(:single, email: "test@test.com", first: "Test", last: "User")
-
-  ```
-  """
-  def update(%QueryCommand{} = cmd, :single, criteria) when is_list(criteria) do
-    cmd
-    |> update_command(criteria)
-  end
-
-  @doc """
-  A bulk update based on the criteria you specify. All changed records are returned.
-
-  Example:
-
-  ```
-  db(:users)
-    |> filter(company: "Test Company")
-    |> update(status: "preferred")
-  ```
-  """
-  def update(%QueryCommand{} = cmd, criteria) when is_list(criteria) do
-    cmd
-    |> update_command(criteria)
-  end
 
   @doc """
   Creates a DELETE command
   """
-  def delete_command(%QueryCommand{} = cmd) do
+  def delete(%QueryCommand{} = cmd) do
     sql = "delete from #{cmd.table_name}" <> cmd.where <> ";"
     %{cmd | sql: sql, type: :delete}
   end
 
-  @doc """
-  Deletes a record based on your filter, part of a transaction.
 
-  pid:  -   The process id from the current transaction callback.
-
-  Example:
-
-  ```
-  transaction fn(pid) ->
-    db(:users)
-      |> filter("id > $1", 1)
-      |> delete(pid)
-  end
-  ```
-  """
-  def delete(%QueryCommand{} = cmd, pid) when is_pid(pid) do
-    cmd
-    |> delete_command
-  end
-
-  @doc """
-  Deletes a record based on your filter.
-  Example:
-
-  ```
-
-  db(:users)
-    |> filter("id > $1", 1)
-    |> delete
-
-  ```
-  """
-  def delete(%QueryCommand{} = cmd) do
-    cmd
-    |> delete_command
-  end
 
   @doc """
   Build a table join for your query. There are a number of options to handle various joins.

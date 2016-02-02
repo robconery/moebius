@@ -195,7 +195,7 @@ defmodule Moebius.DocumentQuery do
 
   def decide_command(%DocumentCommand{} = cmd, doc) do
     cond do
-      Map.has_key? doc, :id -> update_command(cmd, Map.delete(doc, :id), doc.id)
+      Map.has_key? doc, :id -> update(cmd, Map.delete(doc, :id), doc.id)
       true -> insert(cmd, doc)
     end
   end
@@ -317,7 +317,7 @@ defmodule Moebius.DocumentQuery do
 
   end
 
-  defp update_command(%DocumentCommand{} = cmd, change, id) when is_map(change) and is_integer(id) do
+  defp update(%DocumentCommand{} = cmd, change, id) when is_map(change) and is_integer(id) do
     {:ok, encoded} = Poison.encode(change)
     sql = """
     update #{cmd.table_name}

@@ -4,7 +4,7 @@ defmodule Moebius.AggregateTest do
 
 
   setup_all do
-    "insert into users(email, first, last) values('rob@test.com','Rob','Blah');"
+    "insert into users(email, first, last) values('aggs@test.com','Rob','Blah');"
       |> TestDb.run
     {:ok, []}
   end
@@ -21,7 +21,7 @@ defmodule Moebius.AggregateTest do
     res = db(:users)
       |> map("id > 1")
       |> reduce(:sum, :id)
-      |> TestDb.run
+      |> TestDb.first
 
     assert res.sum > 1
   end
@@ -34,7 +34,7 @@ defmodule Moebius.AggregateTest do
       |> reduce(:sum, :id)
       |> TestDb.run
 
-    assert is_integer res.sum
+    assert length(res) > 0
 
   end
 
@@ -44,9 +44,9 @@ defmodule Moebius.AggregateTest do
       |> map("id > 1")
       |> group(:email)
       |> reduce(:sum, "id + order_count")
-      |> TestDb.single
+      |> TestDb.run
 
-    assert is_integer res.sum
+    assert length(res) > 0
 
   end
 

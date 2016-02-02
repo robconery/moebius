@@ -3,10 +3,9 @@ defmodule MoebiusBulkInsertTest do
 
   # import Moebius.BulkInsert
   import Moebius.Query
-  import TestDb
 
   setup do
-    "drop table if exists people" |> run
+    "drop table if exists people" |> TestDb.run
 
     "create table people (
       id serial primary key,
@@ -16,7 +15,7 @@ defmodule MoebiusBulkInsertTest do
       city text null,
       state text null,
       zip text null
-    );" |> run
+    );" |> TestDb.run
 
     {:ok, res: true}
   end
@@ -27,8 +26,7 @@ defmodule MoebiusBulkInsertTest do
       |> insert(data)
       |> TestDb.batch
 
-    IO.inspect res
-    #assert qty == length(res)
+    assert 10000 == length(res)
   end
 
   test "bulk insert fails as a transaction" do

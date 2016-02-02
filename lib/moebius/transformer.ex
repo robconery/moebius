@@ -7,27 +7,36 @@ defmodule Moebius.Transformer do
   def to_single({:ok, %{num_rows: count}}) when count == 0, do: nil
   def to_single({:error, %{postgres: %{message: message}}}),  do: {:error, message}
   def to_single({:ok, %{rows: rows, columns: cols}} = res) do
-    List.first to_list(res)
+    to_list(res) |> List.first
   end
 
   def to_list({:ok, %{rows: nil}}), do: []
   def to_list({:error, %{postgres: %{message: message}}}),  do: {:error, message}
   def to_list({:ok, %{rows: rows, columns: cols}}) do
-    for row <- rows, cols = atomize_columns(cols), do: fix_dates(cols, row) |> match_columns_to_row |> to_map
+    for row <- rows, cols = atomize_columns(cols), do: to_timex(row) |> match_columns_to_row(cols) |> to_map
   end
 
   def atomize_columns(cols), do: for col <- cols, do: String.to_atom(col)
-  def fix_dates(cols, row) do
-    row = Enum.map row, fn(v) ->
+
+  def from_timex(vals) do
+    Enum.map vals, fn(v) ->
       case v do
-        #%Postgrex.Timestamp{} -> {k, "#{v.year}-#{v.month}-#{v.day} #{v.hour}:#{v.min}:#{v.sec}"}
+        %Timex.DateTime{} -> %Postgrex.Timestamp{year: v.year, month: v.month, day: v.day, hour: v.hour, min: v.minute, sec: v.second}
+        v -> v
+      end
+    end
+  end
+
+  def to_timex(row) do
+    Enum.map row, fn(v) ->
+      case v do
         %Postgrex.Timestamp{} -> %Timex.DateTime{year: v.year, month: v.month, day: v.day, hour: v.hour, minute: v.min, second: v.sec}
         v -> v
       end
     end
-    [cols, row]
   end
-  def match_columns_to_row(fixed), do: List.zip(fixed)
+
+  def match_columns_to_row(row, cols), do: List.zip([cols, row])
   def to_map(list) do
     res = Enum.into(list,%{})
   end

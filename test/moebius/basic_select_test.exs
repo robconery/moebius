@@ -68,7 +68,6 @@ defmodule Moebius.BasicSelectTest do
   test "first returns first" do
     res = db(:users)
       |> first
-      |> single
 
     assert res.email == "friend@test.com"
   end
@@ -79,4 +78,13 @@ defmodule Moebius.BasicSelectTest do
 
     assert found.id == user.id
   end
+
+  test "filter returns a few records", %{res: user} do
+    found = db(:users)
+          |> filter(id: user.id)
+          |> run
+
+    assert length(found) > 0
+  end
+
 end

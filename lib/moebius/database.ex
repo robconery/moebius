@@ -16,77 +16,63 @@ defmodule Moebius.Database do
 
       def run(sql) when is_binary(sql), do: run(sql, [])
       def run(sql, params) when is_binary(sql) do
-        %Moebius.QueryCommand{sql: sql, params: params} |> execute
+        %Moebius.QueryCommand{sql: sql, params: params} |> run
       end
 
-      def run(%Moebius.QueryCommand{} = cmd), do: single(cmd)
-      def run(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: single(cmd, conn)
+      def run(%Moebius.QueryCommand{type: :insert} = cmd), do: execute(cmd) |> Moebius.Transformer.to_single
+      def run(%Moebius.QueryCommand{type: :update} = cmd), do: execute(cmd) |> Moebius.Transformer.to_single
+      def run(%Moebius.QueryCommand{type: :delete} = cmd), do: execute(cmd) |> Moebius.Transformer.to_single
+      def run(%Moebius.QueryCommand{type: :count} = cmd), do: execute(cmd) |> Moebius.Transformer.to_single
 
-      def run(%Moebius.DocumentCommand{} = cmd), do: single(cmd)
+      def run(%Moebius.QueryCommand{type: :insert} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_single
+      def run(%Moebius.QueryCommand{type: :update} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_single
+      def run(%Moebius.QueryCommand{type: :delete} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_single
 
-      def single(sql) when is_binary(sql), do: single(sql, [])
-      def single(sql, params) when is_binary(sql) do
-        %Moebius.QueryCommand{sql: sql, params: params} |> single
-      end
+      def run(%Moebius.QueryCommand{} = cmd), do: execute(cmd) |> Moebius.Transformer.to_list
+      def run(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_list
 
-      def all(sql) when is_binary(sql), do: all(sql, [])
-      def all(sql, params) when is_binary(sql) do
-        %Moebius.QueryCommand{sql: sql, params: params} |> execute
-      end
-
-      def all(%Moebius.QueryCommand{} = cmd), do: execute(cmd)
-      def all(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: execute(cmd, %DBConnection{} = conn)
-
-      def execute(%Moebius.DocumentCommand{sql: nil} = cmd) do
+      def run(%Moebius.DocumentCommand{sql: nil} = cmd) do
         %{cmd | conn: @name}
           |> Moebius.DocumentQuery.select
           |> Moebius.Database.execute
           |> Moebius.Transformer.from_json
       end
-      
-      def execute(%Moebius.DocumentCommand{} = cmd) do
-        %{cmd | conn: @name}
-          |> Moebius.Database.execute
+
+      def run(%Moebius.DocumentCommand{} = cmd) do
+         execute(cmd)
           |> Moebius.Transformer.from_json
       end
 
-      def execute(%Moebius.QueryCommand{} = cmd) do
-        %{cmd | conn: @name}
-          |> Moebius.Database.execute
-          |> Moebius.Transformer.to_list
-      end
-
-      def execute(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn) do
-        Moebius.Database.execute(cmd, conn)
-          |> Moebius.Transformer.to_list
-      end
-
-      def single(%Moebius.QueryCommand{} = cmd) do
-        %{cmd | conn: @name}
-          |> Moebius.Database.execute
-          |> Moebius.Transformer.to_single
-      end
-
-      def single(%Moebius.DocumentCommand{} = cmd) do
-        %{cmd | conn: @name}
-          |> Moebius.DocumentQuery.select
-          |> Moebius.Database.execute
+      def first(%Moebius.DocumentCommand{} = cmd) do
+        Moebius.DocumentQuery.select(cmd)
+          |> execute
           |> Moebius.Transformer.from_json(:single)
       end
 
-      def single(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn) do
-        Moebius.Database.execute(cmd,conn)
+      def first(%Moebius.QueryCommand{sql: nil} = cmd) do
+        Moebius.Query.select(cmd)
+          |> execute
+          |> Moebius.Transformer.to_single
+      end
+
+      def first(%Moebius.QueryCommand{} = cmd) do
+        cmd
+          |> execute
           |> Moebius.Transformer.to_single
       end
 
       def find(%Moebius.QueryCommand{} = cmd, id) do
         sql = "select * from #{cmd.table_name} where id=#{id}"
-        %{cmd | sql: sql} |> single
+        %{cmd | sql: sql}
+          |> execute
+          |> Moebius.Transformer.to_single
       end
 
       def find(%Moebius.DocumentCommand{} = cmd, id) do
         sql = "select id, #{cmd.json_field}::text from #{cmd.table_name} where id=#{id}"
-        %{cmd | sql: sql} |> single
+        %{cmd | sql: sql}
+          |> execute
+          |> Moebius.Transformer.to_single
       end
 
       def transaction(fun) do
@@ -111,6 +97,33 @@ defmodule Moebius.Database do
           res -> update_search(res, cmd) && res
         end
       end
+
+
+      defp execute(%Moebius.DocumentCommand{sql: nil} = cmd) do
+        %{cmd | conn: @name}
+          |> Moebius.DocumentQuery.select
+          |> Moebius.Database.execute
+      end
+
+      defp execute(%Moebius.DocumentCommand{} = cmd) do
+        %{cmd | conn: @name}
+          |> Moebius.Database.execute
+      end
+
+      defp execute(%Moebius.QueryCommand{sql: nil} = cmd) do
+        %{cmd | conn: @name}
+          |> Moebius.Query.select
+          |> Moebius.Database.execute
+
+      end
+
+      defp execute(%Moebius.QueryCommand{} = cmd) do
+        %{cmd | conn: @name}
+          |> Moebius.Database.execute
+      end
+
+      defp execute(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: Moebius.Database.execute(cmd, conn)
+
 
       defp create_document_table(%Moebius.DocumentCommand{} = cmd, _) do
         sql = """
