@@ -282,8 +282,34 @@ defmodule Moebius.Query do
   result = db(:people) |> insert(data)
   ```
   """
-  def insert(%QueryCommand{} = cmd, [[hd | _] | _] = records) when is_tuple(hd),
-    do: bulk_insert(cmd, records)
+  def build_insert_list([], {idx, res}) do
+    res
+  end
+  def build_insert_list([h | t], {idx, res}) do
+    row_length = length(h)
+    bits = Enum.map idx..row_length, fn(n) ->
+      n
+    end
+    res = List.insert_at res, -1, bits
+    build_insert_list t, {idx + row_length , res}
+  end
+  def build_insert_list(list) do
+    build_insert_list list, {1, []}
+  end
+  def insert(%QueryCommand{} = cmd, [first | rest] = list) do
+    #cols = Keyword.keys(criteria)
+    #vals = Keyword.values(criteria)
+    build_insert_list list
+
+    # column_names = Enum.map_join(cols,", ", &"#{&1}")
+    # parameter_placeholders = Enum.map_join(1..length(cols), ", ", &"$#{&1}")
+    # sql = "insert into #{cmd.table_name}(#{column_names}) values(#{parameter_placeholders}) returning *;"
+    #
+    # #loop over all of the commands
+    # for row <- criteria, do
+    #
+    # end
+  end
 
   @doc """
   Creates an insert command based on the assembled pipeline
@@ -298,52 +324,52 @@ defmodule Moebius.Query do
     %{cmd | sql: sql, params: vals, type: :insert}
   end
 
-  defp bulk_insert(%QueryCommand{} = cmd, records) do
-    # need a single definitive column map to arrest and roll back Tx if
-    # and of the inputs are malformed (different cols vs. vals)
-    #column_map = records |> hd |> Keyword.keys
-    {:batch, cmd, records}
-    # transaction fn(meta) ->
-    #   cmd
-    #   |> bulk_insert_batch(records, [], column_map)
-    #   |> Enum.map(fn(cmd) -> execute(cmd, meta) end)
-    #   |> List.flatten
-    # end
-  end
-
-  defp bulk_insert_batch(%QueryCommand{} = cmd, records, acc, column_map) do
-
-    # 20,000 seems to be the optimal number here. Technically you can go up to 34,464, but I think Postgrex imposes a lower limit, as I
-    # hit a wall at 34,000, but succeeded at 30,000. Perf on 100k records is best at 20,000.
-    max_params = 20000
-    cmd = %{ cmd | columns: column_map}
-    max_records_per_command = div(max_params, length(cmd.columns))
-
-    { current, next_batch } = Enum.split(records, max_records_per_command)
-    this_cmd = bulk_insert(cmd, current)
-    case next_batch do
-      [] -> Enum.reverse([this_cmd | acc])
-      _ ->
-        db(cmd.table_name) |> bulk_insert_batch(next_batch, [this_cmd | acc], column_map)
-    end
-  end
-
-  defp bulk_insert(%QueryCommand{} = cmd, [first | rest]) do
-    records = [first | rest]
-    cols = cmd.columns
-    vals = Enum.reduce(Enum.reverse(records), [], fn(listitem, acc) ->
-      Enum.concat(Keyword.values(listitem), acc) end)
-
-    params_sql = elem(Enum.map_reduce(vals, 0, fn(_, acc) -> {"$#{acc + 1}", acc + 1} end),0)
-    |> Enum.chunk(length(cols), length(cols), [])
-    |> Enum.map(fn(chunk) -> "(#{Enum.join(chunk, ", ")})" end)
-    |> Enum.join(", ")
-
-    sql_body = "insert into #{cmd.table_name} (" <> Enum.join(cols, ", ") <> ") " <>
-    "values #{ params_sql } returning *;"
-
-    %{cmd | columns: cols, sql: sql_body, params: vals, type: :insert}
-  end
+  # defp bulk_insert(%QueryCommand{} = cmd, records) do
+  #   # need a single definitive column map to arrest and roll back Tx if
+  #   # and of the inputs are malformed (different cols vs. vals)
+  #   #column_map = records |> hd |> Keyword.keys
+  #   {:batch, cmd, records}
+  #   # transaction fn(meta) ->
+  #   #   cmd
+  #   #   |> bulk_insert_batch(records, [], column_map)
+  #   #   |> Enum.map(fn(cmd) -> execute(cmd, meta) end)
+  #   #   |> List.flatten
+  #   # end
+  # end
+  #
+  # defp bulk_insert_batch(%QueryCommand{} = cmd, records, acc, column_map) do
+  #
+  #   # 20,000 seems to be the optimal number here. Technically you can go up to 34,464, but I think Postgrex imposes a lower limit, as I
+  #   # hit a wall at 34,000, but succeeded at 30,000. Perf on 100k records is best at 20,000.
+  #   max_params = 20000
+  #   cmd = %{ cmd | columns: column_map}
+  #   max_records_per_command = div(max_params, length(cmd.columns))
+  #
+  #   { current, next_batch } = Enum.split(records, max_records_per_command)
+  #   this_cmd = bulk_insert(cmd, current)
+  #   case next_batch do
+  #     [] -> Enum.reverse([this_cmd | acc])
+  #     _ ->
+  #       db(cmd.table_name) |> bulk_insert_batch(next_batch, [this_cmd | acc], column_map)
+  #   end
+  # end
+  #
+  # defp bulk_insert(%QueryCommand{} = cmd, [first | rest]) do
+  #   records = [first | rest]
+  #   cols = cmd.columns
+  #   vals = Enum.reduce(Enum.reverse(records), [], fn(listitem, acc) ->
+  #     Enum.concat(Keyword.values(listitem), acc) end)
+  #
+  #   params_sql = elem(Enum.map_reduce(vals, 0, fn(_, acc) -> {"$#{acc + 1}", acc + 1} end),0)
+  #   |> Enum.chunk(length(cols), length(cols), [])
+  #   |> Enum.map(fn(chunk) -> "(#{Enum.join(chunk, ", ")})" end)
+  #   |> Enum.join(", ")
+  #
+  #   sql_body = "insert into #{cmd.table_name} (" <> Enum.join(cols, ", ") <> ") " <>
+  #   "values #{ params_sql } returning *;"
+  #
+  #   %{cmd | columns: cols, sql: sql_body, params: vals, type: :insert}
+  # end
 
   @doc """
   Creates an update command based on the assembled pipeline.
