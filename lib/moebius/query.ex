@@ -284,7 +284,7 @@ defmodule Moebius.Query do
   """
 
 
-  def insert(%QueryCommand{} = cmd, [first | rest] = list) do
+  def bulk_insert(%QueryCommand{} = cmd, [first | rest] = list) when is_list(list) do
     column_count = length(first)
     row_count = length(list)
     cols = Keyword.keys(first)
