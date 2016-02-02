@@ -282,33 +282,26 @@ defmodule Moebius.Query do
   result = db(:people) |> insert(data)
   ```
   """
-  def build_insert_list([], {idx, res}) do
-    res
-  end
-  def build_insert_list([h | t], {idx, res}) do
-    row_length = length(h)
-    bits = Enum.map idx..row_length, fn(n) ->
-      n
-    end
-    res = List.insert_at res, -1, bits
-    build_insert_list t, {idx + row_length , res}
-  end
-  def build_insert_list(list) do
-    build_insert_list list, {1, []}
-  end
-  def insert(%QueryCommand{} = cmd, [first | rest] = list) do
-    #cols = Keyword.keys(criteria)
-    #vals = Keyword.values(criteria)
-    build_insert_list list
 
-    # column_names = Enum.map_join(cols,", ", &"#{&1}")
-    # parameter_placeholders = Enum.map_join(1..length(cols), ", ", &"$#{&1}")
-    # sql = "insert into #{cmd.table_name}(#{column_names}) values(#{parameter_placeholders}) returning *;"
-    #
-    # #loop over all of the commands
-    # for row <- criteria, do
-    #
-    # end
+
+  def insert(%QueryCommand{} = cmd, [first | rest] = list) do
+    column_count = length(first)
+    row_count = length(list)
+    cols = Keyword.keys(first)
+
+    param_list = for row <- 0..row_count-1 do
+      list = (row * column_count + 1 .. (row * column_count) + column_count)
+        |> Enum.to_list
+        |> Enum.map_join(",", &"$#{&1}")
+      "(#{list})"
+    end
+
+    params = for row <- list, {k, v} <- row, do: v
+
+    column_names = Enum.map_join(cols,", ", &"#{&1}")
+    value_sql = Enum.join param_list, ","
+    sql = "insert into #{cmd.table_name}(#{column_names}) values #{value_sql}"
+    %{cmd | sql: sql, params: params, type: :insert}
   end
 
   @doc """

@@ -24,6 +24,7 @@ defmodule MoebiusBulkInsertTest do
     data = 10 |> people
     res = db(:people)
       |> insert(data)
+      |> TestDb.run
     IO.inspect res
   end
 
