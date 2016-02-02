@@ -1,12 +1,35 @@
+# defmodule Subscriptions do
+#
+#   use Coyote.Controller, route: "/subscriptions", authenticate: true, roles: "Adminstrator"
+#   use Moebius.Query
+#   use TestDb
+#
+#   #/subscriptions/information
+#   get :information, conn do #information.eex
+#     db(:subscriptions)
+#       |> find(conn.params["id"])
+#       |> TestDb.run
+#   end
+#
+#   #/subscriptions/?sort=year
+#   get :index, conn do #template: index
+#     db(:subscriptions)
+#       |> find(conn.params["id"])
+#       |> TestDb.run
+#   end
+#
+#   #/subscriptions/johnny/current
+#   get :show, conn do #template: "show.eex"
+#     db(:subscriptions)
+#       |> find(conn.params["id"])
+#       |> TestDb.run
+#   end
+#
+# end
+#
+
+
 defmodule Moebius do
-  use Application
-
-  def start,  do: start(:normal, [])
-  def start(type, args) do
-    Moebius.Supervisor.start_link(type, args)
-  end
-
-
 
   @doc """
   A convenience tool for assembling large queries with multiple commands. Not used

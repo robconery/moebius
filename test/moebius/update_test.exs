@@ -40,11 +40,12 @@ defmodule Moebius.UpdateTest do
   end
 
   test "it actually works" do
-    assert %{email: "maggot@test.com", first: "Rob", id: 1, last: "Blah", profile: nil} =
-      db(:users)
+      res = db(:date_night)
         |> filter(id: 1)
-        |> update(email: "maggot@test.com")
+        |> update(date: Timex.Date.now())
         |> TestDb.run
+
+      assert res.date
   end
 
 

@@ -1,7 +1,7 @@
 defmodule Moebius.Mixfile do
   use Mix.Project
 
-  @version "1.0.8"
+  @version "2.0.0"
 
   def project do
     [app: :moebius,
@@ -24,8 +24,7 @@ defmodule Moebius.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [mod: {Moebius, []},
-     applications: [:logger, :postgrex]]
+    [applications: [:logger, :postgrex]]
   end
 
   defp deps do

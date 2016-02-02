@@ -21,7 +21,7 @@ defmodule MoebiusBulkInsertTest do
   end
 
   test "creates a bulk insert command" do
-    data = 10 |> people
+    data = 1000 |> people
     res = db(:people)
       |> bulk_insert(data)
       |> TestDb.run
