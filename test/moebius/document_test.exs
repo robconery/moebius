@@ -26,6 +26,15 @@ defmodule Moebius.DocTest do
     assert res.name == "Spiff"
   end
 
+  test "find creates table if it doesn't exist" do
+    "drop table if exists artists;" |> TestDb.run
+    res = db(:artists) |> TestDb.first
+    case res do
+      {:error, err} -> flunk "Nope"
+      res -> res
+    end
+  end
+
   test "save creates table if it doesn't exist even when an id is included" do
     "drop table if exists artists;" |> TestDb.run
     assert %{name: "jeff", id: 1} = db(:artists) |> TestDb.save(%{name: "jeff", id: 100})

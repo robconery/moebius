@@ -106,8 +106,12 @@ defmodule Moebius.Database do
       end
 
       defp execute(%Moebius.DocumentCommand{} = cmd) do
-        %{cmd | conn: @name}
+        res = %{cmd | conn: @name}
           |> Moebius.Database.execute
+        case res do
+          {:error, err} -> create_document_table(cmd, nil) && execute(cmd)
+          res -> res
+        end
       end
 
       defp execute(%Moebius.QueryCommand{sql: nil} = cmd) do
