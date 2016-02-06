@@ -5,12 +5,14 @@ defmodule Moebius.Transformer do
   """
   def to_single({:ok, %{command: :delete, num_rows: count}}), do: %{deleted: count}
   def to_single({:ok, %{num_rows: count}}) when count == 0, do: nil
+  def to_single({:error, message}) when is_binary(message), do: {:error, message}
   def to_single({:error, %{postgres: %{message: message}}}),  do: {:error, message}
   def to_single({:ok, %{rows: rows, columns: cols}} = res) do
     to_list(res) |> List.first
   end
 
   def to_list({:ok, %{rows: nil}}), do: []
+  def to_list({:error, message}) when is_binary(message), do: {:error, message}
   def to_list({:error, %{postgres: %{message: message}}}),  do: {:error, message}
   def to_list({:ok, %{rows: rows, columns: cols}}) do
     for row <- rows, cols = atomize_columns(cols), do: to_timex(row) |> match_columns_to_row(cols) |> to_map
