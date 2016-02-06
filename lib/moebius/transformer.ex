@@ -43,6 +43,7 @@ defmodule Moebius.Transformer do
     res = Enum.into(list,%{})
   end
 
+  def from_json({:error, err}), do: {:error, err}
   def from_json({:error, err}, _), do: {:error, err}
   def from_json({:ok, res}) do
     Enum.map(res.rows, &handle_row/1)
