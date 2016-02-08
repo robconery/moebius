@@ -5,31 +5,43 @@ defmodule MoebiusBulkInsertTest do
   import Moebius.Query
 
   setup do
-    "drop table if exists people" |> run
+    "drop table if exists people" |> TestDb.run
 
     "create table people (
-      id serial primary key, 
+      id serial primary key,
       first_name text not null,
       last_name text not null,
       address text null,
       city text null,
       state text null,
       zip text null
-    );" |> run
+    );" |> TestDb.run
 
     {:ok, res: true}
   end
 
-  test "inserts a list of records within a transaction" do
-    qty = 10000
-    data = people(qty)
-    res = db(:people) |> insert(data)
-    assert qty == length(res)
+  test "inserts a list of records outside a transaction" do
+    data = 5000 |> people
+    res = db(:people)
+      |> bulk_insert(data)
+      |> TestDb.run_batch
+    assert [{:ok, result} | other_results] = res
   end
 
+  test "inserts a list of records within a transaction" do
+    data = 5000 |> people
+    res = db(:people)
+      |> bulk_insert(data)
+      |> TestDb.transact_batch
+    assert [{:ok, result} | other_results] = res
+  end
+
+  
   test "bulk insert fails as a transaction" do
     data = flawed_people(4)
-    res = db(:people) |> insert(data)
+    res = db(:people)
+      |> bulk_insert(data)
+      |> TestDb.transact_batch
     assert {:error, "null value in column \"first_name\" violates not-null constraint"} == res
     # no records were written to the db either...
   end
@@ -42,7 +54,7 @@ defmodule MoebiusBulkInsertTest do
         address: "666 SW Pine St.",
         city: "Portland",
         state: "OR",
-        zip: "97209" 
+        zip: "97209"
       ]))
   end
 
@@ -55,7 +67,7 @@ defmodule MoebiusBulkInsertTest do
       address: nil,
       city: "fucked city",
       state: "BumFuck",
-      zip: "10011" 
+      zip: "10011"
     ]
     Enum.reverse([flawed | p])
   end

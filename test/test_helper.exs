@@ -1,4 +1,6 @@
 ExUnit.start()
+defmodule TestDb,  do: use Moebius.Database
+TestDb.start_link {:database, "meebuss"}
 
 sql = "
 drop index if exists idx_docs;
@@ -6,6 +8,7 @@ drop table if exists user_docs;
 drop table if exists logs;
 drop table if exists users;
 drop table if exists products;
+drop table if exists date_night;
 
 create table users(
   id serial primary key,
@@ -43,9 +46,16 @@ insert into users(email, first, last) values('rob@test.com','Rob','Blah');
 insert into users(email, first, last) values('jill@test.com','Jill','Gloop');
 insert into users(email, first, last) values('mary@test.com','Mary','Muggtler');
 insert into users(email, first, last) values('mike@test.com','Mike','Ghruoisl');
+
+
+create table date_night(id serial primary key, date timestamptz);
+insert into date_night(date) values(now());
+insert into date_night(date) values(now() - '1 day' :: interval);
+insert into date_night(date) values(now() + '2 days' :: interval);
+insert into date_night(date) values(now() + '1 year' :: interval);
 "
 
-case Moebius.Runner.run_with_psql sql do
+case Moebius.run_with_psql sql, db: "meebuss" do
   {_res, 0} -> true
   {:error, err} -> raise err
 end

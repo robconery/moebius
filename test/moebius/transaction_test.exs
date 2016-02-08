@@ -3,30 +3,26 @@ defmodule Moebius.TransactionTest do
   use ExUnit.Case
 
   import Moebius.Query
+  import TestDb
 
   setup do
     "drop table if exists flags" |> run
-    db(:logs) |> delete
-    db(:users) |> delete
+    db(:logs) |> delete |> run
+    db(:users) |> delete |> run
     {:ok, res: true}
-  end
-
-  test "transactions with creating a document table" do
-    res = Moebius.DocumentQuery.db(:flags)
-      |> Moebius.DocumentQuery.save(stars: 50, stripes: 13)
-
-    assert res.id
   end
 
   test "using a callback without errors" do
 
-    result = transaction fn(pid) ->
+    result = transaction fn(tx) ->
 
       new_user = db(:users)
-        |> insert(pid, email: "frodo@test.com")
+        |> insert(email: "frodo@test.com")
+        |> run(tx)
 
       db(:logs)
-        |> insert(pid, user_id: new_user.id, log: "Hi Frodo")
+        |> insert(user_id: new_user.id, log: "Hi Frodo")
+        |> run(tx)
 
       new_user
     end
@@ -38,13 +34,15 @@ defmodule Moebius.TransactionTest do
   test "using a callback with errors" do
 
     assert{:error, "insert or update on table \"logs\" violates foreign key constraint \"logs_user_id_fkey\""}
-      = transaction fn(pid) ->
+      = transaction fn(tx) ->
 
       new_user = db(:users)
-        |> insert(pid,email: "bilbo@test.com")
+        |> insert(email: "bilbo@test.com")
+        |> run(tx)
 
       db(:logs)
-        |> insert(pid,user_id: 22222, log: "Hi Bilbo")
+        |> insert(user_id: 22222, log: "Hi Bilbo")
+        |> run(tx)
 
       new_user
     end

@@ -5,7 +5,7 @@ defmodule MoebiusInsertTest do
 
   setup_all do
     cmd = db(:users)
-        |> insert_command(email: "test@test.com", first: "Test", last: "User")
+        |> insert(email: "test@test.com", first: "Test", last: "User")
     {:ok, cmd: cmd}
   end
 
@@ -21,6 +21,7 @@ defmodule MoebiusInsertTest do
     assert %{email: "test@test.com", first: "Test", id: _id, last: "User", profile: nil} =
       db(:users)
         |> insert(email: "test@test.com", first: "Test", last: "User")
+        |> TestDb.run
 
   end
 

@@ -2,12 +2,13 @@ defmodule Moebius.BasicSelectTest do
 
   use ExUnit.Case
   import Moebius.Query
+  import TestDb
 
   setup do
-    db(:logs) |> delete
-    db(:users) |> delete
-    user = db(:users) |> insert(email: "friend@test.com")
-    db(:users) |> insert(email: "enemy@test.com")
+    db(:logs) |> delete |> run
+    db(:users) |> delete |> run
+    user = db(:users) |> insert(email: "friend@test.com") |> run
+    db(:users) |> insert(email: "enemy@test.com") |> run
 
     {:ok, res: user}
   end
@@ -15,7 +16,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select *" do
 
     cmd = db(:users)
-        |> select_command
+        |> select
 
     assert cmd.sql == "select * from users;"
   end
@@ -23,7 +24,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select * using binary for tablename" do
 
     cmd = db("users")
-        |> select_command
+        |> select
 
     assert cmd.sql == "select * from users;"
   end
@@ -31,7 +32,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select with columns" do
 
     cmd = db(:users)
-        |> select_command("first, last")
+        |> select("first, last")
 
     assert cmd.sql == "select first, last from users;"
   end
@@ -39,7 +40,7 @@ defmodule Moebius.BasicSelectTest do
   test "a basic select with order" do
     cmd = db(:users)
         |> sort(:name, :desc)
-        |> select_command
+        |> select
 
     assert cmd.sql == "select * from users order by name desc;"
   end
@@ -48,7 +49,7 @@ defmodule Moebius.BasicSelectTest do
     cmd = db(:users)
         |> sort(:name, :desc)
         |> limit(10)
-        |> select_command
+        |> select
 
     assert cmd.sql == "select * from users order by name desc limit 10;"
   end
@@ -59,7 +60,7 @@ defmodule Moebius.BasicSelectTest do
         |> sort(:name, :desc)
         |> limit(10)
         |> offset(2)
-        |> select_command
+        |> select
 
     assert cmd.sql == "select * from users order by name desc limit 10 offset 2;"
   end
@@ -71,17 +72,19 @@ defmodule Moebius.BasicSelectTest do
     assert res.email == "friend@test.com"
   end
 
-  test "last returns last" do
-    res = db(:users)
-      |> last(:id)
-
-    assert res.email == "enemy@test.com"
-  end
-
   test "find returns a single record", %{res: user} do
     found = db(:users)
           |> find(user.id)
 
     assert found.id == user.id
   end
+
+  test "filter returns a few records", %{res: user} do
+    found = db(:users)
+          |> filter(id: user.id)
+          |> run
+
+    assert length(found) > 0
+  end
+
 end

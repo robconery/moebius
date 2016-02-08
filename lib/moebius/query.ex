@@ -2,6 +2,7 @@ defmodule Moebius.Query do
 
   import Inflex, only: [singularize: 1]
   alias Moebius.QueryCommand
+  alias Moebius.CommandBatch
   use Moebius.QueryFilter
 
   @moduledoc """
@@ -30,23 +31,23 @@ defmodule Moebius.Query do
   def db(table),
     do: %QueryCommand{table_name: table}
 
+
   @doc """
-  Searches for a record based on an `id` primary key.
-
-  id      -   The primary key value
-
+  Executes a given pipeline and returns the last matching result. You should specify a `sort` to be sure first works as intended.
+  cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.
+            For example `now() as current_time, name, description`. Defaults to "*"
   Example:
-
   ```
-  result = db(:users)
-      |> find(1)
+  cheap_skate = db(:users)
+    |> sort(:money_spent, :desc)
+    |> last("first, last, email")
   ```
   """
-  def find(%QueryCommand{} = cmd, id) do
+  def last(%QueryCommand{} = cmd, sort_by) when is_atom(sort_by) do
     cmd
-      |> filter(id: id)
-      |> select_command
-      |> first
+    |> sort(sort_by, :desc)
+    |> select
+
   end
 
   @doc """
@@ -129,12 +130,12 @@ defmodule Moebius.Query do
   command = db(:users)
       |> limit(20)
       |> offset(2)
-      |> select_command("now() as current_time, name, description")
+      |> select("now() as current_time, name, description")
 
   #command is a QueryCommand object with all of the pipelined settings applied
   ```
   """
-  def select_command(%QueryCommand{} = cmd, cols \\ "*") when is_bitstring(cols) do
+  def select(%QueryCommand{} = cmd, cols \\ "*") when is_bitstring(cols) do
     %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
@@ -146,103 +147,14 @@ defmodule Moebius.Query do
   count = db(:users)
       |> limit(20)
       |> count
+      |> single
 
   #count == 20
   """
   def count(%QueryCommand{} = cmd) do
-    res = %{cmd | sql: "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
-      |> execute(:single)
-
-    case res do
-      {:error, err} -> {:error, err}
-      row -> row.count
-    end
+    %{cmd | type: :count, sql: "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 
-  @doc """
-  Executes a given pipeline and returns the first matching result. You should specify a `sort` to be sure first works as intended.
-
-  cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.
-            For example `now() as current_time, name, description`. Defaults to "*"
-
-
-  Example:
-
-  ```
-  top_spender = db(:users)
-    |> sort(:money_spent, :desc)
-    |> first("first, last, email")
-  ```
-  """
-  def first(%QueryCommand{} = cmd, cols \\ "*") do
-    res = cmd
-          |> select_command(cols)
-          |> execute(:single)
-
-    cond do
-      res == [] -> nil
-      true -> res
-    end
-  end
-
-  @doc """
-  Executes a given pipeline and returns the last matching result. You should specify a `sort` to be sure first works as intended.
-
-  cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.
-            For example `now() as current_time, name, description`. Defaults to "*"
-
-
-  Example:
-
-  ```
-  cheap_skate = db(:users)
-    |> sort(:money_spent, :desc)
-    |> last("first, last, email")
-  ```
-  """
-  def last(%QueryCommand{} = cmd, sort_by) when is_atom(sort_by) do
-    cmd
-    |> sort(sort_by, :desc)
-    |> select_command
-    |> execute(:single)
-  end
-
-  @doc """
-  Executes a given pipeline and returns all results. An alias for `all/2`
-
-  cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.
-            For example `now() as current_time, name, description`. Defaults to "*"
-
-
-  Example:
-
-  ```
-  all_users = db(:users)
-    |> to_list("first, last, email")
-  ```
-  """
-  def to_list(%QueryCommand{} = cmd, cols \\ "*"),
-    do: all(cmd, cols)
-
-  @doc """
-  Executes a given pipeline and returns all results. An alias for `to_list/2`
-
-  cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.
-            For example `now() as current_time, name, description`. Defaults to "*"
-
-
-  Example:
-
-  ```
-  all_users = db(:users)
-    |> all("first, last, email")
-  ```
-  """
-  def all(%QueryCommand{} = cmd, cols \\ "*") do
-    cmd
-    |> select_command(cols)
-    |> execute
-  end
 
   @doc """
   Specifies a GROUP BY for a `map/reduce` (aggregate) query.
@@ -320,14 +232,8 @@ defmodule Moebius.Query do
         "select #{op}(#{column}) from #{cmd.table_name}#{cmd.join}#{cmd.where}"
     end
 
-    res = %{cmd | sql: sql}
-      |> execute(:single)
+    %{cmd | sql: sql}
 
-    case res do
-      {:error, err} -> {:error, err}
-      nil -> 0
-      row -> Map.get(row, op)
-    end
   end
 
   @doc """
@@ -377,54 +283,57 @@ defmodule Moebius.Query do
   result = db(:people) |> insert(data)
   ```
   """
-  def insert(%QueryCommand{} = cmd, [[hd | _] | _] = records) when is_tuple(hd),
-    do: bulk_insert(cmd, records)
 
-  @doc """
-  A simple insert that that returns the inserted record. Create your list of data and send it on in.
-
-  criteria:   -    A list or map of data to be saved
-
-  Example:
-
-  ```
-  new_user = db(:users)
-      |> insert(email: "test@test.com", first: "Test", last: "User")
-  ```
-  """
-  def insert(%QueryCommand{} = cmd, criteria) do
+  def bulk_insert(%QueryCommand{} = cmd, list) when is_list(list) do
+    # do this once and get a canonnical map for the records - 
+    column_map = list |> hd |> Keyword.keys
     cmd
-    |> insert_command(criteria)
-    |> execute(:single)
+    |> bulk_insert_batch(list, [], column_map)
   end
 
-  @doc """
-  A simple insert that is part of a transaction that returns the inserted record. Create your list of data and send it on in.
+  defp bulk_insert_batch(%QueryCommand{} = cmd, list, acc, column_map) when is_list(list) do
+    # split the records into command batches that won't overwhelm postgres with params:
+    # 20,000 seems to be the optimal number here. Technically you can go up to 34,464, but I think Postgrex imposes a lower limit, as I
+    # hit a wall at 34,000, but succeeded at 30,000. Perf on 100k records is best at 20,000.
 
-  pid:        -    The process id of the transaction (retrieved from the `transaction` callback)
-  criteria:   -    A list or map of data to be saved
+    max_params = 20000
+    column_count = length(column_map)
+    max_records_per_command = div(max_params, column_count)
 
-  Example:
-
-  ```
-  tranaction fn(pid) ->
-    new_user = db(:users)
-        |> insert(pid, email: "test@test.com", first: "Test", last: "User")
+    { current, next_batch } = Enum.split(list, max_records_per_command)
+    new_cmd = bulk_insert_command(cmd, current, column_map)
+    case next_batch do
+      [] -> %CommandBatch{commands: Enum.reverse([new_cmd | acc])}
+      _ -> db(cmd.table_name) |> bulk_insert_batch(next_batch, [new_cmd | acc], column_map)
+    end
   end
-  ```
-  """
-  def insert(%QueryCommand{} = cmd, pid, criteria) when is_pid(pid) do
-    cmd
-    |> insert_command(criteria)
-    |> execute(:single, pid)
+
+  defp bulk_insert_command(%QueryCommand{} = cmd, list, column_map) when is_list(list) do
+    column_count = length(column_map)
+    row_count = length(list)
+
+    param_list = for row <- 0..row_count-1 do
+      list = (row * column_count + 1 .. (row * column_count) + column_count)
+        |> Enum.to_list
+        |> Enum.map_join(",", &"$#{&1}")
+      "(#{list})"
+    end
+
+    params = for row <- list, {k, v} <- row, do: v
+
+    column_names = Enum.map_join(column_map,", ", &"#{&1}")
+    value_sql = Enum.join param_list, ","
+    sql = "insert into #{cmd.table_name}(#{column_names}) values #{value_sql};"
+    %{cmd | sql: sql, params: params, type: :insert}
   end
+
 
   @doc """
   Creates an insert command based on the assembled pipeline
   """
-  def insert_command(%QueryCommand{} = cmd, criteria) do
+  def insert(%QueryCommand{} = cmd, criteria) do
     cols = Keyword.keys(criteria)
-    vals = Keyword.values(criteria)
+    vals = Keyword.values(criteria) |> Moebius.Transformer.from_timex
     column_names = Enum.map_join(cols,", ", &"#{&1}")
     parameter_placeholders = Enum.map_join(1..length(cols), ", ", &"$#{&1}")
     sql = "insert into #{cmd.table_name}(#{column_names}) values(#{parameter_placeholders}) returning *;"
@@ -432,60 +341,13 @@ defmodule Moebius.Query do
     %{cmd | sql: sql, params: vals, type: :insert}
   end
 
-  defp bulk_insert(%QueryCommand{} = cmd, records) do
-    # need a single definitive column map to arrest and roll back Tx if
-    # and of the inputs are malformed (different cols vs. vals)
-    column_map = records |> hd |> Keyword.keys
-
-    transaction fn(pid) ->
-      cmd
-      |> bulk_insert_batch(records, [], column_map)
-      |> Enum.map(fn(cmd) -> execute(cmd, pid) end)
-      |> List.flatten
-    end
-  end
-
-  defp bulk_insert_batch(%QueryCommand{} = cmd, records, acc, column_map) do
-
-    # 20,000 seems to be the optimal number here. Technically you can go up to 34,464, but I think Postgrex imposes a lower limit, as I
-    # hit a wall at 34,000, but succeeded at 30,000. Perf on 100k records is best at 20,000.
-    max_params = 20000
-    cmd = %{ cmd | columns: column_map}
-    max_records_per_command = div(max_params, length(cmd.columns))
-
-    { current, next_batch } = Enum.split(records, max_records_per_command)
-    this_cmd = bulk_insert_command(cmd, current)
-    case next_batch do
-      [] -> Enum.reverse([this_cmd | acc])
-      _ ->
-        db(cmd.table_name) |> bulk_insert_batch(next_batch, [this_cmd | acc], column_map)
-    end
-  end
-
-  defp bulk_insert_command(%QueryCommand{} = cmd, [first | rest]) do
-    records = [first | rest]
-    cols = cmd.columns
-    vals = Enum.reduce(Enum.reverse(records), [], fn(listitem, acc) ->
-      Enum.concat(Keyword.values(listitem), acc) end)
-
-    params_sql = elem(Enum.map_reduce(vals, 0, fn(_, acc) -> {"$#{acc + 1}", acc + 1} end),0)
-    |> Enum.chunk(length(cols), length(cols), [])
-    |> Enum.map(fn(chunk) -> "(#{Enum.join(chunk, ", ")})" end)
-    |> Enum.join(", ")
-
-    sql_body = "insert into #{cmd.table_name} (" <> Enum.join(cols, ", ") <> ") " <>
-    "values #{ params_sql } returning *;"
-
-    %{cmd | columns: cols, sql: sql_body, params: vals, type: :insert}
-  end
-
   @doc """
   Creates an update command based on the assembled pipeline.
   """
-  def update_command(%QueryCommand{} = cmd, criteria) do
+  def update(%QueryCommand{} = cmd, criteria) do
 
     cols = Keyword.keys(criteria)
-    vals = Keyword.values(criteria)
+    vals = Keyword.values(criteria) |> Moebius.Transformer.from_timex
 
     {cols, col_count} = Enum.map_reduce cols, 1, fn col, acc ->
       {"#{col} = $#{acc}", acc + 1}
@@ -516,113 +378,16 @@ defmodule Moebius.Query do
   end
 
 
-  @doc """
-  A simple update that is part of a transaction based on the criteria you specify. This is a partial update.
-  Returns a single record as a result when you pass `:single`
-
-  pid:        -    The process id of the transaction (retrieved from the `transaction` callback)
-  criteria:   -    A list or map of data to be saved
-
-  Example:
-
-  ```
-  tranaction fn(pid) ->
-    updated_user = db(:users)
-        |> update(pid, :single, email: "test@test.com", first: "Test", last: "User")
-  end
-  ```
-  """
-  def update(%QueryCommand{} = cmd, pid, :single, criteria) when  is_pid(pid) and is_list(criteria) do
-    cmd
-    |> update_command(criteria)
-    |> execute(:single, pid)
-  end
-
-  @doc """
-  A simple update based on the criteria you specify. This is a partial update.
-  Returns a single record as a result when you pass `:single`
-
-  pid:        -    The process id of the transaction (retrieved from the `transaction` callback)
-  criteria:   -    A list or map of data to be saved
-
-  Example:
-
-  ```
-
-  updated_user = db(:users)
-      |> update(:single, email: "test@test.com", first: "Test", last: "User")
-
-  ```
-  """
-  def update(%QueryCommand{} = cmd, :single, criteria) when is_list(criteria) do
-    cmd
-    |> update_command(criteria)
-    |> execute(:single)
-  end
-
-  @doc """
-  A bulk update based on the criteria you specify. All changed records are returned.
-
-  Example:
-
-  ```
-  db(:users)
-    |> filter(company: "Test Company")
-    |> update(status: "preferred")
-  ```
-  """
-  def update(%QueryCommand{} = cmd, criteria) when is_list(criteria) do
-    cmd
-    |> update_command(criteria)
-    |> execute
-  end
 
   @doc """
   Creates a DELETE command
   """
-  def delete_command(%QueryCommand{} = cmd) do
+  def delete(%QueryCommand{} = cmd) do
     sql = "delete from #{cmd.table_name}" <> cmd.where <> ";"
     %{cmd | sql: sql, type: :delete}
   end
 
-  @doc """
-  Deletes a record based on your filter, part of a transaction.
 
-  pid:  -   The process id from the current transaction callback.
-
-  Example:
-
-  ```
-  transaction fn(pid) ->
-    db(:users)
-      |> filter("id > $1", 1)
-      |> delete(pid)
-  end
-  ```
-  """
-  def delete(%QueryCommand{} = cmd, pid) when is_pid(pid) do
-    cmd
-    |> delete_command
-    |> execute(:single, pid)
-  end
-
-  @doc """
-  Deletes a record based on your filter.
-  Example:
-
-  ```
-
-  db(:users)
-    |> filter("id > $1", 1)
-    |> delete
-
-  ```
-  """
-  def delete(%QueryCommand{} = cmd) do
-    cmd
-    |> delete_command
-    |> execute(:single)
-  end
 
   @doc """
   Build a table join for your query. There are a number of options to handle various joins.
@@ -676,23 +441,8 @@ defmodule Moebius.Query do
   def sql_file(file) do
     file
     |> sql_file_command([])
-    |> execute
   end
 
-  @doc """
-  Executes the SQL in a given SQL file with the specified parameters, returning a single result.
-  Specify the scripts directory by setting the `scripts` directive in the config.
-  Pass the file name as an atom, without extension.
-
-  ```
-  result = sql_file(:save_user, [1])
-  ```
-  """
-  def sql_file(file, :single, params) do
-    file
-    |> sql_file_command(params)
-    |> execute(:single)
-  end
 
   @doc """
   Executes the SQL in a given SQL file with the specified parameters. Specify the scripts
@@ -706,7 +456,6 @@ defmodule Moebius.Query do
   def sql_file(file, params) do
     file
     |> sql_file_command(params)
-    |> execute
   end
 
   @doc """
@@ -740,27 +489,8 @@ defmodule Moebius.Query do
   def function(function_name) do
     function_name
     |> function_command([])
-    |> execute
   end
 
-  @doc """
-  Executes a function with the given name, passed as an atom, returning a single result.
-
-  params:   -   An array of values to be passed to the function.
-
-  Example:
-
-  ```
-  result = db(:users)
-    |> function(:friends, ["mike","jane"])
-
-  ```
-  """
-  def function(function_name, :single) do
-    function_name
-    |> function_command([])
-    |> execute(:single)
-  end
 
   @doc """
   Executes a function with the given name, passed as an atom.
@@ -778,25 +508,8 @@ defmodule Moebius.Query do
   def function(function_name, params) do
     function_name
     |> function_command(params)
-    |> execute
   end
 
-  @doc """
-  Executes a function with the given name, passed as an atom, returning a single result.
-
-  Example:
-
-  ```
-  result = db(:users)
-    |> function(:all_users)
-
-  ```
-  """
-  def function(function_name, :single, params) do
-    function_name
-    |> function_command(params)
-    |> execute(:single)
-  end
 
   @doc """
   Creates a function command
@@ -816,93 +529,5 @@ defmodule Moebius.Query do
     %Moebius.QueryCommand{sql: sql, params: params}
   end
 
-
-  @doc """
-  Executes a raw SQL query without parameters
-  """
-  def run(sql) when is_bitstring(sql),
-    do: run(sql, [])
-
-  def run(sql, :single) when is_bitstring(sql),
-    do: run(sql, [], :single)
-
-  def run(sql, params) when is_bitstring(sql) do
-    %Moebius.QueryCommand{sql: sql, params: params}
-    |> execute
-  end
-
-  @doc """
-  Executes a raw SQL query with parameters returning a single result
-  """
-  def run(sql, params, :single) when is_bitstring(sql) do
-    %Moebius.QueryCommand{sql: sql, params: params}
-    |> execute(:single)
-  end
-
-  @doc """
-  Executes a pass-through query and returns a single result as part of a transaction
-  """
-  def execute(%QueryCommand{} = cmd, :single, pid) when is_pid(pid) do
-    cmd
-    |> Moebius.Runner.execute(pid)
-    |> Moebius.Transformer.to_single
-  end
-
-  @doc """
-  Executes a command, returning a list of results
-  """
-  def execute(%QueryCommand{} = cmd) do
-    cmd
-    |> Moebius.Runner.execute
-    |> Moebius.Transformer.to_list
-  end
-
-  @doc """
-  Executes a pass-through query and returns a single result
-  """
-  def execute(%QueryCommand{} = cmd, :single) do
-    cmd
-    |> Moebius.Runner.execute
-    |> Moebius.Transformer.to_single
-  end
-
-  @doc """
-  Executes a command, returning a list of results as part of a transaction
-  """
-  def execute(%QueryCommand{} = cmd, pid) when is_pid(pid) do
-    cmd
-    |> Moebius.Runner.execute(pid)
-    |> Moebius.Transformer.to_list
-  end
-
-  @doc """
-  Opens a transaction, returning a `pid` (Process ID) that you can pass to each of your queries that take part in the transaction.
-  If an error occurs, it is passed back to you with `{:error, message}`. The transaction will automatically COMMIT on completion.
-
-  Example:
-
-  ```
-  result = transaction fn(pid) ->
-    new_user = with(:users)
-      |> insert(pid, email: "frodo@test.com")
-
-    with(:logs)
-      |> insert(pid, user_id: new_user.id, log: "Hi Frodo")
-
-    new_user
-  end
-  ```
-  """
-
-  def transaction(fun) do
-    pid = Moebius.Runner.open_transaction()
-    res = try do
-      fun.(pid)
-    rescue
-      e in RuntimeError -> {:error, e.message}
-    end
-    Moebius.Runner.commit_and_close_transaction(pid)
-    res
-  end
 
 end

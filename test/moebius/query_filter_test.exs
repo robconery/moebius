@@ -73,7 +73,7 @@ defmodule Moebius.QueryFilterTest do
 
   test "a basic select with a where string", %{query: query} do
     cmd = filter(query, "name=$1 OR thing=$2", ["Steve", "Bill"])
-          |> Moebius.Query.select_command
+          |> Moebius.Query.select
 
     assert cmd.sql == "select * from users where name=$1 OR thing=$2;"
   end

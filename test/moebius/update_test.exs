@@ -6,7 +6,7 @@ defmodule Moebius.UpdateTest do
   setup_all do
     cmd = db(:users)
         |> filter(id: 1)
-        |> update_command(email: "maggot@test.com")
+        |> update(email: "maggot@test.com")
 
     {:ok, cmd: cmd}
   end
@@ -23,7 +23,7 @@ defmodule Moebius.UpdateTest do
   test "a bulk update with a string filter" do
     cmd = db(:users)
         |> filter("id > 100")
-        |> update_command(email: "test@test.com")
+        |> update(email: "test@test.com")
 
     assert cmd.sql == "update users set email = $1 where id > 100 returning *;"
     assert length(cmd.params) == 1
@@ -33,19 +33,20 @@ defmodule Moebius.UpdateTest do
   test "a bulk update with a string filter and params" do
     cmd = db(:users)
         |> filter("email LIKE %$2", "test")
-        |> update_command(email: "ox@test.com")
+        |> update(email: "ox@test.com")
 
     assert cmd.sql == "update users set email = $1 where email LIKE %$2 returning *;"
     assert length(cmd.params) == 2
   end
 
-  # test "it actually works" do
-  #   assert %{email: "maggot@test.com", first: "Rob", id: 1, last: "Blah", profile: nil} =
-  #     db(:users)
-  #       |> filter(id: 1)
-  #       |> update(:single, email: "maggot@test.com")
-  #
-  # end
+  test "it actually works" do
+      res = db(:date_night)
+        |> filter(id: 1)
+        |> update(date: Timex.Date.now())
+        |> TestDb.run
+
+      assert res.date
+  end
 
 
 end

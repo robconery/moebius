@@ -2,59 +2,51 @@ defmodule Moebius.Runner do
   @moduledoc """
   The main execution bits are in here.
   """
+  @name __MODULE__
 
   @doc """
   Spawn a Postgrex worker to run our query using the config specified in /config
   """
-  def connect do
+  def start_link() do
     extensions = [{Postgrex.Extensions.JSON, library: Poison}]
+    opts()
+      |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
+      |> Keyword.put(:name, @name)
+      |> Postgrex.start_link()
+  end
 
-    Application.get_env(:moebius, :connection)
-    |> Keyword.update(:extensions, extensions, &(&1 ++ extensions))
-    |> Postgrex.Connection.start_link
+  defp opts do
+    Application.get_env(:moebius, :connection, [])
   end
 
   @doc """
   If there isn't a connection process started then one is added to the command
   """
   def execute(cmd) do
-    {:ok, pid} = connect()
-    try do
-      case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
-        {:ok, result} -> {:ok, result}
-        {:error, err} -> {:error, err.postgres.message}
-      end
-    after
-      Postgrex.Connection.stop(pid)
+    case Postgrex.query(@name, cmd.sql, cmd.params, opts()) do
+      {:ok, result} -> {:ok, result}
+      {:error, err} -> {:error, err.postgres.message}
     end
+
   end
 
   @doc """
   Executes a command for a given transaction specified with `pid`. If the execution fails,
   it will be caught in `Query.transaction/1` and reported back using `{:error, err}`.
   """
-  def execute(cmd, pid) when is_pid(pid) do
-    case Postgrex.Connection.query(pid, cmd.sql, cmd.params) do
+  def execute(cmd, %DBConnection{} = meta) do
+
+    case Postgrex.query(meta, cmd.sql, cmd.params, opts()) do
       {:ok, result} ->
         {:ok, result}
       {:error, err} ->
-        Postgrex.Connection.query pid, "ROLLBACK", []
+        Postgrex.query meta, "ROLLBACK", []
         #this will get caught by the transactor
         raise err.postgres.message
+        #{:error, err.postgres.message}
     end
   end
 
-
-  def open_transaction() do
-    {:ok, pid} = Moebius.Runner.connect()
-    Postgrex.Connection.query(pid, "BEGIN;",[])
-    pid
-  end
-
-  def commit_and_close_transaction(pid) when is_pid(pid) do
-    Postgrex.Connection.query(pid, "COMMIT;",[])
-    Postgrex.Connection.stop(pid)
-  end
 
   @doc """
   A convenience tool for assembling large queries with multiple commands. Not used
@@ -62,13 +54,13 @@ defmodule Moebius.Runner do
   one command per query.
   """
   def run_with_psql(sql, db \\ nil) do
-    if db == nil,  do: [database: db] = Application.get_env(:moebius, :connection)
+    db = db || opts()[:database]
     ["-d", db, "-c", sql, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
     |> call_psql
   end
 
   def run_file_with_psql(file, db \\ nil) do
-    if db == nil,  do: [database: db] = Application.get_env(:moebius, :connection)
+    db = db || opts()[:database]
 
     ["-d", db, "-f", file, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
     |> call_psql

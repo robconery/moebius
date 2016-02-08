@@ -22,7 +22,7 @@ defmodule Moebius.QueryFilter do
     iex> import Moebius.Query
     iex> cmd = db(:users) |>
     ...>   filter(email: "test@test.com") |>
-    ...>   select_command
+    ...>   select
     iex> cmd.sql
     "select * from users where email = $1;"
     iex> cmd.params
@@ -33,7 +33,7 @@ defmodule Moebius.QueryFilter do
     iex> import Moebius.Query
     iex> cmd = db(:users) |>
     ...>   filter(:name, in: ["phillip", "lela", "bender"]) |>
-    ...>   select_command
+    ...>   select
     iex> cmd.sql
     "select * from users where name IN($1, $2, $3);"
     iex> cmd.params
@@ -44,7 +44,7 @@ defmodule Moebius.QueryFilter do
     iex> import Moebius.Query
     iex> cmd = db(:users) |>
     ...>   filter(:name, not_in: ["phillip", "lela", "bender"]) |>
-    ...>   select_command
+    ...>   select
     iex> cmd.sql
     "select * from users where name NOT IN($1, $2, $3);"
     iex> cmd.params
@@ -55,7 +55,7 @@ defmodule Moebius.QueryFilter do
     iex> import Moebius.Query
     iex> cmd = db(:users) |>
     ...>   filter("email LIKE $1", "%test.com%") |>
-    ...>   select_command
+    ...>   select
     iex> cmd.sql
     "select * from users where email LIKE $1;"
     iex> cmd.params
@@ -67,7 +67,7 @@ defmodule Moebius.QueryFilter do
     iex> cmd = db(:users) |>
     ...>  filter("email LIKE $1", "%test.com%") |>
     ...>  filter(:name, not_in: ["phillip", "lela", "bender"]) |>
-    ...>  select_command
+    ...>  select
     iex> cmd.sql
     "select * from users where email LIKE $1 and name NOT IN($2, $3, $4);"
     iex> cmd.params
