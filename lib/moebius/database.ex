@@ -31,6 +31,21 @@ defmodule Moebius.Database do
       def run(%Moebius.QueryCommand{} = cmd), do: execute(cmd) |> Moebius.Transformer.to_list
       def run(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_list
 
+      def run_batch(%Moebius.CommandBatch{} = batch) do
+        batch.commands 
+        # |> Enum.map(fn(cmd) -> execute(cmd) |> Moebius.Transformer.to_list end)
+        |> Enum.map(fn(cmd) -> execute(cmd) end)
+        # |> List.flatten
+      end
+
+      def transact_batch(%Moebius.CommandBatch{} = batch) do
+        transaction fn(tx) ->
+          batch.commands 
+          |> Enum.map(fn(cmd) -> execute(cmd, tx) end)
+          # |> List.flatten
+        end
+      end
+
       def run(%Moebius.DocumentCommand{sql: nil} = cmd) do
         %{cmd | conn: @name}
           |> Moebius.DocumentQuery.select
