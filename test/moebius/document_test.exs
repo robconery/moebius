@@ -26,7 +26,22 @@ defmodule Moebius.DocTest do
     assert res.name == "Spiff"
   end
 
-  test "find creates table if it doesn't exist" do
+  test "nil is returned when id is not found in docs" do
+    res = db(:monkies) |> TestDb.find(155555)
+    assert res == nil
+  end
+
+  test "find using custom table does not hang" do
+    res = db(:sessions) |> TestDb.find("hey")
+    assert res == nil
+  end
+
+  test "can pull out a single record by id with find" do
+    res = db(:monkies) |> TestDb.find(1)
+    assert res.id == 1
+  end
+
+  test "first creates table if it doesn't exist" do
     "drop table if exists artists;" |> TestDb.run
     res = db(:artists) |> TestDb.first
     case res do
@@ -181,7 +196,7 @@ defmodule Moebius.DocTest do
 
     assert length(res) > 0
   end
-  # 
+  #
   # test "it creates a schema-based table" do
   #   res = db("animals.monkies")
   #     |> search("duck")

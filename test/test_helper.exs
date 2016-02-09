@@ -53,6 +53,18 @@ insert into date_night(date) values(now());
 insert into date_night(date) values(now() - '1 day' :: interval);
 insert into date_night(date) values(now() + '2 days' :: interval);
 insert into date_night(date) values(now() + '1 year' :: interval);
+
+drop table if exists sessions;
+create table sessions(
+  id varchar(36) primary key not null,
+  body jsonb not null,
+  search tsvector,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
+);
+
+create index idx_sessions_search on sessions using GIN(search);
+create index idx_sessions on sessions using GIN(body jsonb_path_ops);
 "
 
 case Moebius.run_with_psql sql, db: "meebuss" do

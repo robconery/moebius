@@ -8,6 +8,7 @@ defmodule Moebius.Transformer do
   def to_single({:error, message}) when is_binary(message), do: {:error, message}
   def to_single({:error, %{postgres: %{message: message}}}),  do: {:error, message}
   def to_single({:ok, %{rows: rows, columns: cols}} = res) do
+    IO.inspect "HI"
     to_list(res) |> List.first
   end
 

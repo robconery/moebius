@@ -32,7 +32,7 @@ defmodule Moebius.Database do
       def run(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_list
 
       def run_batch(%Moebius.CommandBatch{} = batch) do
-        batch.commands 
+        batch.commands
         # |> Enum.map(fn(cmd) -> execute(cmd) |> Moebius.Transformer.to_list end)
         |> Enum.map(fn(cmd) -> execute(cmd) end)
         # |> List.flatten
@@ -40,7 +40,7 @@ defmodule Moebius.Database do
 
       def transact_batch(%Moebius.CommandBatch{} = batch) do
         transaction fn(tx) ->
-          batch.commands 
+          batch.commands
           |> Enum.map(fn(cmd) -> execute(cmd, tx) end)
           # |> List.flatten
         end
@@ -84,8 +84,8 @@ defmodule Moebius.Database do
       end
 
       def find(%Moebius.DocumentCommand{} = cmd, id) do
-        sql = "select id, #{cmd.json_field}::text from #{cmd.table_name} where id=#{id}"
-        %{cmd | sql: sql}
+        sql = "select id, #{cmd.json_field}::text from #{cmd.table_name} where id=$1"
+        %{cmd | sql: sql, params: [id]}
           |> execute
           |> Moebius.Transformer.to_single
       end
