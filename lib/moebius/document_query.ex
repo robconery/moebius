@@ -195,7 +195,7 @@ defmodule Moebius.DocumentQuery do
 
   def decide_command(%DocumentCommand{} = cmd, doc) do
     cond do
-      Map.has_key? doc, :id -> update(cmd, Map.delete(doc, :id), doc.id)
+      Map.has_key?(doc, :id) && doc.id !=nil -> update(cmd, Map.delete(doc, :id), doc.id)
       true -> insert(cmd, doc)
     end
   end

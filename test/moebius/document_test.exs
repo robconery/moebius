@@ -181,6 +181,12 @@ defmodule Moebius.DocTest do
 
     assert length(res) > 0
   end
+  # 
+  # test "it creates a schema-based table" do
+  #   res = db("animals.monkies")
+  #     |> search("duck")
+  #     |> TestDb.run
+  # end
 
   test "single returns nil when no match" do
     res = db(:monkies)

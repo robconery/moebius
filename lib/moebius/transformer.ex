@@ -32,7 +32,8 @@ defmodule Moebius.Transformer do
   def to_timex(row) do
     Enum.map row, fn(v) ->
       case v do
-        %Postgrex.Timestamp{} -> %Timex.DateTime{year: v.year, month: v.month, day: v.day, hour: v.hour, minute: v.min, second: v.sec}
+        #Postgrex.Timestamp{} -> %Timex.DateTime{year: v.year, month: v.month, day: v.day, hour: v.hour, minute: v.min, second: v.sec}
+        %Postgrex.Timestamp{} -> "#{v.year}-{v.month}-#{v.day} #{v.hour}:#{v.min}:#{v.sec}"
         v -> v
       end
     end
