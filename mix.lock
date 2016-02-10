@@ -11,7 +11,7 @@
   "inflex": {:hex, :inflex, "1.5.0"},
   "json": {:hex, :json, "0.3.2"},
   "mimerl": {:hex, :mimerl, "1.0.2"},
-  "poison": {:hex, :poison, "1.5.0"},
+  "poison": {:hex, :poison, "2.0.1"},
   "postgrex": {:hex, :postgrex, "0.10.0"},
   "ssl_verify_hostname": {:hex, :ssl_verify_hostname, "1.0.5"},
   "timex": {:hex, :timex, "1.0.0"},
