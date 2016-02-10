@@ -31,10 +31,15 @@ defmodule Moebius.DocTest do
     assert res == nil
   end
 
-  test "find using custom table does not hang" do
-    res = db(:sessions) |> TestDb.find("hey")
-    assert res == nil
+  test "an id is returned with save" do
+    thing = %{discounts: [], ip: "127.0.0.1", items: [], key: "ducks",
+            landing: "/", logs: [], member_id: nil,
+            started_at: "2016-02-10 01:57:56+0000", updated_at: nil}
+    res = db(:monkies) |> TestDb.save(thing)
+    IO.inspect res
+    assert res.id
   end
+
 
   test "can pull out a single record by id with find" do
     res = db(:monkies) |> TestDb.find(1)

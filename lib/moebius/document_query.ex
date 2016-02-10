@@ -195,7 +195,7 @@ defmodule Moebius.DocumentQuery do
 
   def decide_command(%DocumentCommand{} = cmd, doc) do
     cond do
-      Map.has_key?(doc, :id) && doc.id !=nil -> update(cmd, Map.delete(doc, :id), doc.id)
+      Map.has_key?(doc, :id) && doc.id !=nil -> update(cmd, doc, doc.id)
       true -> insert(cmd, doc)
     end
   end
@@ -253,6 +253,31 @@ defmodule Moebius.DocumentQuery do
   Deletes a document with the given id
   """
   def delete(%DocumentCommand{} = cmd, pid, id) when is_pid(pid), do: cmd |> delete_command(id)
+
+
+  def insert(%DocumentCommand{} = cmd, doc) when is_bitstring(doc) do
+    sql = """
+    insert into #{cmd.table_name}(#{cmd.json_field})
+    VALUES('#{doc}')
+    RETURNING id, #{cmd.json_field}::text;
+    """
+    %{cmd | sql: sql, params: [], type: :insert}
+  end
+
+  def insert(%DocumentCommand{} = cmd, doc) when is_list(doc) or is_map(doc) do
+    {:ok, encoded} = Poison.encode(doc)
+    insert(cmd, encoded)
+  end
+
+  def update(%DocumentCommand{} = cmd, change, id) when is_map(change) and is_integer(id) do
+    {:ok, encoded} = Poison.encode(change)
+    sql = """
+    update #{cmd.table_name}
+    set #{cmd.json_field} = '#{encoded}'
+    where id = #{id} returning id, #{cmd.json_field}::text;
+    """
+    %{cmd | sql: sql, type: :update}
+  end
 
 
   @doc """
@@ -317,15 +342,6 @@ defmodule Moebius.DocumentQuery do
 
   end
 
-  defp update(%DocumentCommand{} = cmd, change, id) when is_map(change) and is_integer(id) do
-    {:ok, encoded} = Poison.encode(change)
-    sql = """
-    update #{cmd.table_name}
-    set #{cmd.json_field} = '#{encoded}'
-    where id = #{id} returning id, #{cmd.json_field}::text;
-    """
-    %{cmd | sql: sql, type: :update}
-  end
 
   defp delete_command(%DocumentCommand{} = cmd, id) when is_integer(id) do
     sql = "delete from #{cmd.table_name} where id=#{id} returning id, body::text"
@@ -337,19 +353,7 @@ defmodule Moebius.DocumentQuery do
     %{cmd | sql: sql, type: :delete}
   end
 
-  defp insert(%DocumentCommand{} = cmd, doc) when is_bitstring(doc) do
-    sql = """
-    insert into #{cmd.table_name}(#{cmd.json_field})
-    VALUES('#{doc}')
-    RETURNING id, #{cmd.json_field}::text;
-    """
-    %{cmd | sql: sql, params: [], type: :insert}
-  end
 
-  defp insert(%DocumentCommand{} = cmd, doc) when is_list(doc) or is_map(doc) do
-    {:ok, encoded} = Poison.encode(doc)
-    insert(cmd, encoded)
-  end
 
 
 end
