@@ -1,3 +1,10 @@
+defmodule Candy do
+  defstruct [
+    id: nil,
+    sticky: true,
+    chocolate: :gooey
+  ]
+end
 defmodule Moebius.DocTest do
 
   use ExUnit.Case
@@ -31,12 +38,11 @@ defmodule Moebius.DocTest do
     assert res == nil
   end
 
-  test "an id is returned with save" do
-    thing = %{discounts: [], ip: "127.0.0.1", items: [], key: "ducks",
-            landing: "/", logs: [], member_id: nil,
-            started_at: "2016-02-10 01:57:56+0000", updated_at: nil}
+  test "saving a struct" do
+    thing = %Candy{}
     res = db(:monkies) |> TestDb.save(thing)
     IO.inspect res
+    IO.inspect struct(%Candy{}, res)
     assert res.id
   end
 
