@@ -105,14 +105,16 @@ defmodule Moebius.Database do
 
       def save(%Moebius.DocumentCommand{} = cmd, doc) when is_list(doc), do: save(cmd, Enum.into(doc, %{}))
       def save(%Moebius.DocumentCommand{} = cmd, doc) do
-        res =
-        %{cmd | conn: @name}
+        res = %{cmd | conn: @name}
           |> Moebius.DocumentQuery.decide_command(doc)
           |> Moebius.Database.execute
           |> Moebius.Transformer.from_json(:single)
-
+        table = cmd.table_name
         case res do
-          {:error, err} -> create_document_table(cmd, doc) |> save(Map.delete(doc, :id))
+          {:error, err} -> cond do
+            String.contains? err, "does not exist" -> create_document_table(cmd, doc) |> save(Map.delete(doc, :id))
+            true ->  {:error, err}
+          end
           res -> update_search(res, cmd) && res
         end
       end
@@ -162,7 +164,6 @@ defmodule Moebius.Database do
         %Moebius.QueryCommand{conn: @name, sql: sql} |> execute
         %Moebius.QueryCommand{conn: @name, sql: "create index idx_#{cmd.table_name}_search on #{cmd.table_name} using GIN(search);"} |> execute
         %Moebius.QueryCommand{conn: @name, sql: "create index idx_#{cmd.table_name} on #{cmd.table_name} using GIN(body jsonb_path_ops);"} |> execute
-
         cmd
       end
 

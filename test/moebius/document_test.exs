@@ -27,6 +27,24 @@ defmodule Moebius.DocTest do
     {:ok, res: res}
   end
 
+  test "a document can be saved if one of the values has a single quote" do
+    "drop table if exists artists;" |> TestDb.run
+    thing = %{collections: ["equipment"], cost: 67743,
+      description: "Why walk **when you can fly**! Weak Martian gravity means you too can fly wherever you want, whenever you want with some rockets on your back. Light, portable and really loud - you'll be the talk of the Martian skies! ",
+      domain: "localhost",
+      image: "johnny-liftoff.jpg",
+      inventory: 43,
+      name: "Johnny Liftoff Rocket Suit",
+      price: 8933300,
+      published_at: "2016-02-12T01:21:29.147Z",
+      sku: "johnny-liftoff",
+      status: "published",
+      summary: "Keep your feet off the ground with our space-age rocket suit",
+      vendor: %{name: "Martian Armaments, Ltd", slug: "martian-armaments"}}
+    res = db(:artists) |> TestDb.save(thing)
+    assert res.sku == "johnny-liftoff"
+  end
+
   test "save creates table if it doesn't exist" do
     "drop table if exists artists;" |> TestDb.run
     res = db(:artists) |> TestDb.save(%{name: "Spiff"})

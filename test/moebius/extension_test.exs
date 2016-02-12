@@ -15,7 +15,7 @@ defmodule Moebius.ExtensionTest do
     now()::time,
     now()::date
     """ |> TestDb.run
-    IO.inspect res
+    assert true
   end
 
   # test "dates are able to be inserted" do

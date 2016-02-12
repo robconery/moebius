@@ -255,28 +255,28 @@ defmodule Moebius.DocumentQuery do
   def delete(%DocumentCommand{} = cmd, pid, id) when is_pid(pid), do: cmd |> delete_command(id)
 
 
-  def insert(%DocumentCommand{} = cmd, doc) when is_bitstring(doc) do
+  def insert(%DocumentCommand{} = cmd, doc) do
     sql = """
     insert into #{cmd.table_name}(#{cmd.json_field})
-    VALUES('#{doc}')
+    VALUES($1)
     RETURNING id, #{cmd.json_field}::text;
     """
-    %{cmd | sql: sql, params: [], type: :insert}
+    %{cmd | sql: sql, params: [doc], type: :insert}
   end
 
-  def insert(%DocumentCommand{} = cmd, doc) when is_list(doc) or is_map(doc) do
-    {:ok, encoded} = Poison.encode(doc)
-    insert(cmd, encoded)
-  end
+  # def insert(%DocumentCommand{} = cmd, doc) when is_list(doc) or is_map(doc) do
+  #   {:ok, encoded} = Poison.encode(doc)
+  #   insert(cmd, encoded)
+  # end
 
   def update(%DocumentCommand{} = cmd, change, id) when is_map(change) and is_integer(id) do
-    {:ok, encoded} = Poison.encode(change)
+    #{:ok, encoded} = Poison.encode(change)
     sql = """
     update #{cmd.table_name}
-    set #{cmd.json_field} = '#{encoded}'
+    set #{cmd.json_field} = $1
     where id = #{id} returning id, #{cmd.json_field}::text;
     """
-    %{cmd | sql: sql, type: :update}
+    %{cmd | sql: sql, type: :update, params: [change]}
   end
 
 
