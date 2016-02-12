@@ -9,7 +9,11 @@ defmodule Moebius.Database do
         opts = Keyword.new [opts]
         opts
           |> Keyword.put_new(:name, @name)
-          |> Keyword.put_new(:extensions, [{Postgrex.Extensions.JSON, library: Poison}])
+          |> Keyword.put_new(:extensions, [
+            {Postgrex.Extensions.JSON, library: Poison},
+            {Moebius.Extensions.StringExtension, []},
+            {Moebius.Extensions.DateExtension, []}
+          ])
           |> Moebius.Database.start_link
 
       end

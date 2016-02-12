@@ -285,7 +285,7 @@ defmodule Moebius.Query do
   """
 
   def bulk_insert(%QueryCommand{} = cmd, list) when is_list(list) do
-    # do this once and get a canonnical map for the records - 
+    # do this once and get a canonnical map for the records -
     column_map = list |> hd |> Keyword.keys
     cmd
     |> bulk_insert_batch(list, [], column_map)

@@ -41,8 +41,6 @@ defmodule Moebius.DocTest do
   test "saving a struct" do
     thing = %Candy{}
     res = db(:monkies) |> TestDb.save(thing)
-    IO.inspect res
-    IO.inspect struct(%Candy{}, res)
     assert res.id
   end
 

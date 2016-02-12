@@ -15,7 +15,7 @@ defmodule Moebius.Transformer do
   def to_list({:error, message}) when is_binary(message), do: {:error, message}
   def to_list({:error, %{postgres: %{message: message}}}),  do: {:error, message}
   def to_list({:ok, %{rows: rows, columns: cols}}) do
-    for row <- rows, cols = atomize_columns(cols), do: to_timex(row) |> match_columns_to_row(cols) |> to_map
+    for row <- rows, cols = atomize_columns(cols), do: match_columns_to_row(rows,cols) |> to_map
   end
 
   def atomize_columns(cols), do: for col <- cols, do: String.to_atom(col)
@@ -24,16 +24,6 @@ defmodule Moebius.Transformer do
     Enum.map vals, fn(v) ->
       case v do
         %Timex.DateTime{} -> %Postgrex.Timestamp{year: v.year, month: v.month, day: v.day, hour: v.hour, min: v.minute, sec: v.second}
-        v -> v
-      end
-    end
-  end
-
-  def to_timex(row) do
-    Enum.map row, fn(v) ->
-      case v do
-        #Postgrex.Timestamp{} -> %Timex.DateTime{year: v.year, month: v.month, day: v.day, hour: v.hour, minute: v.min, second: v.sec}
-        %Postgrex.Timestamp{} -> "#{v.year}-{v.month}-#{v.day} #{v.hour}:#{v.min}:#{v.sec}"
         v -> v
       end
     end
