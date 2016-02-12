@@ -23,6 +23,21 @@ defmodule Moebius.Extensions.DateExtension do
     <<:calendar.date_to_gregorian_days(date) - @gd_epoch :: int32>>
   end
 
+  def encode(_, %Postgrex.Time{hour: hour, min: min, sec: sec, usec: usec}, _, _)
+  when hour in 0..23 and min in 0..59 and sec in 0..59 and usec in 0..999_999  do
+    time = {hour, min, sec}
+    <<:calendar.time_to_seconds(time) * 1_000_000 + usec :: int64>>
+  end
+
+  def encode(_, %Postgrex.Timestamp{year: year, month: month, day: day, hour: hour, min: min, sec: sec, usec: usec}, _, _)
+  when year <= @timestamp_max_year and hour in 0..23 and min in 0..59 and sec in 0..59 and usec in 0..999_999 do
+    datetime = {{year, month, day}, {hour, min, sec}}
+    secs = :calendar.datetime_to_gregorian_seconds(datetime) - @gs_epoch
+    <<secs * 1_000_000 + usec :: int64>>
+  end
+
+
+
   def decode(%Postgrex.TypeInfo{type: "timestamptz"},<<microsecs :: int64>>, _, _) do
     secs = div(microsecs, 1_000_000)
     usec = rem(microsecs, 1_000_000)

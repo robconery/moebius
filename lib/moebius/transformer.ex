@@ -15,7 +15,7 @@ defmodule Moebius.Transformer do
   def to_list({:error, message}) when is_binary(message), do: {:error, message}
   def to_list({:error, %{postgres: %{message: message}}}),  do: {:error, message}
   def to_list({:ok, %{rows: rows, columns: cols}}) do
-    for row <- rows, cols = atomize_columns(cols), do: match_columns_to_row(rows,cols) |> to_map
+    for row <- rows, cols = atomize_columns(cols), do: match_columns_to_row(row,cols) |> to_map
   end
 
   def atomize_columns(cols), do: for col <- cols, do: String.to_atom(col)

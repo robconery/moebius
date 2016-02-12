@@ -45,8 +45,7 @@ defmodule Moebius.UpdateTest do
         |> update(date: Timex.Date.now())
         |> TestDb.run
 
-      #assert res.date
-      IO.inspect res
+      assert res.date
   end
 
 
