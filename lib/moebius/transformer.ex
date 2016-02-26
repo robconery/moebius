@@ -22,6 +22,7 @@ defmodule Moebius.Transformer do
 
   def from_time_struct(vals) do
     Enum.map vals, fn(v) ->
+      v = check_for_string_date(v)
       case v do
         #standard timex date
         %Timex.DateTime{} -> %Postgrex.Timestamp{year: v.year, month: v.month, day: v.day, hour: v.hour, min: v.minute, sec: v.second}
@@ -53,6 +54,14 @@ defmodule Moebius.Transformer do
 
         v -> v
       end
+    end
+  end
+
+  def check_for_string_date(val) when not is_binary(val), do: val
+  def check_for_string_date(val) when is_binary(val) do
+    case Timex.DateFormat.parse(val, "{YYYY}-{0M}-{0D} {h24}:{0m}:{0s}") do
+      {:ok, date} -> date
+      {:error, err} -> val
     end
   end
 
