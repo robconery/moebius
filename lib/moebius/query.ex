@@ -333,7 +333,7 @@ defmodule Moebius.Query do
   """
   def insert(%QueryCommand{} = cmd, criteria) do
     cols = Keyword.keys(criteria)
-    vals = Keyword.values(criteria) |> Moebius.Transformer.from_timex
+    vals = Keyword.values(criteria) |> Moebius.Transformer.from_time_struct
     column_names = Enum.map_join(cols,", ", &"#{&1}")
     parameter_placeholders = Enum.map_join(1..length(cols), ", ", &"$#{&1}")
     sql = "insert into #{cmd.table_name}(#{column_names}) values(#{parameter_placeholders}) returning *;"
@@ -347,7 +347,7 @@ defmodule Moebius.Query do
   def update(%QueryCommand{} = cmd, criteria) do
 
     cols = Keyword.keys(criteria)
-    vals = Keyword.values(criteria) |> Moebius.Transformer.from_timex
+    vals = Keyword.values(criteria) |> Moebius.Transformer.from_time_struct
 
     {cols, col_count} = Enum.map_reduce cols, 1, fn col, acc ->
       {"#{col} = $#{acc}", acc + 1}

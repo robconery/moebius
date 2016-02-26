@@ -42,7 +42,7 @@ defmodule Moebius.UpdateTest do
   test "it actually works" do
       res = db(:date_night)
         |> filter(id: 1)
-        |> update(date: Timex.Date.now())
+        |> update(date: :calendar.local_time)
         |> TestDb.run
 
       assert res.date
