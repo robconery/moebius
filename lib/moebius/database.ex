@@ -89,7 +89,7 @@ defmodule Moebius.Database do
       end
 
       def find(%Moebius.DocumentCommand{} = cmd, id) do
-        sql = "select id, #{cmd.json_field}::text from #{cmd.table_name} where id=$1"
+        sql = "select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name} where id=$1"
         %{cmd | sql: sql, params: [id]}
           |> execute
           |> Moebius.Transformer.from_json(:single)
@@ -107,6 +107,7 @@ defmodule Moebius.Database do
 
       def save(%Moebius.DocumentCommand{} = cmd, doc) when is_list(doc), do: save(cmd, Enum.into(doc, %{}))
       def save(%Moebius.DocumentCommand{} = cmd, doc) when is_map(doc) do
+
         res = %{cmd | conn: @name}
           |> Moebius.DocumentQuery.decide_command(doc)
           |> Moebius.Database.execute
@@ -126,9 +127,9 @@ defmodule Moebius.Database do
 
       defp handle_save_result(res, cmd, doc) when is_map(res), do: update_search(res, cmd) && res
       defp handle_save_result({:error, err}, cmd, doc) do
-
         table = cmd.table_name
         cond do
+            String.contains? err, "column" -> raise err
             String.contains? err, "does not exist" -> create_document_table(cmd, doc) |> save(Map.delete(doc, :id))
             true ->  {:error, err}
         end

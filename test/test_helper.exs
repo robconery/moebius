@@ -37,7 +37,9 @@ create table logs(
 
 create table user_docs(
   id serial primary key not null,
-  body jsonb not null
+  body jsonb not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz
 );
 
 create index idx_docs on user_docs using GIN(body jsonb_path_ops);

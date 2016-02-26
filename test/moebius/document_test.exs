@@ -61,6 +61,16 @@ defmodule Moebius.DocTest do
     assert res.name == "Chicken Wings"
   end
 
+  test "the document is returned with created and updated" do
+    res = db(:monkies) |> TestDb.find(1)
+    assert res.created_at
+  end
+
+  test "things don't break if document already contains updated_at" do
+    res = db(:monkies) |> TestDb.save(%{name: "bip", updated_at: "poop"})
+    assert res.updated_at == "poop"
+  end
+
   test "saving a struct" do
     thing = %Candy{}
     res = db(:monkies) |> TestDb.save(thing)

@@ -150,7 +150,7 @@ defmodule Moebius.DocumentQuery do
   """
   def select(%DocumentCommand{} = cmd) do
     sql = """
-    select id, #{cmd.json_field}::text
+    select id, #{cmd.json_field}::text, created_at, updated_at
     from #{cmd.table_name}
     #{cmd.where}
     #{cmd.order}
@@ -259,7 +259,7 @@ defmodule Moebius.DocumentQuery do
     sql = """
     insert into #{cmd.table_name}(#{cmd.json_field})
     VALUES($1)
-    RETURNING id, #{cmd.json_field}::text;
+    RETURNING id, #{cmd.json_field}::text, created_at, updated_at;
     """
     %{cmd | sql: sql, params: [doc], type: :insert}
   end
@@ -274,7 +274,7 @@ defmodule Moebius.DocumentQuery do
     sql = """
     update #{cmd.table_name}
     set #{cmd.json_field} = $1
-    where id = #{id} returning id, #{cmd.json_field}::text;
+    where id = #{id} returning id, #{cmd.json_field}::text, created_at, updated_at;
     """
     %{cmd | sql: sql, type: :update, params: [change]}
   end

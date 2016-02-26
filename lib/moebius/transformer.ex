@@ -87,6 +87,15 @@ defmodule Moebius.Transformer do
     |> Map.put_new(:id, id)
   end
 
+  defp handle_row([id, json, created_at, updated_at]) do
+
+    json
+      |> decode_json
+      |> Map.put_new(:id, id)
+      |> Map.put_new(:created_at, created_at)
+      |> Map.put_new(:updated_at, updated_at)
+  end
+
   #defp decode_json(json) when is_map(json), do: Moebius.Transformer.to_atom_map(json)
   defp decode_json(json), do: Poison.decode!(json, keys: :atoms)
 
