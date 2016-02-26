@@ -43,6 +43,15 @@ defmodule Moebius.DateTests do
     assert res.id
   end
 
+  test "updating a date works with single second stamps" do
+    res = db(:date_night)
+      |> filter(id: 1)
+      |> update(date: "2016-2-25 19:48:9")
+      |> TestDb.run
+
+    assert res.id
+  end
+
   test "updating a date works with roundtrip date", %{data: [ %{id: id, date: date} | _rest]} do
 
     res = db(:date_night)
