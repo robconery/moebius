@@ -4,7 +4,7 @@ defmodule Moebius.FullTextSearch do
 
   setup_all do
     res = db(:users)
-      |> insert(first: "Mike", last: "Booger", email: "mike@test.com")
+      |> insert(first: "Mike", last: "Booger", email: "boogerbob@test.com")
       |> TestDb.run
     {:ok, user: res}
   end
