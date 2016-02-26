@@ -19,21 +19,22 @@ defmodule Moebius.Database do
       end
 
       def run(sql) when is_binary(sql), do: run(sql, [])
-      def run(sql, params) when is_binary(sql) do
-        %Moebius.QueryCommand{sql: sql, params: params} |> run
-      end
+      def run(sql, params) when is_binary(sql) and is_list(params), do: %Moebius.QueryCommand{sql: sql, params: params} |> run
+      def run(sql, %DBConnection{} = conn) when is_binary(sql), do: %Moebius.QueryCommand{sql: sql, params: []} |> run(conn)
+      def run(sql, %DBConnection{} = conn, params) when is_binary(sql), do: %Moebius.QueryCommand{sql: sql, params: params} |> run(conn)
+
 
       def run(%Moebius.QueryCommand{type: :insert} = cmd), do: execute(cmd) |> Moebius.Transformer.to_single
       def run(%Moebius.QueryCommand{type: :update} = cmd), do: execute(cmd) |> Moebius.Transformer.to_single
       def run(%Moebius.QueryCommand{type: :delete} = cmd), do: execute(cmd) |> Moebius.Transformer.to_single
       def run(%Moebius.QueryCommand{type: :count} = cmd), do: execute(cmd) |> Moebius.Transformer.to_single
+      def run(%Moebius.QueryCommand{} = cmd), do: execute(cmd) |> Moebius.Transformer.to_list
 
       def run(%Moebius.QueryCommand{type: :insert} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_single
       def run(%Moebius.QueryCommand{type: :update} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_single
       def run(%Moebius.QueryCommand{type: :delete} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_single
-
-      def run(%Moebius.QueryCommand{} = cmd), do: execute(cmd) |> Moebius.Transformer.to_list
       def run(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_list
+
 
       def run_batch(%Moebius.CommandBatch{} = batch) do
         batch.commands
@@ -99,26 +100,39 @@ defmodule Moebius.Database do
           {:ok, conn} = Postgrex.transaction(@name, fun)
           conn
         catch
-          e, reason -> {:error, reason.message}
+          e, %{message: message} -> {:error, message}
+          e, {:error, message} ->  {:error, message}
         end
       end
 
       def save(%Moebius.DocumentCommand{} = cmd, doc) when is_list(doc), do: save(cmd, Enum.into(doc, %{}))
-      def save(%Moebius.DocumentCommand{} = cmd, doc) do
+      def save(%Moebius.DocumentCommand{} = cmd, doc) when is_map(doc) do
         res = %{cmd | conn: @name}
           |> Moebius.DocumentQuery.decide_command(doc)
           |> Moebius.Database.execute
           |> Moebius.Transformer.from_json(:single)
-        table = cmd.table_name
-        case res do
-          {:error, err} -> cond do
-            String.contains? err, "does not exist" -> create_document_table(cmd, doc) |> save(Map.delete(doc, :id))
-            true ->  {:error, err}
-          end
-          res -> update_search(res, cmd) && res
-        end
+          |> handle_save_result(cmd, doc)
       end
 
+      def save(%Moebius.DocumentCommand{} = cmd, doc, %DBConnection{} = conn) when is_map(doc) do
+
+        %{cmd | conn: @name}
+          |> Moebius.DocumentQuery.decide_command(doc)
+          |> Moebius.Database.execute(conn)
+          |> Moebius.Transformer.from_json(:single)
+          |> handle_save_result(cmd, doc)
+
+      end
+
+      defp handle_save_result(res, cmd, doc) when is_map(res), do: update_search(res, cmd) && res
+      defp handle_save_result({:error, err}, cmd, doc) do
+
+        table = cmd.table_name
+        cond do
+            String.contains? err, "does not exist" -> create_document_table(cmd, doc) |> save(Map.delete(doc, :id))
+            true ->  {:error, err}
+        end
+      end
 
       defp execute(%Moebius.DocumentCommand{sql: nil} = cmd) do
         %{cmd | conn: @name}
@@ -151,6 +165,7 @@ defmodule Moebius.Database do
 
 
       defp create_document_table(%Moebius.DocumentCommand{} = cmd, _) do
+
         sql = """
         create table #{cmd.table_name}(
           id serial primary key not null,
@@ -205,15 +220,9 @@ defmodule Moebius.Database do
   it will be caught in `Query.transaction/1` and reported back using `{:error, err}`.
   """
   def execute(cmd, %DBConnection{} = conn) do
-
     case Postgrex.query(conn, cmd.sql, cmd.params) do
-      {:ok, result} ->
-        {:ok, result}
-      {:error, err} ->
-        Postgrex.query conn, "ROLLBACK", []
-        #this will get caught by the transactor
-        raise err.postgres.message
-        #{:error, err.postgres.message}
+      {:ok, result} -> {:ok, result}
+      {:error, err} -> Postgrex.query(conn, "ROLLBACK", []) && raise err.postgres.message
     end
   end
 
