@@ -40,7 +40,7 @@ defmodule Moebius.DateTests do
       |> update(date: "2016-2-26 17:39:34")
       |> TestDb.run
 
-    assert is_binary(res.date)
+    assert res.id
   end
 
   test "updating a date works with roundtrip date", %{data: [ %{id: id, date: date} | _rest]} do
@@ -49,7 +49,7 @@ defmodule Moebius.DateTests do
       |> update(date: date)
       |> TestDb.run
 
-    assert is_binary(res.date)
+    assert res.id
   end
 
   test "updating a date works with :now" do
