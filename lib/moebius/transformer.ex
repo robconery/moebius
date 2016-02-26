@@ -81,11 +81,12 @@ defmodule Moebius.Transformer do
 
   defp handle_row(nil), do: nil
 
-  defp handle_row([id, json]) do
-    json
-    |> decode_json
-    |> Map.put_new(:id, id)
-  end
+  # defp handle_row([id, json]) do
+  #   json
+  #   |> decode_json
+  #   |> Map.put_new(:id, id)
+  # end
+
 
   defp handle_row([id, json, created_at, updated_at]) do
 

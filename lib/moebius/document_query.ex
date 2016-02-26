@@ -292,7 +292,7 @@ defmodule Moebius.DocumentQuery do
   """
   def find(%DocumentCommand{} = cmd, id) when is_integer id do
     #no need to param this, it's an integer
-    sql = "select id, #{cmd.json_field}::text from #{cmd.table_name} where id=#{id}"
+    sql = "select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name} where id=#{id}"
     %{cmd | sql: sql}
   end
 
@@ -310,7 +310,7 @@ defmodule Moebius.DocumentQuery do
   def search(%DocumentCommand{} = cmd, term) when is_bitstring(term)  do
 
     sql = """
-    select id, #{cmd.json_field}::text from #{cmd.table_name}
+    select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name}
   	where search @@ to_tsquery($1)
   	order by ts_rank_cd(search,to_tsquery($1))  desc
     """
@@ -333,7 +333,7 @@ defmodule Moebius.DocumentQuery do
     terms = Enum.map_join(fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
 
     sql = """
-    select id, #{cmd.json_field}::text from #{cmd.table_name}
+    select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name}
   	where to_tsvector(concat(#{terms})) @@ to_tsquery($1)
   	order by ts_rank_cd(to_tsvector(concat(#{terms})),to_tsquery($1))  desc
     """
@@ -344,12 +344,12 @@ defmodule Moebius.DocumentQuery do
 
 
   defp delete_command(%DocumentCommand{} = cmd, id) when is_integer(id) do
-    sql = "delete from #{cmd.table_name} where id=#{id} returning id, body::text"
+    sql = "delete from #{cmd.table_name} where id=#{id} returning id, body::text, created_at, updated_at"
     %{cmd | sql: sql, type: :delete}
   end
 
   defp delete_command(%DocumentCommand{} = cmd) do
-    sql = "delete from #{cmd.table_name} #{cmd.where} returning id, body::text;"
+    sql = "delete from #{cmd.table_name} #{cmd.where} returning id, body::text, created_at, updated_at;"
     %{cmd | sql: sql, type: :delete}
   end
 
