@@ -92,7 +92,7 @@ defmodule Moebius.Database do
         sql = "select id, #{cmd.json_field}::text from #{cmd.table_name} where id=$1"
         %{cmd | sql: sql, params: [id]}
           |> execute
-          |> Moebius.Transformer.to_single
+          |> Moebius.Transformer.from_json(:single)
       end
 
       def transaction(fun) do

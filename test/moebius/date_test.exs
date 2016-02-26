@@ -44,6 +44,7 @@ defmodule Moebius.DateTests do
   end
 
   test "updating a date works with roundtrip date", %{data: [ %{id: id, date: date} | _rest]} do
+
     res = db(:date_night)
       |> filter(id: 1)
       |> update(date: date)

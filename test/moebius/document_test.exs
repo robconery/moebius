@@ -56,6 +56,11 @@ defmodule Moebius.DocTest do
     assert res == nil
   end
 
+  test "the document is returned with find" do
+    res = db(:monkies) |> TestDb.find(1)
+    assert res.name == "Chicken Wings"
+  end
+
   test "saving a struct" do
     thing = %Candy{}
     res = db(:monkies) |> TestDb.save(thing)
