@@ -66,9 +66,9 @@ defmodule Moebius.DocTest do
     assert res.created_at
   end
 
-  test "things don't break if document already contains updated_at" do
+  test "updated_at is overridden" do
     res = db(:monkies) |> TestDb.save(%{name: "bip", updated_at: "poop"})
-    assert res.updated_at == "poop"
+    assert res.updated_at == nil #this
   end
 
   test "saving a struct" do

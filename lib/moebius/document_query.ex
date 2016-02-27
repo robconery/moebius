@@ -256,6 +256,7 @@ defmodule Moebius.DocumentQuery do
 
 
   def insert(%DocumentCommand{} = cmd, doc) do
+    doc = Map.delete(doc, :created_at) |> Map.delete(:updated_at)
     sql = """
     insert into #{cmd.table_name}(#{cmd.json_field})
     VALUES($1)
@@ -271,6 +272,9 @@ defmodule Moebius.DocumentQuery do
 
   def update(%DocumentCommand{} = cmd, change, id) when is_map(change) and is_integer(id) do
     #{:ok, encoded} = Poison.encode(change)
+    #remove created/updated
+    change = Map.delete(change, :created_at) |> Map.delete(:updated_at)
+
     sql = """
     update #{cmd.table_name}
     set #{cmd.json_field} = $1
