@@ -6,7 +6,6 @@ defmodule Moebius.Database do
       @name __MODULE__
 
       def start_link(opts) do
-        opts = Keyword.new [opts]
         opts
           |> Keyword.put_new(:name, @name)
           |> Keyword.put_new(:extensions, [
@@ -15,7 +14,6 @@ defmodule Moebius.Database do
             {Moebius.Extensions.DateExtension, []}
           ])
           |> Moebius.Database.start_link
-
       end
 
       def run(sql) when is_binary(sql), do: run(sql, [])
@@ -227,33 +225,5 @@ defmodule Moebius.Database do
     end
   end
 
-
-  def parse_connection_args, do: raise "Please specify a connection in your config"
-  def parse_connection_args(args) when is_list(args), do: args
-
-  def parse_connection_args(""), do: []
-  def parse_connection_args(url) when is_binary(url) do
-    info = url |> URI.decode() |> URI.parse()
-
-    if is_nil(info.host) do
-      raise "Invalid URL: host is not present"
-    end
-
-    if is_nil(info.path) or not (info.path =~ ~r"^/([^/])+$") do
-      raise "Invalid URL: path should be a database name"
-    end
-
-    destructure [username, password], info.userinfo && String.split(info.userinfo, ":")
-    "/" <> database = info.path
-
-    opts = [username: username,
-            password: password,
-            database: database,
-            hostname: info.host,
-            port:     info.port]
-
-    #strip off any nils
-    Enum.reject(opts, fn {_k, v} -> is_nil(v) end)
-  end
 
 end

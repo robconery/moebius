@@ -1,6 +1,6 @@
 ExUnit.start()
 defmodule TestDb,  do: use Moebius.Database
-TestDb.start_link {:database, "meebuss"}
+Moebius.get_connection |> TestDb.start_link
 
 sql = "
 drop index if exists idx_docs;

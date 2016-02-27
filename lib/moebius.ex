@@ -11,4 +11,33 @@ defmodule Moebius do
     System.cmd "psql", args
   end
 
+  def get_connection(), do: get_connection(:connection)
+  def get_connection(key) when is_atom(key), do: Application.get_env(:moebius, key)
+
+  def parse_connection(url) when is_binary(url) do
+    info = url |> URI.decode() |> URI.parse()
+
+    if is_nil(info.host) do
+      raise "Invalid URL: host is not present"
+    end
+
+    if is_nil(info.path) or not (info.path =~ ~r"^/([^/])+$") do
+      raise "Invalid URL: path should be a database name"
+    end
+
+    destructure [username, password], info.userinfo && String.split(info.userinfo, ":")
+    "/" <> database = info.path
+
+    opts = [username: username,
+            password: password,
+            database: database,
+            hostname: info.host,
+            port:     info.port]
+
+    #strip off any nils
+    opts = Enum.reject(opts, fn {_k, v} -> is_nil(v) end)
+    #send the values to a char list because that's what :epgsql likes
+    # opts = for {k, v} <- opts, into: %{}, do: {k, String.to_char_list(v)}
+  end
+
 end
