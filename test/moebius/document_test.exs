@@ -93,7 +93,7 @@ defmodule Moebius.DocTest do
     "drop table if exists artists;" |> TestDb.run
     res = db(:artists) |> TestDb.first
     case res do
-      {:error, err} -> flunk "Nope"
+      {:error, _err} -> flunk "Nope"
       res -> res
     end
   end

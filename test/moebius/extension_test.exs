@@ -1,10 +1,8 @@
 defmodule Moebius.ExtensionTest do
   use ExUnit.Case
-  import Moebius.Query
-  import TestDb
 
   test "certain types are ignored on read" do
-    res = sql = """
+    res = """
     select to_tsvector('ha ha'),
     now()::timestamptz,
     '127.0.0.1'::inet,
@@ -15,7 +13,7 @@ defmodule Moebius.ExtensionTest do
     now()::time,
     now()::date
     """ |> TestDb.run
-    assert true
+    assert res
   end
 
   # test "dates are able to be inserted" do

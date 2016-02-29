@@ -7,7 +7,7 @@ defmodule Moebius.DateTests do
     {:ok, data: res}
   end
 
-  test "Dates are transformed to Times", %{data: [ %{id: id, date: date} | _rest]} do
+  test "Dates are transformed to Times", %{data: [ %{id: _id, date: date} | _rest]} do
     assert is_binary(date)
   end
 
@@ -52,7 +52,7 @@ defmodule Moebius.DateTests do
     assert res.id
   end
 
-  test "updating a date works with roundtrip date", %{data: [ %{id: id, date: date} | _rest]} do
+  test "updating a date works with roundtrip date", %{data: [ %{id: _id, date: date} | _rest]} do
 
     res = db(:date_night)
       |> filter(id: 1)

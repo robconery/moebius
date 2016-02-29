@@ -25,7 +25,7 @@ defmodule MoebiusBulkInsertTest do
     res = db(:people)
       |> bulk_insert(data)
       |> TestDb.run_batch
-    assert [{:ok, result} | other_results] = res
+    assert [{:ok, _result} | _other_results] = res
   end
 
   test "inserts a list of records within a transaction" do
@@ -33,10 +33,10 @@ defmodule MoebiusBulkInsertTest do
     res = db(:people)
       |> bulk_insert(data)
       |> TestDb.transact_batch
-    assert [{:ok, result} | other_results] = res
+    assert [{:ok, _result} | _other_results] = res
   end
 
-  
+
   test "bulk insert fails as a transaction" do
     data = flawed_people(4)
     res = db(:people)

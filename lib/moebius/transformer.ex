@@ -7,7 +7,7 @@ defmodule Moebius.Transformer do
   def to_single({:ok, %{num_rows: count}}) when count == 0, do: nil
   def to_single({:error, message}) when is_binary(message), do: {:error, message}
   def to_single({:error, %{postgres: %{message: message}}}),  do: {:error, message}
-  def to_single({:ok, %{rows: rows, columns: cols}} = res) do
+  def to_single({:ok, %{rows: _rows, columns: _cols}} = res) do
     to_list(res) |> List.first
   end
 
@@ -61,35 +61,30 @@ defmodule Moebius.Transformer do
   def check_for_string_date(val) when is_binary(val) do
     case Timex.DateFormat.parse(val, "{YYYY}-{_M}-{_D} {h24}:{_m}:{_s}") do
       {:ok, date} -> date
-      {:error, err} -> val
+      {:error, _err} -> val
     end
   end
 
   def match_columns_to_row(row, cols), do: List.zip([cols, row])
   def to_map(list) do
-    res = Enum.into(list,%{})
+    Enum.into(list,%{})
   end
 
+
+
   def from_json({:error, err}), do: {:error, err}
-  def from_json({:error, err}, _), do: {:error, err}
   def from_json({:ok, res}) do
     Enum.map(res.rows, &handle_row/1)
   end
+
+  def from_json({:error, err}, _), do: {:error, err}
   def from_json({:ok, %{rows: rows}}, :single) do
     List.first(rows) |> handle_row
   end
 
   defp handle_row(nil), do: nil
 
-  # defp handle_row([id, json]) do
-  #   json
-  #   |> decode_json
-  #   |> Map.put_new(:id, id)
-  # end
-
-
   defp handle_row([id, json, created_at, updated_at]) do
-
     json
       |> decode_json
       |> Map.put_new(:id, id)
