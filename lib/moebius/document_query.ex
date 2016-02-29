@@ -277,7 +277,8 @@ defmodule Moebius.DocumentQuery do
 
     sql = """
     update #{cmd.table_name}
-    set #{cmd.json_field} = $1
+    set #{cmd.json_field} = $1,
+    updated_at = now()
     where id = #{id} returning id, #{cmd.json_field}::text, created_at, updated_at;
     """
     %{cmd | sql: sql, type: :update, params: [change]}

@@ -190,7 +190,7 @@ defmodule Moebius.Database do
           body jsonb not null,
           search tsvector,
           created_at timestamptz not null default now(),
-          updated_at timestamptz
+          updated_at timestamptz not null default now()
         );
         """
 
