@@ -5,5 +5,5 @@ use Mix.Config
 config :moebius, connection: [
   database: "meebuss",
   pool_mod: DBConnection.Poolboy
-  ],
-  scripts: "test/db"
+],
+scripts: "test/db"

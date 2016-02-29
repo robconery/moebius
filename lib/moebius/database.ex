@@ -36,9 +36,7 @@ defmodule Moebius.Database do
 
       def run_batch(%Moebius.CommandBatch{} = batch) do
         batch.commands
-        # |> Enum.map(fn(cmd) -> execute(cmd) |> Moebius.Transformer.to_list end)
         |> Enum.map(fn(cmd) -> execute(cmd) end)
-        # |> List.flatten
       end
 
       def transact_batch(%Moebius.CommandBatch{} = batch) do
@@ -105,12 +103,13 @@ defmodule Moebius.Database do
 
       def save(%Moebius.DocumentCommand{} = cmd, doc) when is_list(doc), do: save(cmd, Enum.into(doc, %{}))
       def save(%Moebius.DocumentCommand{} = cmd, doc) when is_map(doc) do
-
         res = %{cmd | conn: @name}
           |> Moebius.DocumentQuery.decide_command(doc)
           |> Moebius.Database.execute
           |> Moebius.Transformer.from_json(:single)
           |> handle_save_result(cmd, doc)
+          |> check_struct(doc)
+
       end
 
       def save(%Moebius.DocumentCommand{} = cmd, doc, %DBConnection{} = conn) when is_map(doc) do
@@ -120,7 +119,15 @@ defmodule Moebius.Database do
           |> Moebius.Database.execute(conn)
           |> Moebius.Transformer.from_json(:single)
           |> handle_save_result(cmd, doc)
+          |> check_struct(doc)
 
+      end
+
+      defp check_struct(res, original) do
+        cond  do
+          Map.has_key?(original, :__struct__) -> Map.put_new(res, :__struct__, original.__struct__)
+          true -> res
+        end
       end
 
       defp handle_save_result(res, cmd, doc) when is_map(res), do: update_search(res, cmd) && res

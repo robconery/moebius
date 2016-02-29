@@ -77,6 +77,12 @@ defmodule Moebius.DocTest do
     assert res.id
   end
 
+  test "returns a struct if a struct was passed in" do
+    thing = %Candy{}
+    assert thing.__struct__ == Candy
+    res = db(:monkies) |> TestDb.save(thing)
+    assert res.__struct__ == Candy
+  end
 
   test "can pull out a single record by id with find" do
     res = db(:monkies) |> TestDb.find(1)
@@ -266,21 +272,5 @@ defmodule Moebius.DocTest do
 
   end
 
-  #
-  # test "executes a transaction" do
-  #
-  #   transaction fn(tx) ->
-  #
-  #     db(:monkies)
-  #       |> save(tx, name: "Peaches", company: "Microsoft")
-  #
-  #     db(:cars)
-  #       |> save(tx, name: "Toyota")
-  #
-  #     db(:user_docs)
-  #       |> save(tx, name: "bubbles")
-  #
-  #   end
-  # end
 
 end
