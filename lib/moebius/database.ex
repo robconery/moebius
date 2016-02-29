@@ -7,13 +7,25 @@ defmodule Moebius.Database do
 
       def start_link(opts) do
         opts
+          |> prepare_extensions
+          |> Moebius.Database.start_link
+      end
+
+      def prepare_extensions(opts) do
+
+        #make sure we convert a tuple list, which will happen if our db is a worker
+        opts = cond do
+          Keyword.keyword?(opts) -> opts
+          true -> Keyword.new([opts])
+        end
+
+        opts
           |> Keyword.put_new(:name, @name)
           |> Keyword.put_new(:extensions, [
             {Postgrex.Extensions.JSON, library: Poison},
             {Moebius.Extensions.StringExtension, []},
             {Moebius.Extensions.DateExtension, []}
           ])
-          |> Moebius.Database.start_link
       end
 
       def run(sql) when is_binary(sql), do: run(sql, [])
