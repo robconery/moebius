@@ -1,6 +1,8 @@
 ExUnit.start()
 defmodule TestDb,  do: use Moebius.Database
-Moebius.get_connection |> TestDb.start_link
+#Moebius.get_connection |> TestDb.start_link
+worker = Supervisor.Spec.worker(TestDb, [Moebius.get_connection])
+Supervisor.start_link [worker], strategy: :one_for_one
 
 sql = "
 drop index if exists idx_docs;
