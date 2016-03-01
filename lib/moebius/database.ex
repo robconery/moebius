@@ -4,7 +4,8 @@ defmodule Moebius.Database do
     quote location: :keep do
 
       @name __MODULE__
-
+      alias __MODULE__
+      
       def start_link(opts) do
         opts
           |> prepare_extensions

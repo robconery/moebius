@@ -1,4 +1,19 @@
+#this is the default database that is entirely optional
+defmodule Moebius.Db do
+  alias __MODULE__
+  use Moebius.Database
+end
+
 defmodule Moebius do
+
+  use Application
+  def start(_type, _args) do
+    Moebius.get_connection |> Moebius.Db.start_link
+  end
+  #TODO: Setup default application behaviour that will allow turning Moebius
+  #into an application? This would mean pulling connection info and declaring
+  # a default database.. which I guess
+
 
   @doc """
   A convenience tool for assembling large queries with multiple commands. Not used
