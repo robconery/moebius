@@ -59,7 +59,7 @@ defmodule Moebius.Transformer do
 
   def check_for_string_date(val) when not is_binary(val), do: val
   def check_for_string_date(val) when is_binary(val) do
-    case Timex.DateFormat.parse(val, "{YYYY}-{_M}-{_D} {h24}:{_m}:{_s}") do
+    case Timex.DateFormat.parse(val, "{YYYY}-{_M}-{_D} {_h24}:{_m}:{_s}") do
       {:ok, date} -> date
       {:error, _err} -> val
     end

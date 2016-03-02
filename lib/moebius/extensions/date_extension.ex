@@ -18,6 +18,12 @@ defmodule Moebius.Extensions.DateExtension do
 
   def format(_), do: :text
 
+  # def encode(_, the_date, _, _) when is_binary(the_date) do
+  #   IO.inspect the_date
+  #   {:ok, parsed} = Timex.DateFormat.parse(the_date, "{YYYY}-{_M}-{_D} {_h24}:{_m}:{_s}")
+  #   date = {parsed.year, parsed.month, parsed.day}
+  #   <<:calendar.date_to_gregorian_days(date) - @gd_epoch :: int32>>
+  # end
   def encode(_, %Postgrex.Date{year: year, month: month, day: day}, _, _) when year <= @date_max_year do
     date = {year, month, day}
     <<:calendar.date_to_gregorian_days(date) - @gd_epoch :: int32>>

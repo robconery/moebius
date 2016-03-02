@@ -7,6 +7,14 @@ defmodule Moebius.DateTests do
     {:ok, data: res}
   end
 
+  test "Timex will parse a date without fucking itself" do
+    ds = "2016-3-2 0:25:11"
+    case Timex.DateFormat.parse(ds, "{YYYY}-{_M}-{_D} {_h24}:{_m}:{_s}") do
+      {:ok, date} -> assert date.year == 2016
+      {:error, err} -> flunk err
+    end
+  end
+
   test "Dates are transformed to Times", %{data: [ %{id: _id, date: date} | _rest]} do
     assert is_binary(date)
   end
