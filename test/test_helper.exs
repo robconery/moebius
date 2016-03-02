@@ -1,7 +1,7 @@
 ExUnit.start()
 defmodule TestDb,  do: use Moebius.Database
-#Moebius.get_connection |> TestDb.start_link
-worker = Supervisor.Spec.worker(TestDb, [Moebius.get_connection])
+
+worker = Supervisor.Spec.worker(TestDb, [{:database, "meebuss"}])
 Supervisor.start_link [worker], strategy: :one_for_one
 
 sql = "
