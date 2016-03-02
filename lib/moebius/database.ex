@@ -2,16 +2,14 @@ defmodule Moebius.Database do
 
   defmacro __using__(_opts) do
     quote location: :keep do
-      require Logger
       @name __MODULE__
-      alias __MODULE__
 
       def start_link(opts) do
-        IO.inspect "Starting Moebius: "
-        IO.inspect opts
-        opts
+        res = opts
           |> prepare_extensions
           |> Moebius.Database.start_link
+        IO.inspect res
+        res
       end
 
       def prepare_extensions(opts) do

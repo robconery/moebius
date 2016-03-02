@@ -1,14 +1,14 @@
 #this is the default database that is entirely optional
-# defmodule Moebius.Db do
-#   use Moebius.Database
-# end
+defmodule Moebius.Db do
+  use Moebius.Database
+end
 
 defmodule Moebius do
 
-  # use Application
-  # def start(_type, _args) do
-  #   Moebius.get_connection |> Moebius.Db.start_link
-  # end
+  use Application
+  def start(_type, _args) do
+    Moebius.get_connection |> Moebius.Db.start_link
+  end
 
   @doc """
   A convenience tool for assembling large queries with multiple commands. Not used
