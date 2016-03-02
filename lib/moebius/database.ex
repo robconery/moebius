@@ -3,13 +3,13 @@ defmodule Moebius.Database do
   defmacro __using__(_opts) do
     quote location: :keep do
       @name __MODULE__
-
+      alias __MODULE__
       def start_link(opts) do
-        res = opts
+
+        opts
           |> prepare_extensions
           |> Moebius.Database.start_link
-        IO.inspect res
-        res
+
       end
 
       def prepare_extensions(opts) do
