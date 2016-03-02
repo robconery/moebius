@@ -3,7 +3,13 @@ defmodule PoopDb do
 end
 defmodule Moebius.ConnectionTest do
   use ExUnit.Case
-  #import Moebius.Query
+  import Moebius.Query
+
+  # test "I can use albums" do
+  #   [database: "chinook"] |> PoopDb.start_link
+  #   res = db(:album) |> PoopDb.run
+  #   IO.inspect res
+  # end
   # import Moebius.DocumentQuery
   #
   # test "Extensions etc are loaded with get_connection" do
