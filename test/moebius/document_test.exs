@@ -29,7 +29,7 @@ defmodule Moebius.DocTest do
 
   test "A document table will created by calling create_document_table" do
     res = TestDb.create_document_table :poop
-    IO.inspect res
+    assert res == {:ok, "Table created"}
   end
 
   test "a document can be saved if one of the values has a single quote" do
