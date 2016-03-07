@@ -135,6 +135,30 @@ defmodule Moebius.Database do
           |> check_struct(doc)
 
       end
+      def create_document_table(name) when is_atom(name) do
+        case Moebius.DocumentQuery.db(name) |> create_document_table(nil) do
+          {:error, err} -> {:error, err}
+          %Moebius.DocumentCommand{} = cmd -> {:ok, "Table created"}
+        end
+      end
+      def create_document_table(%Moebius.DocumentCommand{} = cmd, _) do
+
+        sql = """
+        create table #{cmd.table_name}(
+          id serial primary key not null,
+          body jsonb not null,
+          search tsvector,
+          created_at timestamptz not null default now(),
+          updated_at timestamptz not null default now()
+        );
+        """
+
+        %Moebius.QueryCommand{conn: @name, sql: sql} |> execute
+        %Moebius.QueryCommand{conn: @name, sql: "create index idx_#{cmd.table_name}_search on #{cmd.table_name} using GIN(search);"} |> execute
+        %Moebius.QueryCommand{conn: @name, sql: "create index idx_#{cmd.table_name} on #{cmd.table_name} using GIN(body jsonb_path_ops);"} |> execute
+        cmd
+      end
+
 
       defp check_struct(res, original) do
         cond  do
@@ -182,24 +206,6 @@ defmodule Moebius.Database do
 
       defp execute(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: Moebius.Database.execute(cmd, conn)
 
-
-      defp create_document_table(%Moebius.DocumentCommand{} = cmd, _) do
-
-        sql = """
-        create table #{cmd.table_name}(
-          id serial primary key not null,
-          body jsonb not null,
-          search tsvector,
-          created_at timestamptz not null default now(),
-          updated_at timestamptz not null default now()
-        );
-        """
-
-        %Moebius.QueryCommand{conn: @name, sql: sql} |> execute
-        %Moebius.QueryCommand{conn: @name, sql: "create index idx_#{cmd.table_name}_search on #{cmd.table_name} using GIN(search);"} |> execute
-        %Moebius.QueryCommand{conn: @name, sql: "create index idx_#{cmd.table_name} on #{cmd.table_name} using GIN(body jsonb_path_ops);"} |> execute
-        cmd
-      end
 
 
       defp update_search({:error, err}, cmd), do: {:error, err}

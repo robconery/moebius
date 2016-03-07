@@ -27,6 +27,11 @@ defmodule Moebius.DocTest do
     {:ok, res: res}
   end
 
+  test "A document table will created by calling create_document_table" do
+    res = TestDb.create_document_table :poop
+    IO.inspect res
+  end
+
   test "a document can be saved if one of the values has a single quote" do
     "drop table if exists artists;" |> TestDb.run
     thing = %{collections: ["equipment"], cost: 67743,

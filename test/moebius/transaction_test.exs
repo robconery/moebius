@@ -63,12 +63,12 @@ defmodule Moebius.TransactionTest do
   test "documents don't save when there's an error within a transaction" do
     res = transaction fn(tx) ->
       Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Mike"}, tx)
-      "select * from poop" |> TestDb.run(tx)
+      "select * from poopasdasd" |> TestDb.run(tx)
       Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Larry"}, tx)
     end
     case res do
       {:error, message} -> assert message
-      res -> flunk "Nope, a result came back #{IO.inspect(res)}"
+      res -> flunk "Nope, a result came back"
     end
   end
 
