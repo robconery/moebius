@@ -5,7 +5,6 @@ defmodule Moebius.Database do
       @name __MODULE__
       alias __MODULE__
       def start_link(opts) do
-
         opts
           |> prepare_extensions
           |> Moebius.Database.start_link
@@ -18,6 +17,11 @@ defmodule Moebius.Database do
         opts = cond do
           Keyword.keyword?(opts) -> opts
           true -> Keyword.new([opts])
+        end
+
+        opts = cond do
+          Keyword.has_key?(opts, :url) -> Keyword.merge(opts, Moebius.parse_connection(opts[:url]))
+          true -> opts
         end
 
         opts

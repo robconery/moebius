@@ -49,16 +49,16 @@ defmodule Moebius.TransactionTest do
 
   end
 
-  test "documents save within a transaction" do
-    res = transaction fn(tx) ->
-      Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Mike"}, tx)
-      Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Larry"}, tx)
-    end
-    # case res do
-    #   {:error, _err} -> flunk "No errors here!"
-    #   res -> assert res
-    # end
-  end
+  # test "documents save within a transaction" do
+  #   res = transaction fn(tx) ->
+  #     Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Mike"}, tx)
+  #     Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Larry"}, tx)
+  #   end
+  #   # case res do
+  #   #   {:error, _err} -> flunk "No errors here!"
+  #   #   res -> assert res
+  #   # end
+  # end
 
   test "documents don't save when there's an error within a transaction" do
     res = transaction fn(tx) ->
@@ -68,7 +68,7 @@ defmodule Moebius.TransactionTest do
     end
     case res do
       {:error, message} -> assert message
-      res -> flunk "Nope, a result came back"
+      true -> flunk "Nope, a result came back"
     end
   end
 

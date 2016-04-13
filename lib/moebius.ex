@@ -11,19 +11,21 @@ defmodule Moebius do
   end
 
   @doc """
-  A convenience tool for assembling large queries with multiple commands. Not used
-  currently. These functions hand off to PSQL because Postgrex can't run more than
+  A convenience tool for assembling large queries with multiple commands which we use for testing. 
+  These functions hand off to PSQL because Postgrex can't run more than
   one command per query.
   """
-  def run_with_psql(sql, opts) do
-    db = opts[:database] || opts[:db]
-    args = ["-d", db, "-c", sql, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
-    System.cmd "psql", args
-  end
+  # def run_with_psql(sql, opts) do
+  #   db = opts[:database] || opts[:db]
+  #   args = ["-d", db, "-c", sql, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
+  #   IO.inspect args
+  #   System.cmd "psql", args
+  # end
 
   def get_connection(), do: get_connection(:connection)
   def get_connection(key) when is_atom(key), do: Application.get_env(:moebius, key)
 
+  #thanks to the Ecto team for this code!
   def parse_connection(url) when is_binary(url) do
     info = url |> URI.decode() |> URI.parse()
 

@@ -27,6 +27,12 @@ defmodule Moebius.DateTests do
     assert is_binary(res.date)
   end
 
+  test "returning dates come back as strings" do
+    res = db(:date_night)
+      |> TestDb.first
+    assert is_binary(res.date)
+  end
+
   test "updating a date works happily with :calendar" do
 
     res = db(:date_night)
