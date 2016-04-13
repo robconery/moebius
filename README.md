@@ -141,7 +141,9 @@ def start_db do
 end
 ```
 
-It bears repeating: *you don't need to do any of this*, we have a default database setup for you. However supporting multiple connections was very high on our list so this is how we chose to do it (with many thanks to [Peter Hamilton](https://github.com/hamiltop) for the idea)
+It bears repeating: *you don't need to do any of this*, we have a default database setup for you. However supporting multiple connections was very high on our list so this is how we chose to do it (with many thanks to [Peter Hamilton](https://github.com/hamiltop) for the idea).
+
+The rest of the examples you see below use our default database.
 
 ## The Basic Query Flow
 
@@ -536,8 +538,6 @@ no_party = function(:bad_time, :single [me]) |> Moebius.Db.run
 
 ## Help?
 
-I would love to have your help! I am just learning Elixir and have had a great time putting this library together. If you find some idiomatic way of doing something or have some ideas for improvement, please let me know.
-
-Also, I do ask that if you do find a bug, please add a test to your PR that shows the bug and how it was fixed.
+I would love to have your help! I do ask that if you do find a bug, please add a test to your PR that shows the bug and how it was fixed.
 
 Thanks!

@@ -23,7 +23,14 @@ defmodule Moebius do
   # end
 
   def get_connection(), do: get_connection(:connection)
-  def get_connection(key) when is_atom(key), do: Application.get_env(:moebius, key)
+  def get_connection(key) when is_atom(key) do 
+    opts = Application.get_env(:moebius, key)
+    IO.inspect opts
+    cond do
+      Keyword.has_key?(opts, :url) -> Keyword.merge(opts, parse_connection(opts[:url]))
+      true -> opts
+    end
+  end
 
   #thanks to the Ecto team for this code!
   def parse_connection(url) when is_binary(url) do

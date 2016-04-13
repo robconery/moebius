@@ -6,4 +6,8 @@ config :moebius, connection: [
   database: "meebuss",
   pool_mod: DBConnection.Poolboy
 ],
+test_db: [
+  database: "meebuss",
+  pool_mod: DBConnection.Poolboy
+],
 scripts: "test/db"
