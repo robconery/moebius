@@ -15,17 +15,15 @@ defmodule Moebius do
   These functions hand off to PSQL because Postgrex can't run more than
   one command per query.
   """
-  # def run_with_psql(sql, opts) do
-  #   db = opts[:database] || opts[:db]
-  #   args = ["-d", db, "-c", sql, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
-  #   IO.inspect args
-  #   System.cmd "psql", args
-  # end
+  def run_with_psql(sql, opts) do
+    db = opts[:database] || opts[:db]
+    args = ["-d", db, "-c", sql, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
+    System.cmd "psql", args
+  end
 
   def get_connection(), do: get_connection(:connection)
   def get_connection(key) when is_atom(key) do 
     opts = Application.get_env(:moebius, key)
-    IO.inspect opts
     cond do
       Keyword.has_key?(opts, :url) -> Keyword.merge(opts, parse_connection(opts[:url]))
       true -> opts
