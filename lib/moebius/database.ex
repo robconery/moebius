@@ -131,7 +131,7 @@ defmodule Moebius.Database do
           |> Moebius.DocumentQuery.decide_command(doc)
           |> Moebius.Database.execute(conn)
           |> Moebius.Transformer.from_json(:single)
-          |> handle_save_result(cmd, doc, conn)
+          |> handle_save_result(cmd, doc)
           |> check_struct(doc)
 
       end
@@ -168,7 +168,6 @@ defmodule Moebius.Database do
       end
 
       defp handle_save_result(res, cmd, doc) when is_map(res), do: update_search(res, cmd) && res
-      defp handle_save_result(res, cmd, doc, conn) when is_map(res), do: update_search(res, cmd, conn) && res
       defp handle_save_result({:error, err}, cmd, doc) do
         table = cmd.table_name
         cond do
@@ -208,31 +207,17 @@ defmodule Moebius.Database do
       defp execute(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: Moebius.Database.execute(cmd, conn)
 
 
-      defp build_update_search_query(query_result, cmd) do
-        terms = Enum.map_join(cmd.search_fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
-        "update #{cmd.table_name} set search = to_tsvector(concat(#{terms})) where id=#{query_result.id}"
-      end
 
       defp update_search({:error, err}, cmd), do: {:error, err}
       defp update_search([], _),  do: []
       defp update_search(query_result, cmd) do
 
         if length(cmd.search_fields) > 0 do
-          sql = build_update_search_query(query_result, cmd)
+          terms = Enum.map_join(cmd.search_fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
+          sql = "update #{cmd.table_name} set search = to_tsvector(concat(#{terms})) where id=#{query_result.id}"
 
           %Moebius.QueryCommand{sql: sql}
             |> execute
-
-        end
-
-        query_result
-      end
-      defp update_search(query_result, cmd, %DBConnection{} = conn) do
-        if length(cmd.search_fields) > 0 do
-          sql = build_update_search_query(query_result, cmd)
-
-          %Moebius.QueryCommand{sql: sql}
-            |> execute(conn)
 
         end
 
