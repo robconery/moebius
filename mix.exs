@@ -25,14 +25,14 @@ defmodule Moebius.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     [
-      applications: [:logger, :postgrex]
+      applications: [:logger, :postgrex, :timex]
     ]
   end
 
   defp deps do
     [{:postgrex, "~> 0.11.0"},
      {:poolboy, "~> 1.5"},
-     {:timex, "~> 1.0.0"},
+     {:timex, "~> 2.0"},
      {:inflex, "~> 1.5.0"},
      {:poison, "~> 2.0.1", optional: true},
      {:ex_doc, "~> 0.11.2", only: [:dev, :docs]},
