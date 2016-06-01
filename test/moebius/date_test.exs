@@ -9,7 +9,7 @@ defmodule Moebius.DateTests do
 
   test "Timex will parse a date without fucking itself" do
     ds = "2016-3-2 0:25:11"
-    case Timex.DateFormat.parse(ds, "{YYYY}-{_M}-{_D} {_h24}:{_m}:{_s}") do
+    case Timex.parse(ds, "{YYYY}-{_M}-{_D} {_h24}:{_m}:{_s}") do
       {:ok, date} -> assert date.year == 2016
       {:error, err} -> flunk err
     end
@@ -21,7 +21,7 @@ defmodule Moebius.DateTests do
 
   test "adding a date works happily with Timex" do
     res = db(:date_night)
-      |> insert(date: Timex.Date.now)
+      |> insert(date: Timex.DateTime.now)
       |> TestDb.run
 
     assert is_binary(res.date)

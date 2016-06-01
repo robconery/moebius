@@ -21,8 +21,10 @@ defmodule Moebius.Transformer do
   def atomize_columns(cols), do: for col <- cols, do: String.to_atom(col)
 
   def from_time_struct(vals) do
+
     Enum.map vals, fn(v) ->
       v = check_for_string_date(v)
+
       case v do
         #standard timex date
         %Timex.DateTime{} -> %Postgrex.Timestamp{year: v.year, month: v.month, day: v.day, hour: v.hour, min: v.minute, sec: v.second}
@@ -32,34 +34,35 @@ defmodule Moebius.Transformer do
 
         #some sugar
         :now ->
-          now = Timex.Date.now
+          now = Timex.DateTime.now
           %Postgrex.Timestamp{year: now.year, month: now.month, day: now.day, hour: now.hour, min: now.minute, sec: now.second}
 
         :yesterday ->
-          now = Timex.Date.now |> Timex.Date.shift(days: -1)
+          now = Timex.DateTime.now |> Timex.shift(days: -1)
           %Postgrex.Timestamp{year: now.year, month: now.month, day: now.day, hour: now.hour, min: now.minute, sec: now.second}
 
         :tomorrow ->
-          now = Timex.Date.now |> Timex.Date.shift(days: 1)
+          now = Timex.DateTime.now |> Timex.shift([days: 1])
           %Postgrex.Timestamp{year: now.year, month: now.month, day: now.day, hour: now.hour, min: now.minute, sec: now.second}
 
         #more sugar
         {:add_days, days} ->
-          date = Timex.Date.now |> Timex.Date.shift(days: days)
+          date = Timex.DateTime.now |> Timex.shift(days: days)
           %Postgrex.Timestamp{year: date.year, month: date.month, day: date.day, hour: date.hour, min: date.minute, sec: date.second}
 
         {:subtract_days, days} ->
-          date = Timex.Date.now |> Timex.Date.shift(days: -days)
+          date = Timex.DateTime.now |> Timex.shift(days: -days)
           %Postgrex.Timestamp{year: date.year, month: date.month, day: date.day, hour: date.hour, min: date.minute, sec: date.second}
 
         v -> v
       end
+
     end
   end
 
   def check_for_string_date(val) when not is_binary(val), do: val
   def check_for_string_date(val) when is_binary(val) do
-    case Timex.DateFormat.parse(val, "{YYYY}-{_M}-{_D} {_h24}:{_m}:{_s}") do
+    case Timex.parse(val, "{YYYY}-{_M}-{_D} {_h24}:{_m}:{_s}") do
       {:ok, date} -> date
       {:error, _err} -> val
     end
