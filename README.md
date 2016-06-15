@@ -57,7 +57,7 @@ There are various ways to connect to a database with Moebius. You can used a for
 config :moebius, connection: [
   hostname: "localhost",
   username: "username",
-  password: "password"
+  password: "password",
   database: "my_db",
   pool_mod: DBConnection.Poolboy
 ],
