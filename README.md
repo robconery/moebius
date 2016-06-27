@@ -37,15 +37,19 @@ Installing Moebius involves a few small steps:
 
   1. Add moebius to your list of dependencies in `mix.exs`:
 
-        def deps do
-          [{:moebius, "~> 2.0.0"}]
-        end
+    ```ex
+    def deps do
+      [{:moebius, "~> 2.0.0"}]
+    end
+    ```
 
   2. Ensure moebius is started before your application:
 
-        def application do
-          [applications: [:moebius]]
-        end
+    ```ex
+    def application do
+      [applications: [:moebius]]
+    end
+    ```
 
 Run `mix deps.get` and you'll be good to go.
 
@@ -53,7 +57,7 @@ Run `mix deps.get` and you'll be good to go.
 
 There are various ways to connect to a database with Moebius. You can used a formal, supervised definition or just roll with our default. Either way, you start off by adding connection info in your `config.exs`:
 
-```
+```ex
 config :moebius, connection: [
   hostname: "localhost",
   username: "username",
@@ -66,7 +70,7 @@ scripts: "test/db"
 
 You can also use a URL if you like:
 
-```
+```ex
 config :moebius, connection: [
   url: "postgresql://user:password@host/database",
   pool_mod: DBConnection.Poolboy
@@ -86,7 +90,7 @@ Moebius formalizes the concept of a database connection, so you can supervise ea
 
 First, create a module for your database:
 
-```elixir 
+```ex
 defmodule MyApp.Db do 
   use Moebius.Database
 
@@ -96,7 +100,7 @@ end
 
 Next, in your `Application` file, add this new module to your supervision tree:
 
-```elixir 
+```ex
 def start(_type, _args) do
   start_db
   #...
@@ -113,7 +117,7 @@ That's it. Now, when your app starts you'll have a supervised database you can u
 
 For instance, you might have a sales database and an accounting one; or you might have a read-only connection and a write-only one to spread the load. For this, just specify each as needed:
 
-```
+```ex
 config :moebius, read_only: [
   url: "postgresql://user:password@host/database",
   pool_mod: DBConnection.Poolboy
@@ -127,7 +131,7 @@ scripts: "test/db"
 
 You can now use these in your database module:
 
-```elixir 
+```ex
 def start(_type, _args) do
   start_db
   #...
@@ -149,7 +153,7 @@ The rest of the examples you see below use our default database.
 
 When querying the database (read or write), you construct the query and then pass it to the database you want:
 
-```elixir 
+```ex
 result = db(:users) |> Moebius.Db.first
 ```
 
@@ -295,7 +299,7 @@ This will allow you to query embeded documents and arrays rather easily, but aga
 
 If you're a big fan of structs, you can use them directly on `save` and we'll send that same struct back to you, complete with an `id`:
 
-```elixir 
+```ex
 defmodule Candy do
   defstruct [
     id: nil,
@@ -318,7 +322,7 @@ One of the major pain points we had with version 1.0 of Moebius was intelligentl
 
 For this we added our own extensions to Postgrex, so you now get strings back:
 
-```elixir 
+```ex
 res = db(:date_night)
   |> Moebius.Db.first
 
@@ -327,7 +331,7 @@ res = db(:date_night)
 
 String date representations work on the way back in as well:
 
-```elixir 
+```ex
 res = db(:date_night)
   |> filter(id: 1)
   |> update(date: "2016-2-26 17:39:34")
@@ -336,7 +340,7 @@ res = db(:date_night)
 
 You don't need to use strings, you can also use [the Timex library](https://github.com/bitwalker/timex) or `:calendar`:
 
-```elixir
+```ex
 db(:date_night)
   |> insert(date: Timex.Date.now)
   |> Moebius.Db.run
@@ -349,7 +353,7 @@ res = db(:date_night)
 
 This can still be a bit too mechanical, so we decided to add some sugar. You can use special atoms if you like, to define certain dates:
 
-```elixir 
+```ex
 db(:date_night)
   |> filter(id: 1)
   |> update(date: :now)
@@ -443,7 +447,7 @@ But that's still a pretty good number don't you think?
 
 A bulk insert works by invoking one directly:
 
-```elixir 
+```ex
 data = [#let's say 10,000 records or so]
 res = db(:people)
   |> bulk_insert(data)
@@ -456,14 +460,12 @@ If everything works, you'll get back a result indicating the number of records i
 
 Table joins can be applied for a single join or piped to create multiple joins. The table names can be either atoms or binary strings. There are a number of options to customize your joins:
 
-``` ex
-
+```ex
   :join        # set the type of join. LEFT, RIGHT, FULL, etc. defaults to INNER
   :on          # specify the table to join on
   :foreign_key # specify the tables foreign key column
   :primary_key # specify the joining tables primary key column
   :using       # used to specify a USING queries list of columns to join on
-
 ```
 
 The simplest example is a basic join:
@@ -510,7 +512,7 @@ Aggregates are built with a functional approach in mind. This might seem a bit o
 
 So, to that end, we have:
 
-```
+```ex
 sum = db(:products)
   |> map("id > 1")
   |> group(:sku)
