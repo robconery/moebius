@@ -133,7 +133,9 @@ defmodule Moebius.DateTests do
 
     assert is_list(res)
     refute [] == res
+  end
 
+  test "filter by date range using atoms" do
     res = db(:date_night)
     |> filter("date BETWEEN $1 AND $2", [:yesterday, :tomorrow])
     |> TestDb.run
@@ -143,13 +145,17 @@ defmodule Moebius.DateTests do
   end
 
   test "filter by a single date" do
-    %{max_date: date} = date_range
+    db(:date_night)
+    |> filter(id: 1)
+    |> update(date: :tomorrow)
+    |> TestDb.run
 
     res = db(:date_night)
-    |> filter(date: date)
+    |> filter(date: :tomorrow)
     |> TestDb.run
 
     assert is_list(res)
+    refute [] == res
   end
 
   defp date_range do

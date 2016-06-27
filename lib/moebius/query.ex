@@ -319,7 +319,7 @@ defmodule Moebius.Query do
       "(#{list})"
     end
 
-    params = for row <- list, {k, v} <- row, do: v
+    params = for row <- list, {_k, v} <- row, do: v
 
     column_names = Enum.map_join(column_map,", ", &"#{&1}")
     value_sql = Enum.join param_list, ","

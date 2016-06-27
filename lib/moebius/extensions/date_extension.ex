@@ -13,6 +13,7 @@ defmodule Moebius.Extensions.DateExtension do
 
   def matching(_), do: [
     type: "timestamptz",
+    type: "timestamp",
     type: "time",
     type: "date",
   ]
@@ -37,7 +38,8 @@ defmodule Moebius.Extensions.DateExtension do
     <<secs * 1_000_000 + usec :: int64>>
   end
 
-  def decode(%Postgrex.TypeInfo{type: data_type},<<microsecs :: int64>>, _, _) when data_type in ["timestamptz", "timestamp"] do
+  def decode(%Postgrex.TypeInfo{type: data_type}, <<microsecs :: int64>>, _, _) when data_type in ["timestamptz", "timestamp"] do
+
     secs = div(microsecs, 1_000_000)
     usec = rem(microsecs, 1_000_000)
     {{year, month, day}, {hour, min, sec}} = :calendar.gregorian_seconds_to_datetime(secs + @gs_epoch)
