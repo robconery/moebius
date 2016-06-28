@@ -67,7 +67,6 @@ defmodule Moebius.DateTests do
   end
 
   test "updating a date works with roundtrip date", %{data: [ %{id: _id, date: date} | _rest]} do
-
     res = db(:date_night)
       |> filter(id: 1)
       |> update(date: date)
@@ -114,6 +113,7 @@ defmodule Moebius.DateTests do
 
     assert is_binary(res.date)
   end
+
   test "using :yesterday" do
 
     res = db(:date_night)
@@ -122,5 +122,38 @@ defmodule Moebius.DateTests do
       |> TestDb.run
 
     assert is_binary(res.date)
+  end
+
+  test "filter by date range using binaries" do
+    %{min_date: start_at, max_date: end_at} = date_range
+
+    res = db(:date_night)
+    |> filter("date BETWEEN $1 AND $2", [start_at, end_at])
+    |> TestDb.run
+
+    assert is_list(res)
+    refute [] == res
+
+    res = db(:date_night)
+    |> filter("date BETWEEN $1 AND $2", [:yesterday, :tomorrow])
+    |> TestDb.run
+
+    assert is_list(res)
+    refute [] == res
+  end
+
+  test "filter by a single date" do
+    %{max_date: date} = date_range
+
+    res = db(:date_night)
+    |> filter(date: date)
+    |> TestDb.run
+
+    assert is_list(res)
+  end
+
+  defp date_range do
+    %Moebius.QueryCommand{sql: "select min(date) as min_date, max(date) as max_date from date_night;"}
+    |> TestDb.first
   end
 end
