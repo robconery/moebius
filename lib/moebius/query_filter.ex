@@ -90,14 +90,13 @@ defmodule Moebius.QueryFilter do
 
   def filter(%{where: ""} = cmd, criteria) when is_list(criteria) do
     cols = Keyword.keys(criteria)
-    vals = Keyword.values(criteria)
+    vals = Keyword.values(criteria) |> Moebius.Transformer.from_time_struct
 
     {filters, _count} = Enum.map_reduce cols, 1, fn col, acc ->
       {"#{col} = $#{acc}", acc + 1}
     end
 
-    %{cmd | params: vals, where: " where #{Enum.join(filters, " and ")}", where_columns: cols}
-  end
+    %{cmd | params: vals, where: " where #{Enum.join(filters, " and ")}", where_columns: cols} end
 
   def filter(%{where: ""} = cmd, criteria, not_in: params) when is_list(params) do
     %{cmd | where: " where #{criteria} NOT IN(#{map_params(params)})", params: params}
@@ -107,8 +106,10 @@ defmodule Moebius.QueryFilter do
     %{cmd | where: " where #{criteria} IN(#{map_params(params)})", params: params}
   end
 
-  def filter(%{where: ""} = cmd, criteria, params) when is_list(params),
-    do: %{cmd | params: params, where: " where #{criteria}"}
+  def filter(%{where: ""} = cmd, criteria, params) when is_list(params) do
+    params = Moebius.Transformer.from_time_struct(params)
+    %{cmd | params: params, where: " where #{criteria}"}
+  end
 
   def filter(cmd, criteria, in: params) when is_list(params) do
     current_params_length = cmd.params |> length
