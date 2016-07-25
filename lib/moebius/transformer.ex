@@ -27,10 +27,12 @@ defmodule Moebius.Transformer do
 
       case v do
         #standard timex date
-        %Timex.DateTime{} -> %Postgrex.Timestamp{year: v.year, month: v.month, day: v.day, hour: v.hour, min: v.minute, sec: v.second}
+        %Timex.DateTime{} ->
+          %Postgrex.Timestamp{year: v.year, month: v.month, day: v.day, hour: v.hour, min: v.minute, sec: v.second}
 
         #using Erlang :calendar
-        {{year, month, day}, {hour, minute, second}} -> %Postgrex.Timestamp{year: year, month: month, day: day, hour: hour, min: minute, sec: second}
+        {{year, month, day}, {hour, minute, second}} ->
+          %Postgrex.Timestamp{year: year, month: month, day: day, hour: hour, min: minute, sec: second}
 
         #some sugar
         :now ->
