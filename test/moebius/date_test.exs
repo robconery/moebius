@@ -76,7 +76,6 @@ defmodule Moebius.DateTests do
   end
 
   test "updating a date works with :now" do
-
     res = db(:date_night)
       |> filter(id: 1)
       |> update(date: :now)
@@ -86,7 +85,6 @@ defmodule Moebius.DateTests do
   end
 
   test "using :add_days" do
-
     res = db(:date_night)
       |> filter(id: 1)
       |> update(date: {:add_days, 4})
@@ -94,8 +92,8 @@ defmodule Moebius.DateTests do
 
     assert is_binary(res.date)
   end
-  test "using :subtract_days" do
 
+  test "using :subtract_days" do
     res = db(:date_night)
       |> filter(id: 1)
       |> update(date: {:subtract_days, 4})
@@ -105,7 +103,6 @@ defmodule Moebius.DateTests do
   end
 
   test "using :tomorrow" do
-
     res = db(:date_night)
       |> filter(id: 1)
       |> update(date: :tomorrow)
@@ -115,7 +112,6 @@ defmodule Moebius.DateTests do
   end
 
   test "using :yesterday" do
-
     res = db(:date_night)
       |> filter(id: 1)
       |> update(date: :yesterday)
