@@ -27,7 +27,7 @@ defmodule Moebius.Transformer do
 
       case v do
         #standard timex date
-        %Timex.DateTime{} ->
+        %DateTime{} ->
           %Postgrex.Timestamp{year: v.year, month: v.month, day: v.day, hour: v.hour, min: v.minute, sec: v.second}
 
         #using Erlang :calendar
@@ -36,24 +36,24 @@ defmodule Moebius.Transformer do
 
         #some sugar
         :now ->
-          now = Timex.DateTime.now
+          now = Timex.now
           %Postgrex.Timestamp{year: now.year, month: now.month, day: now.day, hour: now.hour, min: now.minute, sec: now.second}
 
         :yesterday ->
-          now = Timex.DateTime.now |> Timex.shift(days: -1)
+          now = Timex.now |> Timex.shift(days: -1)
           %Postgrex.Timestamp{year: now.year, month: now.month, day: now.day, hour: now.hour, min: now.minute, sec: now.second}
 
         :tomorrow ->
-          now = Timex.DateTime.now |> Timex.shift([days: 1])
+          now = Timex.now |> Timex.shift([days: 1])
           %Postgrex.Timestamp{year: now.year, month: now.month, day: now.day, hour: now.hour, min: now.minute, sec: now.second}
 
         #more sugar
         {:add_days, days} ->
-          date = Timex.DateTime.now |> Timex.shift(days: days)
+          date = Timex.now |> Timex.shift(days: days)
           %Postgrex.Timestamp{year: date.year, month: date.month, day: date.day, hour: date.hour, min: date.minute, sec: date.second}
 
         {:subtract_days, days} ->
-          date = Timex.DateTime.now |> Timex.shift(days: -days)
+          date = Timex.now |> Timex.shift(days: -days)
           %Postgrex.Timestamp{year: date.year, month: date.month, day: date.day, hour: date.hour, min: date.minute, sec: date.second}
 
         v -> v

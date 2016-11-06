@@ -21,7 +21,7 @@ defmodule Moebius.DateTests do
 
   test "adding a date works happily with Timex" do
     res = db(:date_night)
-      |> insert(date: Timex.DateTime.now)
+      |> insert(date: Timex.now)
       |> TestDb.run
 
     assert is_binary(res.date)
