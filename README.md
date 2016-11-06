@@ -285,7 +285,7 @@ users = db(:friends)
   |> Moebius.Db.run
 ```
 
-This runs a full table scan so is not terribly optimal, but it does work if you need it once in a while. You can also use the existence (`?`) operator, which is very handy for querying arrays:
+This runs a full table scan so is not terribly optimal, but it does work if you need it once in a while. You can also use the existence (`?`) operator, which is very handy for querying arrays. We implemented it as `exists`:
 
 ```ex
 buddies = db(:friends)
