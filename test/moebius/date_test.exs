@@ -16,29 +16,29 @@ defmodule Moebius.DateTests do
   end
 
   test "Dates are transformed to Times", %{data: [ %{id: _id, date: date} | _rest]} do
-    assert is_binary(date)
+    %DateTime{} = date
   end
 
   test "adding a date works happily with Timex" do
     res = db(:date_night)
-      |> insert(date: Timex.DateTime.now)
+      |> insert(date: Timex.now)
       |> TestDb.run
 
-    assert is_binary(res.date)
+    %DateTime{} = res.date
   end
 
   test "adding a date works happily with Timex via SQL file" do
-    res = sql_file(:date, [Timex.DateTime.now])
+    res = sql_file(:date, [Timex.now])
       |> TestDb.run
       |> List.first
 
-    assert is_binary(res.date)
+    %DateTime{} = res.date
   end
 
   test "returning dates come back as strings" do
     res = db(:date_night)
       |> TestDb.first
-    assert is_binary(res.date)
+    %DateTime{} = res.date
   end
 
   test "updating a date works happily with :calendar" do
@@ -48,7 +48,7 @@ defmodule Moebius.DateTests do
       |> update(date: :calendar.local_time)
       |> TestDb.run
 
-    assert is_binary(res.date)
+    %DateTime{} = res.date
   end
 
   test "string to date transformer returns Timex date" do
@@ -89,7 +89,7 @@ defmodule Moebius.DateTests do
       |> update(date: :now)
       |> TestDb.run
 
-    assert is_binary(res.date)
+    %DateTime{} = res.date
   end
 
   test "using :add_days" do
@@ -98,7 +98,7 @@ defmodule Moebius.DateTests do
       |> update(date: {:add_days, 4})
       |> TestDb.run
 
-    assert is_binary(res.date)
+    %DateTime{} = res.date
   end
 
   test "using :subtract_days" do
@@ -107,7 +107,7 @@ defmodule Moebius.DateTests do
       |> update(date: {:subtract_days, 4})
       |> TestDb.run
 
-    assert is_binary(res.date)
+    %DateTime{} = res.date
   end
 
   test "using :tomorrow" do
@@ -116,7 +116,7 @@ defmodule Moebius.DateTests do
       |> update(date: :tomorrow)
       |> TestDb.run
 
-    assert is_binary(res.date)
+    %DateTime{} = res.date
   end
 
   test "using :yesterday" do
@@ -125,7 +125,7 @@ defmodule Moebius.DateTests do
       |> update(date: :yesterday)
       |> TestDb.run
 
-    assert is_binary(res.date)
+    %DateTime{} = res.date
   end
 
   test "filter by date range using binaries" do
@@ -149,13 +149,15 @@ defmodule Moebius.DateTests do
   end
 
   test "filter by a single date" do
+    tomorrow = Timex.now |> Timex.shift([days: 1])
+
     db(:date_night)
     |> filter(id: 1)
-    |> update(date: :tomorrow)
+    |> update(date: tomorrow)
     |> TestDb.run
 
     res = db(:date_night)
-    |> filter(date: :tomorrow)
+    |> filter(date: tomorrow)
     |> TestDb.run
 
     assert is_list(res)

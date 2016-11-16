@@ -32,7 +32,7 @@ defmodule Moebius.Mixfile do
   defp deps do
     [{:postgrex, "~> 0.12.1"},
      {:poolboy, "~> 1.5"},
-     {:timex, "~> 2.0"},
+     {:timex, "~> 3.1.5"},
      {:inflex, "~> 1.5.0"},
      {:poison, "~> 3.0", optional: true},
      {:ex_doc, "~> 0.11.2", only: [:dev, :docs]},
