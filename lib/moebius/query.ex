@@ -472,7 +472,7 @@ defmodule Moebius.Query do
     file_path = Path.join(scripts_dir, "#{Atom.to_string(file)}.sql")
     sql=File.read!(file_path)
 
-    %Moebius.QueryCommand{sql: String.strip(sql), params: params}
+    %Moebius.QueryCommand{sql: String.strip(sql), params: Moebius.Transformer.from_time_struct params}
   end
 
   @doc """
