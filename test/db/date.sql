@@ -1,1 +1,1 @@
-insert into date_night (date) values ($1)
+insert into date_night (date) values ($1) returning *

@@ -30,6 +30,7 @@ defmodule Moebius.DateTests do
   test "adding a date works happily with Timex via SQL file" do
     res = sql_file(:date, [Timex.DateTime.now])
       |> TestDb.run
+      |> List.first
 
     assert is_binary(res.date)
   end
