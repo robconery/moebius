@@ -49,22 +49,23 @@ defmodule Moebius.TransactionTest do
 
   end
 
-  # test "documents save within a transaction" do
-  #   res = transaction fn(tx) ->
-  #     Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Mike"}, tx)
-  #     Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Larry"}, tx)
-  #   end
-  #   # case res do
-  #   #   {:error, _err} -> flunk "No errors here!"
-  #   #   res -> assert res
-  #   # end
-  # end
+  test "documents save within a transaction" do
+    "drop table if exists monkies;" |> TestDb.run
+    res = transaction fn(tx) ->
+      Moebius.DocumentQuery.db(:gorillas) |> Moebius.DocumentQuery.searchable([:name]) |> TestDb.save(%{name: "Mike"}, tx)
+      Moebius.DocumentQuery.db(:gorillas) |> Moebius.DocumentQuery.searchable([:name]) |> TestDb.save(%{name: "Larry"}, tx)
+    end
+    case res do
+      {:error, err} -> flunk "Saving a document with searchable failed. #{inspect err}"
+      res -> assert res
+    end
+  end
 
   test "documents don't save when there's an error within a transaction" do
     res = transaction fn(tx) ->
-      Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Mike"}, tx)
+      Moebius.DocumentQuery.db(:gorillas) |> TestDb.save(%{name: "Mike"}, tx)
       "select * from poopasdasd" |> TestDb.run(tx)
-      Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Larry"}, tx)
+      Moebius.DocumentQuery.db(:gorillas) |> TestDb.save(%{name: "Larry"}, tx)
     end
     case res do
       {:error, message} -> assert message

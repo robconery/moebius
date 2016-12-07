@@ -127,20 +127,23 @@ defmodule Moebius.Database do
 
       def save(%Moebius.DocumentCommand{} = cmd, doc, %DBConnection{} = conn) when is_map(doc) do
 
-        %{cmd | conn: @name}
+        %{cmd | conn: conn}
           |> Moebius.DocumentQuery.decide_command(doc)
+          |> create_document_table(doc, conn)
           |> Moebius.Database.execute(conn)
           |> Moebius.Transformer.from_json(:single)
-          |> handle_save_result(cmd, doc)
+          |> handle_save_result(cmd, doc, conn)
           |> check_struct(doc)
 
       end
+
       def create_document_table(name) when is_atom(name) do
         case Moebius.DocumentQuery.db(name) |> create_document_table(nil) do
           {:error, err} -> {:error, err}
           %Moebius.DocumentCommand{} = cmd -> {:ok, "Table created"}
         end
       end
+
       def create_document_table(%Moebius.DocumentCommand{} = cmd, _) do
 
         sql = """
@@ -159,6 +162,23 @@ defmodule Moebius.Database do
         cmd
       end
 
+      def create_document_table(%Moebius.DocumentCommand{} = cmd, doc, %DBConnection{} = conn) do
+
+        %Moebius.QueryCommand{conn: conn, sql:
+        """
+        create table if not exists #{cmd.table_name}(
+          id serial primary key not null,
+          body jsonb not null,
+          search tsvector,
+          created_at timestamptz not null default now(),
+          updated_at timestamptz not null default now()
+        );
+        """ } |> Moebius.Database.execute(conn)
+
+        %Moebius.QueryCommand{conn: conn, sql: "create index if not exists idx_#{cmd.table_name}_search on #{cmd.table_name} using GIN(search);"} |> Moebius.Database.execute(conn)
+        %Moebius.QueryCommand{conn: conn, sql: "create index if not exists idx_#{cmd.table_name} on #{cmd.table_name} using GIN(body jsonb_path_ops);"} |> Moebius.Database.execute(conn)
+        cmd
+      end
 
       defp check_struct(res, original) do
         cond  do
@@ -168,6 +188,7 @@ defmodule Moebius.Database do
       end
 
       defp handle_save_result(res, cmd, doc) when is_map(res), do: update_search(res, cmd) && res
+      defp handle_save_result(res, cmd, doc, conn) when is_map(res), do: update_search(res, cmd, conn) && res
       defp handle_save_result({:error, err}, cmd, doc) do
         table = cmd.table_name
         cond do
@@ -176,6 +197,7 @@ defmodule Moebius.Database do
             true ->  {:error, err}
         end
       end
+
 
       defp execute(%Moebius.DocumentCommand{sql: nil} = cmd) do
         %{cmd | conn: @name}
@@ -207,14 +229,17 @@ defmodule Moebius.Database do
       defp execute(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: Moebius.Database.execute(cmd, conn)
 
 
+      defp build_update_search_query(query_result, cmd) do
+        terms = Enum.map_join(cmd.search_fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
+        "update #{cmd.table_name} set search = to_tsvector(concat(#{terms})) where id=#{query_result.id}"
+      end
 
       defp update_search({:error, err}, cmd), do: {:error, err}
       defp update_search([], _),  do: []
       defp update_search(query_result, cmd) do
 
         if length(cmd.search_fields) > 0 do
-          terms = Enum.map_join(cmd.search_fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
-          sql = "update #{cmd.table_name} set search = to_tsvector(concat(#{terms})) where id=#{query_result.id}"
+          sql = build_update_search_query(query_result, cmd)
 
           %Moebius.QueryCommand{sql: sql}
             |> execute
@@ -223,7 +248,17 @@ defmodule Moebius.Database do
 
         query_result
       end
+      defp update_search(query_result, cmd, %DBConnection{} = conn) do
+        if length(cmd.search_fields) > 0 do
+          sql = build_update_search_query(query_result, cmd)
 
+          %Moebius.QueryCommand{sql: sql}
+            |> execute(conn)
+
+        end
+
+        query_result
+      end
     end
   end
 
@@ -250,6 +285,5 @@ defmodule Moebius.Database do
       {:error, err} -> Postgrex.query(conn, "ROLLBACK", []) && raise err.postgres.message
     end
   end
-
 
 end
