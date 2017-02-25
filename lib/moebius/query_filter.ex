@@ -113,7 +113,7 @@ defmodule Moebius.QueryFilter do
     new_where = Enum.join([cmd.where,"and #{Enum.join(filters, " and ")}"]," ")
     new_cols = cmd.where_columns ++ cols
 
-    %{cmd | params: new_params, where: new_where, where_columns: new_cols} |> IO.inspect
+    %{cmd | params: new_params, where: new_where, where_columns: new_cols}
   end
 
 
