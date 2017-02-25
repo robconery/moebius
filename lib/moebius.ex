@@ -21,9 +21,29 @@ defmodule Moebius do
     System.cmd "psql", args
   end
 
+  def system_envs(raw_opts) do
+    Enum.map(Enum.into(raw_opts, %{}), fn {k, v} ->
+      case v do
+        {:system, env_var} ->
+          case System.get_env(env_var) do
+            nil -> raise "No environment variable or default set for #{env_var}."
+            val -> {k, val}
+          end
+        {:system, env_var, default} ->
+          case System.get_env(env_var) do
+            nil -> {k, default}
+            val -> {k, val}
+          end
+        _ -> {k, v}
+      end
+    end)
+  end
+
+
   def get_connection(), do: get_connection(:connection)
   def get_connection(key) when is_atom(key) do
-    opts = Application.get_env(:moebius, key)
+    #thanks to oskarth for this - had to pull in manually to fit to v3
+    opts = system_envs(Application.get_env(:moebius, key))
     cond do
       Keyword.has_key?(opts, :url) -> Keyword.merge(opts, parse_connection(opts[:url]))
       true -> opts
