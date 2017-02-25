@@ -26,9 +26,9 @@ defmodule Moebius.Transformer do
       v = check_for_string_date(v)
 
       case v do
-        #standard timex date
-        %Timex.DateTime{} ->
-          %Postgrex.Timestamp{year: v.year, month: v.month, day: v.day, hour: v.hour, min: v.minute, sec: v.second}
+        #standard elixir or timex datetime
+        %{year: year, month: month, day: day, hour: hour, minute: minute, second: second} ->
+          %Postgrex.Timestamp{year: year, month: month, day: day, hour: hour, min: minute, sec: second}
 
         #using Erlang :calendar
         {{year, month, day}, {hour, minute, second}} ->

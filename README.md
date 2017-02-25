@@ -338,11 +338,16 @@ res = db(:date_night)
   |> Moebius.Db.run
 ```
 
-You don't need to use strings, you can also use [the Timex library](https://github.com/bitwalker/timex) or `:calendar`:
+You don't need to use strings, you can also use [the Timex library](https://github.com/bitwalker/timex), Elixir's [DateTime](http://elixir-lang.org/docs/stable/elixir/DateTime.html) or `:calendar`:
 
 ```ex
 db(:date_night)
   |> insert(date: Timex.Date.now)
+  |> Moebius.Db.run
+
+res = db(:date_night)
+  |> filter(id: 1)
+  |> update(date: DateTime.utc_now)
   |> Moebius.Db.run
 
 res = db(:date_night)
