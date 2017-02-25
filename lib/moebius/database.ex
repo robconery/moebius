@@ -52,7 +52,6 @@ defmodule Moebius.Database do
         transaction fn(tx) ->
           batch.commands
           |> Enum.map(fn(cmd) -> execute(cmd, tx) end)
-          # |> List.flatten
         end
       end
 
