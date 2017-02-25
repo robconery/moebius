@@ -1,6 +1,7 @@
 ExUnit.start()
-defmodule TestDb,  do: use Moebius.Database
-
+defmodule TestDb  do
+  use Moebius.Database
+end
 
 worker = Supervisor.Spec.worker(TestDb, [Moebius.get_connection])
 Supervisor.start_link [worker], strategy: :one_for_one

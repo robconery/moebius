@@ -58,10 +58,12 @@ defmodule Moebius do
   def get_connection(key) when is_atom(key) do
     #thanks to oskarth for this - had to pull in manually to fit to v3
     opts = system_envs(Application.get_env(:moebius, key))
+    pool_opts = [pool: DBConnection.Poolboy]
     cond do
       Keyword.has_key?(opts, :url) -> Keyword.merge(opts, parse_connection(opts[:url]))
       true -> opts
     end
+    opts ++ pool_opts
   end
 
   #thanks to the Ecto team for this code!

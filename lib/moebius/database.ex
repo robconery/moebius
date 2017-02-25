@@ -3,6 +3,7 @@ defmodule Moebius.Database do
   defmacro __using__(_opts) do
     quote location: :keep do
       @name __MODULE__
+
       alias __MODULE__
       def start_link(opts) do
 
@@ -101,7 +102,7 @@ defmodule Moebius.Database do
 
       def transaction(fun) do
         try do
-          {:ok, conn} = Postgrex.transaction(@name, fun)
+          {:ok, conn} = Postgrex.transaction(@name, fun, Moebius.get_connection)
           conn
         catch
           e, %{message: message} -> {:error, message}
@@ -229,7 +230,8 @@ defmodule Moebius.Database do
 
 
   def execute(cmd) do
-    case Postgrex.query(cmd.conn, cmd.sql, cmd.params) do
+
+    case Postgrex.query(cmd.conn, cmd.sql, cmd.params, Moebius.get_connection) do
       {:ok, result} -> {:ok, result}
       {:error, err} -> {:error, err.postgres.message}
     end
@@ -241,7 +243,7 @@ defmodule Moebius.Database do
   it will be caught in `Query.transaction/1` and reported back using `{:error, err}`.
   """
   def execute(cmd, %DBConnection{} = conn) do
-    case Postgrex.query(conn, cmd.sql, cmd.params) do
+    case Postgrex.query(conn, cmd.sql, cmd.params, Moebius.get_connection) do
       {:ok, result} -> {:ok, result}
       {:error, err} -> Postgrex.query(conn, "ROLLBACK", []) && raise err.postgres.message
     end

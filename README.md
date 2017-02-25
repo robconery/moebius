@@ -12,6 +12,8 @@ Moebius is *not* an ORM. There are no mappings, no schemas, no migrations; only 
 
 - Fixed a number of issues surrounding dates etc
 - Moved to a more Elixiry way of returning results, using `{:ok, result}` and `{:error, error}`. We were always doing the latter, but decided to move to the former to keep in step with other libraries.
+- Moved to Ecto 1.4, along with Dates etc.
+- Removed multiple dependencies, including Timex and Poolboy (which is built into the driver, Postgrex)
 
 
 ## Documentation
@@ -24,7 +26,6 @@ API documentation is available at http://hexdocs.pm/moebius
 $ MIX_ENV=dev mix docs
 ```
 
-
 ## Installation
 
 Installing Moebius involves a few small steps:
@@ -33,7 +34,7 @@ Installing Moebius involves a few small steps:
 
     ```ex
     def deps do
-      [{:moebius, "~> 2.0.0"}]
+      [{:moebius, "~> 3.0.0"}]
     end
     ```
 
@@ -56,8 +57,7 @@ config :moebius, connection: [
   hostname: "localhost",
   username: "username",
   password: "password",
-  database: "my_db",
-  pool_mod: DBConnection.Poolboy
+  database: "my_db"
 ],
 scripts: "test/db"
 ```
@@ -70,6 +70,8 @@ config :moebius, connection: [
 ],
 scripts: "test/db"
 ```
+
+If you want to use environment variables, just set `HOSTNAME`, `USERNAME`, `PASSWORD` or `DATABASE` and they will be read in.
 
 Under the hood, Moebius uses [the Postgrex driver](https://github.com/ericmj/postgrex) to manage connections and connection pooling. Connections are supervised, so if there's an error any transaction pending will be rolled back effectively (more on that later). The settings you provide in `:connection` will be passed directly to Postgrex (aside from `:url`, which we parse).
 
