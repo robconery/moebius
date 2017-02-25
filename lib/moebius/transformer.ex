@@ -4,24 +4,25 @@ defmodule Moebius.Transformer do
   This module restructures the results.
   """
   def format_ok_result(result), do: {:ok, result}
-  def to_single({:ok, %{command: :delete, num_rows: count}}), do: %{deleted: count}
-  def to_single({:ok, %{num_rows: count}}) when count == 0, do: nil
+
+  def to_single({:ok, %{command: :delete, num_rows: count}}), do: {:ok, %{deleted: count}}
+  def to_single({:ok, %{num_rows: count}}) when count == 0, do: {:ok, nil}
   def to_single({:error, message}) when is_binary(message), do: {:error, message}
   def to_single({:error, %{postgres: %{message: message}}}),  do: {:error, message}
   def to_single({:ok, %{rows: _rows, columns: _cols}} = res) do
-    to_list(res) |> List.first |> format_ok_result
+    {:ok, result_list} = to_list(res)
+    result_list |> List.first |> format_ok_result
   end
 
   def to_list({:ok, %{rows: nil}}), do: []
   def to_list({:error, message}) when is_binary(message), do: {:error, message}
   def to_list({:error, %{postgres: %{message: message}}}),  do: {:error, message}
   def to_list({:ok, %{rows: rows, columns: cols}}) do
-    for row <- rows, cols = atomize_columns(cols), do: match_columns_to_row(row,cols) |> to_map
+    map_list = for row <- rows, cols = atomize_columns(cols), do: match_columns_to_row(row,cols) |> to_map
+    format_ok_result(map_list)
   end
 
   def atomize_columns(cols), do: for col <- cols, do: String.to_atom(col)
-  def from_time_struct(vals), do: vals
-
 
   def match_columns_to_row(row, cols), do: List.zip([cols, row])
   def to_map(list) do
@@ -30,12 +31,14 @@ defmodule Moebius.Transformer do
 
   def from_json({:error, err}), do: {:error, err}
   def from_json({:ok, res}) do
-    Enum.map(res.rows, &handle_row/1)
+     res = Enum.map(res.rows, &handle_row/1)
+     {:ok, res}
   end
 
   def from_json({:error, err}, _), do: {:error, err}
   def from_json({:ok, %{rows: rows}}, :single) do
-    List.first(rows) |> handle_row
+    res = List.first(rows) |> handle_row
+    {:ok, res}
   end
 
   defp handle_row(nil), do: nil

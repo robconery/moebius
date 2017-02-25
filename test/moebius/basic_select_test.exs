@@ -9,7 +9,6 @@ defmodule Moebius.BasicSelectTest do
     db(:users) |> delete |> run
     {:ok, user} = db(:users) |> insert(email: "friend@test.com") |> run
     db(:users) |> insert(email: "enemy@test.com") |> run
-
     {:ok, res: user}
   end
 
@@ -80,7 +79,7 @@ defmodule Moebius.BasicSelectTest do
   end
 
   test "filter returns a few records", %{res: user} do
-    found = db(:users)
+    {:ok, found} = db(:users)
           |> filter(id: user.id)
           |> run
 

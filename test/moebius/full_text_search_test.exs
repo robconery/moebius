@@ -11,7 +11,7 @@ defmodule Moebius.FullTextSearch do
 
   test "a simple full text query", %{user: user} do
 
-    result = db(:users)
+    {:ok,result} = db(:users)
           |> search(for: user.first, in: [:first, :last, :email])
           |> TestDb.run
 

@@ -90,7 +90,7 @@ defmodule Moebius.QueryFilter do
 
   def filter(%{where: ""} = cmd, criteria) when is_list(criteria) do
     cols = Keyword.keys(criteria)
-    vals = Keyword.values(criteria) |> Moebius.Transformer.from_time_struct
+    vals = Keyword.values(criteria)
 
     {filters, _count} = Enum.map_reduce cols, 1, fn col, acc ->
       {"#{col} = $#{acc}", acc + 1}
@@ -107,7 +107,6 @@ defmodule Moebius.QueryFilter do
   end
 
   def filter(%{where: ""} = cmd, criteria, params) when is_list(params) do
-    params = Moebius.Transformer.from_time_struct(params)
     %{cmd | params: params, where: " where #{criteria}"}
   end
 

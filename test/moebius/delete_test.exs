@@ -31,7 +31,7 @@ defmodule Moebius.DeleteTest do
   end
 
   test "it actually works" do
-    res = db(:logs)
+    {:ok, res} = db(:logs)
       |> filter("id > $1", 1)
       |> delete
       |> TestDb.run

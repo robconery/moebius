@@ -2,7 +2,7 @@ defmodule Moebius.DateTests do
   use ExUnit.Case
 
   setup_all do
-    res = "select * from date_night" |> TestDb.run
+    {:ok, res} = "select * from date_night" |> TestDb.run
     {:ok, data: res}
   end
 
