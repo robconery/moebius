@@ -3,11 +3,9 @@
 use Mix.Config
 
 config :moebius, connection: [
-  database: "meebuss",
-  pool_mod: DBConnection.Poolboy
+  database: "meebuss"
 ],
 test_db: [
-  database: "meebuss",
-  pool_mod: DBConnection.Poolboy
+  database: "meebuss"
 ],
 scripts: "test/db"
