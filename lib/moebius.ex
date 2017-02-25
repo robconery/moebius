@@ -11,7 +11,7 @@ defmodule Moebius do
   end
 
   @doc """
-  A convenience tool for assembling large queries with multiple commands which we use for testing. 
+  A convenience tool for assembling large queries with multiple commands which we use for testing.
   These functions hand off to PSQL because Postgrex can't run more than
   one command per query.
   """
@@ -22,7 +22,7 @@ defmodule Moebius do
   end
 
   def get_connection(), do: get_connection(:connection)
-  def get_connection(key) when is_atom(key) do 
+  def get_connection(key) when is_atom(key) do
     opts = Application.get_env(:moebius, key)
     cond do
       Keyword.has_key?(opts, :url) -> Keyword.merge(opts, parse_connection(opts[:url]))
@@ -52,7 +52,7 @@ defmodule Moebius do
             port:     info.port]
 
     #strip off any nils
-    opts = Enum.reject(opts, fn {_k, v} -> is_nil(v) end)
+    Enum.reject(opts, fn {_k, v} -> is_nil(v) end)
     #send the values to a char list because that's what :epgsql likes
     # opts = for {k, v} <- opts, into: %{}, do: {k, String.to_char_list(v)}
   end

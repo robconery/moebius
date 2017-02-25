@@ -22,10 +22,9 @@ defmodule Moebius.Database do
 
         opts
           |> Keyword.put_new(:name, @name)
+          |> Keyword.put_new(:types, Moebius.PostgrexTypes)
           |> Keyword.put_new(:extensions, [
-            {Postgrex.Extensions.JSON, library: Poison},
-            {Moebius.Extensions.StringExtension, []},
-            {Moebius.Extensions.DateExtension, []}
+            {Postgrex.Extensions.JSON, library: Poison}
           ])
       end
 
