@@ -3,7 +3,7 @@ defmodule Moebius.FullTextSearch do
   import Moebius.Query
 
   setup_all do
-    res = db(:users)
+    {:ok, res} = db(:users)
       |> insert(first: "Mike", last: "Booger", email: "boogerbob@test.com")
       |> TestDb.run
     {:ok, user: res}

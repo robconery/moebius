@@ -10,7 +10,7 @@ defmodule Moebius.AggregateTest do
   end
 
   test "count returns integer" do
-    res = db(:users)
+    {:ok, res} = db(:users)
       |> count
       |> TestDb.run
 
@@ -18,7 +18,7 @@ defmodule Moebius.AggregateTest do
   end
 
   test "sum returns integer for user ids" do
-    res = db(:users)
+    {:ok, res} = db(:users)
       |> map("id > 1")
       |> reduce(:sum, :id)
       |> TestDb.first
