@@ -1,23 +1,17 @@
 ![travis](https://travis-ci.org/robconery/moebius.svg?branch=master) [![Hex.pm Version](https://img.shields.io/hexpm/v/moebius.svg)](https://hex.pm/packages/moebius)
 
-# Moebius 2.0: A functional query tool for Elixir and PostgreSQL.
+# Moebius 3.0: A functional query tool for Elixir and PostgreSQL.
 
 *Note: this is version 2.0 and there are significant changes from version 1.0. If you need version 1.x, you can [find the last release here](https://github.com/robconery/moebius/releases/tag/v1)*
 
-Our goal with creating Moebius is to try and keep as close as possible to the functional nature of Elixir and, at the same time, the goodness that is PostgreSQL. We think working with a database should feel like a natural extension of the language, with as little abstraction wonkery as possible. 
+Our goal with creating Moebius is to try and keep as close as possible to the functional nature of Elixir and, at the same time, the goodness that is PostgreSQL. We think working with a database should feel like a natural extension of the language, with as little abstraction wonkery as possible.
 
 Moebius is *not* an ORM. There are no mappings, no schemas, no migrations; only queries and data. We embrace PostgreSQL as much as possible, surfacing the goodness so you be a hero.
 
-## Difference from version 1.0 
+## Difference from version 2.0
 
-There are a number of improvements to version 2.0, including:
-
- - **Performance**. Moebius is about 3 times faster thanks to the work of [James Fish](https://github.com/fishcakez/db_connection) and [Eric Meadows Jönsson](https://github.com/ericmj/postgrex). They implemented supervised connection pooling at the driver level, which improved our performance greatly. Many thanks! I should also mention a massive thanks to José Valim for sitting with me and plugging in the new driver functionality - a peach of a person.
- - **Multiple database connections.** We've separated the query runner from the query builder, allowing you to define multiple connections easily if you want. If you're moving from v1 to v2, remembering to tack on `Db.run` will be a bit of a hurdle, but you'll get used to it, and grow to love it especially when you can isolate read-only connections from read/write.
- - **Better Date Support**. Working with dates in Elixir can be painful, we've helped that process greatly by writing our own driver extension and adding some sugar (see below).
- - **Graceful cover up of Postgrex Errors**. Whenever you query a type that Postgrex is unaware about (tsquery, tsvector, xml,uuid, money, inet) it throws. I think that's ridiculous, so I added an extension that would return these values as strings (yes I logged an issue with them).
- - **Expanded Document Capabilities**. Document tables were created only on save - that has been expanded to include *any time* you query one and it's not there. In addition, you can now provide your own ID if you want to and we'll use it.
- - **Full Struct Support** for documents. You can now pass a struct to our `save` function and ... get that same struct back when the save is complete! How nice.
+- Fixed a number of issues surrounding dates etc
+- Moved to a more Elixiry way of returning results, using `{:ok, result}` and `{:error, error}`. We were always doing the latter, but decided to move to the former to keep in step with other libraries.
 
 
 ## Documentation
@@ -72,8 +66,7 @@ You can also use a URL if you like:
 
 ```ex
 config :moebius, connection: [
-  url: "postgresql://user:password@host/database",
-  pool_mod: DBConnection.Poolboy
+  url: "postgresql://user:password@host/database"
 ],
 scripts: "test/db"
 ```
@@ -84,14 +77,14 @@ You might be wondering what the `scripts` entry is? Moebius can execute SQL file
 
 ## Supervision and Databases
 
-Moebius formalizes the concept of a database connection, so you can supervise each independently, or not at all. This allows for a lot of flexibility. You don't have to do it this way, but it really helps. 
+Moebius formalizes the concept of a database connection, so you can supervise each independently, or not at all. This allows for a lot of flexibility. You don't have to do it this way, but it really helps.
 
 **You don't need to do any of this** - we have a default DB setup for you. However, if you want a formalized, supervised module for your database, here's how you do it.
 
 First, create a module for your database:
 
 ```ex
-defmodule MyApp.Db do 
+defmodule MyApp.Db do
   use Moebius.Database
 
   # helper/repo methods go here
@@ -119,12 +112,10 @@ For instance, you might have a sales database and an accounting one; or you migh
 
 ```ex
 config :moebius, read_only: [
-  url: "postgresql://user:password@host/database",
-  pool_mod: DBConnection.Poolboy
+  url: "postgresql://user:password@host/database"
 ],
 write_only: [
-  url: "postgresql://user:password@host/database",
-  pool_mod: DBConnection.Poolboy
+  url: "postgresql://user:password@host/database"
 ],
 scripts: "test/db"
 ```
@@ -154,7 +145,7 @@ The rest of the examples you see below use our default database.
 When querying the database (read or write), you construct the query and then pass it to the database you want:
 
 ```ex
-result = db(:users) |> Moebius.Db.first
+{:ok, result} = db(:users) |> Moebius.Db.first
 ```
 
 In this example, `db(:users)` initiates the `QueryCommand`, we can filter it, sort it, do all kinds of things. To run it, however, we need to pass it to the database we want to execute against.
@@ -170,7 +161,7 @@ The API is built around the concept of transforming raw data from your database 
 This returns a user with the id of 1.
 
 ```ex
-result = db(:users)
+{:ok, result} = db(:users)
     |> filter(name: "Steve")
     |> sort(:city, :desc)
     |> limit(10)
@@ -183,13 +174,13 @@ Hopefully it's fairly straightforward what this query returns. All users named S
 An `IN` query happens when you pass an array:
 
 ```ex
-result = db(:users)
+{:ok, result} = db(:users)
     |> filter(:name, ["mark", "biff", "skip"])
     |> Moebius.Db.run
 
 #or, if you want to be more precise
 
-result = db(:users)
+{:ok, result} = db(:users)
     |> filter(:name, in: ["mark", "biff", "skip"])
     |> Moebius.Db.run
 ```
@@ -197,7 +188,7 @@ result = db(:users)
 A NOT IN query happens when you specify the `not_in` key:
 
 ```ex
-result = db(:users)
+{:ok, result} = db(:users)
     |> filter(:name, not_in: ["mark", "biff", "skip"])
     |> Moebius.Db.run
 ```
@@ -205,7 +196,7 @@ result = db(:users)
 If you don't want to deal with my abstractions, just use SQL:
 
 ```ex
-result = "select * from users where id=1 limit 1 offset 1;" |> Moebius.Db.run
+{:ok, result} = "select * from users where id=1 limit 1 offset 1;" |> Moebius.Db.run
 ```
 
 ## Full Text indexing
@@ -213,7 +204,7 @@ result = "select * from users where id=1 limit 1 offset 1;" |> Moebius.Db.run
 One of the great features of PostgreSQL is the ability to do intelligent full text searches. We support this functionality directly:
 
 ```ex
-result = db(:users)
+{:ok, result} = db(:users)
       |> search(for: "Mike", in: [:first, :last, :email])
       |> Moebius.Db.run
 ```
@@ -229,7 +220,7 @@ Start by importing `Moebius.DocumentQuery` and saving a document:
 ```ex
 import Moebius.DocumentQuery
 
-new_user = db(:friends)
+{:ok, new_user} = db(:friends)
   |> Moebius.Db.save(email: "test@test.com", name: "Moe Test")
 ```
 
@@ -254,7 +245,7 @@ The entire `DocumentQuery` module works off the premise that this is how you wil
 ```ex
 import Moebius.DocumentQuery
 
-new_user = db(:friends)
+{:ok, new_user} = db(:friends)
   |> searchable([:name])
   |> Moebius.Db.save(email: "test@test.com", name: "Moe Test")
 ```
@@ -264,7 +255,7 @@ By specifying the searchable fields, the `search` field will be updated with the
 Now, we can query our document using full text indexing which is optimized to use the GIN index created above:
 
 ```ex
-user = db(:friends)
+{:ok, user} = db(:friends)
   |> search("test.com")
   |> Moebius.Db.run
 ```
@@ -272,7 +263,7 @@ user = db(:friends)
 Or we can do a simple filter:
 
 ```ex
-user = db(:friends)
+{:ok, user} = db(:friends)
   |> contains(email: "test@test.com")
   |> Moebius.Db.run
 ```
@@ -280,7 +271,7 @@ user = db(:friends)
 This query is optimized to use the `@` (or "contains" operator), using the *other* GIN index specified above. There's more we can do...
 
 ```ex
-users = db(:friends)
+{:ok, users} = db(:friends)
   |> filter(:money_spent, ">", 100)
   |> Moebius.Db.run
 ```
@@ -288,7 +279,7 @@ users = db(:friends)
 This runs a full table scan so is not terribly optimal, but it does work if you need it once in a while. You can also use the existence (`?`) operator, which is very handy for querying arrays. In the library, it is implemented as `exists`:
 
 ```ex
-buddies = db(:friends)
+{:ok, buddies} = db(:friends)
   |> exists(:tags, "best")
   |> Moebius.Db.run
 ```
@@ -309,78 +300,11 @@ defmodule Candy do
 end
 
 yummy = %Candy{}
-res = db(:monkies) |> Moebius.Db.save(yummy)
+{:ok, res} = db(:monkies) |> Moebius.Db.save(yummy)
 #res = %Candy{id: 1, sticky: true, chocolate: "gooey"}
 ```
 
 I've been using this functionality constantly with another project I'm working on and it's helped me tremendously.
-
-
-## Working With Dates
-
-One of the major pain points we had with version 1.0 of Moebius was intelligently working with dates. Whenever you queried for a date, you would need to transform the result that came back as it was in the form of a `%Postgrex.Timestamp`, which is not helpful.
-
-For this we added our own extensions to Postgrex, so you now get strings back:
-
-```ex
-res = db(:date_night)
-  |> Moebius.Db.first
-
-# res = %{date: "2016-3-6 18:42:25", id: 2}
-```
-
-String date representations work on the way back in as well:
-
-```ex
-res = db(:date_night)
-  |> filter(id: 1)
-  |> update(date: "2016-2-26 17:39:34")
-  |> Moebius.Db.run
-```
-
-You don't need to use strings, you can also use [the Timex library](https://github.com/bitwalker/timex) or `:calendar`:
-
-```ex
-db(:date_night)
-  |> insert(date: Timex.Date.now)
-  |> Moebius.Db.run
-
-res = db(:date_night)
-  |> filter(id: 1)
-  |> update(date: :calendar.local_time)
-  |> Moebius.Db.run
-```
-
-This can still be a bit too mechanical, so we decided to add some sugar. You can use special atoms if you like, to define certain dates:
-
-```ex
-db(:date_night)
-  |> filter(id: 1)
-  |> update(date: :now)
-  |> Moebius.Db.run
-
-db(:date_night)
-  |> filter(id: 1)
-  |> update(date: {:add_days, 4})
-  |> Moebius.Db.run
-
-res = db(:date_night)
-  |> filter(id: 1)
-  |> update(date: {:subtract_days, 4})
-  |> Moebius.Db.run
-
-res = db(:date_night)
-  |> filter(id: 1)
-  |> update(date: :tomorrow)
-  |> Moebius.Db.run
-
-res = db(:date_night)
-  |> filter(id: 1)
-  |> update(date: :yesterday)
-  |> Moebius.Db.run
-
-```
-
 
 ## SQL Files
 
@@ -389,7 +313,7 @@ I built this for [MassiveJS](https://github.com/robconery/massive-js) and I like
 With this library you can do that. Just create a scripts directory and specify it in the config (see above), then execute your file without an extension. Pass in whatever parameters you need:
 
 ```ex
-result = sql_file(:my_groovy_query, "a param") |> Moebius.Db.run
+{:ok, result} = sql_file(:my_groovy_query, "a param") |> Moebius.Db.run
 ```
 
 I highly recommend this approach if you have some difficult SQL you want to write (like a windowing query or CTE). We use this approach to build our test database - have a look at our tests and see.
@@ -399,7 +323,7 @@ I highly recommend this approach if you have some difficult SQL you want to writ
 Inserting is pretty straightforward:
 
 ```ex
-result = db(:users)
+{:ok, result} = db(:users)
     |> insert(email: "test@test.com", first: "Test", last: "User")
     |> Moebius.Db.run
 ```
@@ -407,7 +331,7 @@ result = db(:users)
 Updating can work over multiple rows, or just one, depending on the filter you use:
 
 ```ex
-result = db(:users)
+{:ok, result} = db(:users)
     |> filter(id: 1)
     |> update(email: "maggot@test.com")
     |> Moebius.Db.run
@@ -416,12 +340,12 @@ result = db(:users)
 The filter can be a single record, or affect multiple records:
 
 ```ex
-result = db(:users)
+{:ok, result} = db(:users)
     |> filter("id > 100")
     |> update(email: "test@test.com")
     |> Moebius.Db.run
 
-result = db(:users)
+{:ok, result} = db(:users)
     |> filter("email LIKE $2", "%test")
     |> update(email: "ox@test.com")
     |> Moebius.Db.run
@@ -431,7 +355,7 @@ result = db(:users)
 Deleting works exactly the same way as `update`, but returns the count of deleted items in the result:
 
 ```ex
-result = db(:users)
+{:ok, result} = db(:users)
     |> filter("email LIKE $2", "%test")
     |> delete
     |> Moebius.Db.run
@@ -449,7 +373,7 @@ A bulk insert works by invoking one directly:
 
 ```ex
 data = [#let's say 10,000 records or so]
-res = db(:people)
+{:ok, result} = db(:people)
   |> bulk_insert(data)
   |> Moebius.Db.transact_batch
 ```
@@ -471,7 +395,7 @@ Table joins can be applied for a single join or piped to create multiple joins. 
 The simplest example is a basic join:
 
 ```ex
-result = db(:customers)
+{:ok, result} = db(:customers)
     |> join(:orders)
     |> select
     |> Moebius.Db.run
@@ -480,7 +404,7 @@ result = db(:customers)
 For multiple table joins you can specify the table that you want to join on:
 
 ```ex
-result = db(:customers)
+{:ok, result} = db(:customers)
     |> join(:orders, on: :customers)
     |> join(:items, on: :orders)
     |> select
@@ -492,7 +416,7 @@ result = db(:customers)
 Transactions are facilitated by using a callback that has a `pid` on it, which you'll need to pass along to each query you want to be part of the transaction. The last execution will be returned. If there's an error, an `{:error, message}` will be returned instead and a `ROLLBACK` fired on the transaction. No need to `COMMIT`, it happens automatically:
 
 ```ex
-result = transaction fn(pid) ->
+{:ok, result} = transaction fn(pid) ->
   new_user = db(:users)
     |> insert(pid, email: "frodo@test.com")
     |> Moebius.Db.run(pid)
@@ -513,7 +437,7 @@ Aggregates are built with a functional approach in mind. This might seem a bit o
 So, to that end, we have:
 
 ```ex
-sum = db(:products)
+{:ok, sum} = db(:products)
   |> map("id > 1")
   |> group(:sku)
   |> reduce(:sum, :id)
@@ -529,13 +453,13 @@ The interface is designed with *routine* aggregation in mind - meaning that ther
 PostgreSQL allows you to do so much, especially with functions. If you want to encapsulate a good time, you can execute it with Moebius:
 
 ```ex
-party = function(:good_time, [me, you]) |> Moebius.Db.run
+{:ok, party} = function(:good_time, [me, you]) |> Moebius.Db.run
 ```
 
 You get the idea. If your function only returns one thing, you can specify you don't want an array back:
 
 ```ex
-no_party = function(:bad_time, :single [me]) |> Moebius.Db.run
+{:ok, no_party} = function(:bad_time, :single [me]) |> Moebius.Db.run
 ```
 
 ## Help?
