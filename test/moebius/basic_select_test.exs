@@ -7,7 +7,7 @@ defmodule Moebius.BasicSelectTest do
   setup do
     db(:logs) |> delete |> run
     db(:users) |> delete |> run
-    user = db(:users) |> insert(email: "friend@test.com") |> run
+    {:ok, user} = db(:users) |> insert(email: "friend@test.com") |> run
     db(:users) |> insert(email: "enemy@test.com") |> run
 
     {:ok, res: user}
@@ -66,14 +66,14 @@ defmodule Moebius.BasicSelectTest do
   end
 
   test "first returns first" do
-    res = db(:users)
+    {:ok, res} = db(:users)
       |> first
 
     assert res.email == "friend@test.com"
   end
 
   test "find returns a single record", %{res: user} do
-    found = db(:users)
+    {:ok, found} = db(:users)
           |> find(user.id)
 
     assert found.id == user.id

@@ -18,7 +18,7 @@ defmodule MoebiusInsertTest do
   end
 
   test "it actually works" do
-    assert %{email: "test@test.com", first: "Test", id: _id, last: "User", profile: nil} =
+    assert {:ok,%{email: "test@test.com", first: "Test", id: _id, last: "User", profile: nil}} =
       db(:users)
         |> insert(email: "test@test.com", first: "Test", last: "User")
         |> TestDb.run

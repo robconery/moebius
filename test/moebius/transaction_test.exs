@@ -16,7 +16,7 @@ defmodule Moebius.TransactionTest do
 
     result = transaction fn(tx) ->
 
-      new_user = db(:users)
+      {:ok, new_user} = db(:users)
         |> insert(email: "frodo@test.com")
         |> run(tx)
 
