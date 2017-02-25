@@ -17,7 +17,21 @@ defmodule Moebius do
   """
   def run_with_psql(sql, opts) do
     db = opts[:database] || opts[:db]
-    args = ["-d", db, "-c", sql, "--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
+    host = opts[:host] || "localhost"
+    port = opts[:port] || "5432"
+
+    args = ["-h", host, "-d", db, "-p", port, "-c", sql,"--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
+
+    args = cond do
+      Enum.member?(opts, "user") -> args ++ ["-u", opts[:user]]
+      true -> args
+    end
+
+    args = cond do
+      Enum.member?(opts, "password") -> args ++ ["-W", opts[:password]]
+      true -> args
+    end
+
     System.cmd "psql", args
   end
 
