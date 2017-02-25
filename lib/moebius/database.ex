@@ -23,9 +23,6 @@ defmodule Moebius.Database do
         opts
           |> Keyword.put_new(:name, @name)
           |> Keyword.put_new(:types, Moebius.PostgrexTypes)
-          |> Keyword.put_new(:extensions, [
-            {Postgrex.Extensions.JSON, library: Poison}
-          ])
       end
 
       def run(sql) when is_binary(sql), do: run(sql, [])
@@ -60,7 +57,7 @@ defmodule Moebius.Database do
       end
 
       def run(%Moebius.DocumentCommand{sql: nil} = cmd) do
-        %{cmd | conn: @name}
+        res = %{cmd | conn: @name}
           |> Moebius.DocumentQuery.select
           |> Moebius.Database.execute
           |> Moebius.Transformer.from_json
@@ -159,14 +156,15 @@ defmodule Moebius.Database do
       end
 
 
-      defp check_struct(res, original) do
-        cond  do
-          Map.has_key?(original, :__struct__) -> Map.put_new(res, :__struct__, original.__struct__)
-          true -> res
+      defp check_struct({:ok, query_result} = res, original) do
+        res = cond  do
+          Map.has_key?(original, :__struct__) -> Map.put_new(query_result, :__struct__, original.__struct__)
+          true -> query_result
         end
+        {:ok, res}
       end
 
-      defp handle_save_result(res, cmd, doc) when is_map(res), do: update_search(res, cmd) && res
+      defp handle_save_result({:ok, save_result}=res, cmd, doc) when is_map(save_result), do: update_search(res, cmd) && res
       defp handle_save_result({:error, err}, cmd, doc) do
         table = cmd.table_name
         cond do
@@ -209,7 +207,7 @@ defmodule Moebius.Database do
 
       defp update_search({:error, err}, cmd), do: {:error, err}
       defp update_search([], _),  do: []
-      defp update_search(query_result, cmd) do
+      defp update_search({:ok, query_result} = res, cmd) do
 
         if length(cmd.search_fields) > 0 do
           terms = Enum.map_join(cmd.search_fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
@@ -220,7 +218,7 @@ defmodule Moebius.Database do
 
         end
 
-        query_result
+        res
       end
 
     end

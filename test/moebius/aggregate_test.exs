@@ -28,7 +28,7 @@ defmodule Moebius.AggregateTest do
 
   test "sum returns integer for user ids grouped by email" do
 
-    res = db(:users)
+    {:ok, res} = db(:users)
       |> map("id > 1")
       |> group(:email)
       |> reduce(:sum, :id)
@@ -40,7 +40,7 @@ defmodule Moebius.AggregateTest do
 
   test "reduce allows an expression" do
 
-    res = db(:users)
+    {:ok, res} = db(:users)
       |> map("id > 1")
       |> group(:email)
       |> reduce(:sum, "id + order_count")

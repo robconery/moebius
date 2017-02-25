@@ -21,7 +21,7 @@ defmodule Moebius.DocTest do
       |> searchable([:name, :description])
       |> TestDb.save(monkey)
 
-    res = db(:user_docs)
+    {:ok, res} = db(:user_docs)
       |> TestDb.save(doc)
 
     {:ok, res: res}
@@ -46,57 +46,57 @@ defmodule Moebius.DocTest do
       status: "published",
       summary: "Keep your feet off the ground with our space-age rocket suit",
       vendor: %{name: "Martian Armaments, Ltd", slug: "martian-armaments"}}
-    res = db(:artists) |> TestDb.save(thing)
+    {:ok, res} = db(:artists) |> TestDb.save(thing)
     assert res.sku == "johnny-liftoff"
   end
 
   test "save creates table if it doesn't exist" do
     "drop table if exists artists;" |> TestDb.run
-    res = db(:artists) |> TestDb.save(%{name: "Spiff"})
+    {:ok, res} = db(:artists) |> TestDb.save(%{name: "Spiff"})
     assert res.name == "Spiff"
   end
 
   test "nil is returned when id is not found in docs" do
-    res = db(:monkies) |> TestDb.find(155555)
+    {:ok, res}  = db(:monkies) |> TestDb.find(155555)
     assert res == nil
   end
 
   test "the document is returned with find" do
-    res = db(:monkies) |> TestDb.find(1)
+    {:ok, res}  = db(:monkies) |> TestDb.find(1)
     assert res.name == "Chicken Wings"
   end
 
   test "the document is returned with created and updated" do
-    res = db(:monkies) |> TestDb.find(1)
+    {:ok, res}  = db(:monkies) |> TestDb.find(1)
     assert res.created_at
   end
 
   test "updated_at is overridden" do
-    res = db(:monkies) |> TestDb.save(%{name: "bip", updated_at: "poop"})
+    {:ok, res}  = db(:monkies) |> TestDb.save(%{name: "bip", updated_at: "poop"})
     assert res.updated_at == res.created_at
   end
 
   test "saving a struct" do
     thing = %Candy{}
-    res = db(:monkies) |> TestDb.save(thing)
+    {:ok, res}  = db(:monkies) |> TestDb.save(thing)
     assert res.id
   end
 
   test "returns a struct if a struct was passed in" do
     thing = %Candy{}
     assert thing.__struct__ == Candy
-    res = db(:monkies) |> TestDb.save(thing)
+    {:ok, res}  = db(:monkies) |> TestDb.save(thing)
     assert res.__struct__ == Candy
   end
 
   test "can pull out a single record by id with find" do
-    res = db(:monkies) |> TestDb.find(1)
+    {:ok, res}  = db(:monkies) |> TestDb.find(1)
     assert res.id == 1
   end
 
   test "first creates table if it doesn't exist" do
     "drop table if exists artists;" |> TestDb.run
-    res = db(:artists) |> TestDb.first
+    {:ok, res}  = db(:artists) |> TestDb.first
     case res do
       {:error, _err} -> flunk "Nope"
       res -> res
@@ -105,7 +105,7 @@ defmodule Moebius.DocTest do
 
   test "save creates table if it doesn't exist even when an id is included" do
     "drop table if exists artists;" |> TestDb.run
-    assert %{name: "jeff", id: 1} = db(:artists) |> TestDb.save(%{name: "jeff", id: 100})
+    assert {:ok, %{name: "jeff", id: 1}} = db(:artists) |> TestDb.save(%{name: "jeff", id: 100})
   end
 
   test "a simple insert as a list returns the record", %{res: res} do
@@ -118,47 +118,46 @@ defmodule Moebius.DocTest do
 
   test "a simple insert as a map" do
     doc = %{email: "steve@test.com", first: "Steve"}
-
-    assert %{email: "steve@test.com", first: "Steve", id: _id} =
-      db(:user_docs)
-        |> TestDb.save(doc)
+    {:ok, res} = db(:user_docs)
+      |> TestDb.save(doc)
+    assert res.id > 0
   end
 
   test "a simple document query with the DocumentQuery lib" do
-    assert [%{email: "steve@test.com", id: _id}] =
+    assert {:ok, [%{email: "steve@test.com", id: _id}]} =
       db(:user_docs)
         |> TestDb.run
   end
 
   test "a simple single document query with the DocumentQuery lib" do
-    assert %{email: "steve@test.com", id: _id} =
+    assert {:ok, %{email: "steve@test.com", id: _id}} =
       db(:user_docs)
         |> TestDb.first
   end
 
   test "updating a document", %{res: res} do
     change = %{email: "blurgh@test.com", id: res.id}
-    assert %{email: "blurgh@test.com", id: _id} =
+    assert {:ok, %{email: "blurgh@test.com", id: _id}} =
       db(:user_docs)
         |> TestDb.save(change)
   end
 
   test "the save shortcut inserts a document without an id" do
     new_doc = %{email: "new_person@test.com"}
-    assert %{email: "new_person@test.com", id: _id} =
+    assert {:ok, %{email: "new_person@test.com", id: _id}} =
       db(:user_docs)
         |> TestDb.save(new_doc)
   end
 
   test "the save shortcut works updating a document", %{res: _res} do
     change = %{email: "blurgh@test.com"}
-    assert %{email: "blurgh@test.com", id: _id} =
+    assert {:ok, %{email: "blurgh@test.com", id: _id}} =
       db(:user_docs)
         |> TestDb.save(change)
   end
 
   test "delete works with just an id", %{res: res} do
-    res = db(:user_docs)
+    {:ok, res} = db(:user_docs)
       |> delete(res.id)
       |> TestDb.first
 
@@ -167,7 +166,7 @@ defmodule Moebius.DocTest do
 
   test "delete works with criteria", %{res: res} do
 
-    res = db(:user_docs)
+    {:ok, res} = db(:user_docs)
       |> contains(email: res.email)
       |> delete
       |> TestDb.run
@@ -176,7 +175,7 @@ defmodule Moebius.DocTest do
   end
 
   test "select works with filter", %{res: res} do
-    return = db(:user_docs)
+    {:ok, return} = db(:user_docs)
       |> contains(email: res.email)
       |> TestDb.first
 
@@ -185,7 +184,7 @@ defmodule Moebius.DocTest do
   end
 
   test "select works with string criteria", %{res: res} do
-    return = db(:user_docs)
+    {:ok, return} = db(:user_docs)
       |> filter("body -> 'email' = $1", res.email)
       |> TestDb.first
 
@@ -195,7 +194,7 @@ defmodule Moebius.DocTest do
 
   test "select works with basic criteria", %{res: _res} do
 
-    return = db(:user_docs)
+    {:ok, return} = db(:user_docs)
       |> filter(:money_spent, ">", 100)
       |> TestDb.run
 
@@ -205,7 +204,7 @@ defmodule Moebius.DocTest do
 
   test "select works with existence operator", %{res: res} do
 
-    return = db(:user_docs)
+    {:ok, return} = db(:user_docs)
       |> exists(:pets, "poopy")
       |> TestDb.first
 
@@ -222,7 +221,7 @@ defmodule Moebius.DocTest do
 
   test "select works with sort limit offset" do
 
-    return = db(:user_docs)
+    {:ok, return} = db(:user_docs)
       |> exists(:pets, "poopy")
       |> sort(:money_spent)
       |> limit(1)
@@ -234,7 +233,7 @@ defmodule Moebius.DocTest do
 
   test "full text search works" do
 
-    res = db(:monkies)
+    {:ok, res} = db(:monkies)
       |> search("duck")
       |> TestDb.run
 
@@ -243,21 +242,16 @@ defmodule Moebius.DocTest do
 
   test "full text search on the fly works" do
 
-    res = db(:monkies)
+    {:ok, res} = db(:monkies)
       |> search(for: "duck", in: [:name, :description])
       |> TestDb.run
 
     assert length(res) > 0
   end
-  #
-  # test "it creates a schema-based table" do
-  #   res = db("animals.monkies")
-  #     |> search("duck")
-  #     |> TestDb.run
-  # end
+
 
   test "single returns nil when no match" do
-    res = db(:monkies)
+    {:ok, res} = db(:monkies)
       |> contains(email: "dog@dog.comdog")
       |> TestDb.first
 
@@ -272,7 +266,7 @@ defmodule Moebius.DocTest do
 
     case monkey do
       {:error, err} -> raise err
-      res -> assert monkey.id == res.id
+      {:ok, steve} -> assert steve.id == res.id
     end
 
   end
