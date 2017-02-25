@@ -26,35 +26,26 @@ defmodule Moebius.Transformer do
       v = check_for_string_date(v)
 
       case v do
-        #standard timex date
-        %Timex.DateTime{} ->
-          %Postgrex.Timestamp{year: v.year, month: v.month, day: v.day, hour: v.hour, min: v.minute, sec: v.second}
-
         #using Erlang :calendar
         {{year, month, day}, {hour, minute, second}} ->
-          %Postgrex.Timestamp{year: year, month: month, day: day, hour: hour, min: minute, sec: second}
+          Timex.to_datetime({{year, month, day}, {hour, minute, second}}, "Etc/UTC")
 
         #some sugar
         :now ->
-          now = Timex.DateTime.now
-          %Postgrex.Timestamp{year: now.year, month: now.month, day: now.day, hour: now.hour, min: now.minute, sec: now.second}
+          Timex.now
 
         :yesterday ->
-          now = Timex.DateTime.now |> Timex.shift(days: -1)
-          %Postgrex.Timestamp{year: now.year, month: now.month, day: now.day, hour: now.hour, min: now.minute, sec: now.second}
+          Timex.now |> Timex.shift(days: -1)
 
         :tomorrow ->
-          now = Timex.DateTime.now |> Timex.shift([days: 1])
-          %Postgrex.Timestamp{year: now.year, month: now.month, day: now.day, hour: now.hour, min: now.minute, sec: now.second}
+          Timex.now |> Timex.shift([days: 1])
 
         #more sugar
         {:add_days, days} ->
-          date = Timex.DateTime.now |> Timex.shift(days: days)
-          %Postgrex.Timestamp{year: date.year, month: date.month, day: date.day, hour: date.hour, min: date.minute, sec: date.second}
+          Timex.now |> Timex.shift(days: days)
 
         {:subtract_days, days} ->
-          date = Timex.DateTime.now |> Timex.shift(days: -days)
-          %Postgrex.Timestamp{year: date.year, month: date.month, day: date.day, hour: date.hour, min: date.minute, sec: date.second}
+          Timex.now |> Timex.shift(days: -days)
 
         v -> v
       end
@@ -65,7 +56,11 @@ defmodule Moebius.Transformer do
   def check_for_string_date(val) when not is_binary(val), do: val
   def check_for_string_date(val) when is_binary(val) do
     case Timex.parse(val, "{YYYY}-{_M}-{_D} {_h24}:{_m}:{_s}") do
-      {:ok, date} -> date
+      {:ok, %NaiveDateTime{hour: hour, minute: minute, second: second, microsecond: microsecond,
+                           year: year, month: month, day: day}} ->
+         %DateTime{year: year, month: month, day: day,
+                   hour: hour, minute: minute, second: second, microsecond: microsecond,
+                   std_offset: 0, utc_offset: 0, zone_abbr: "UTC", time_zone: "Etc/UTC"}
       {:error, _err} -> val
     end
   end

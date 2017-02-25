@@ -25,7 +25,7 @@ defmodule Moebius.Database do
           |> Keyword.put_new(:extensions, [
             {Postgrex.Extensions.JSON, library: Poison},
             {Moebius.Extensions.StringExtension, []},
-            {Moebius.Extensions.DateExtension, []}
+            {Postgrex.Extensions.Calendar, []}
           ])
       end
 
