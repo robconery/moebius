@@ -4,7 +4,6 @@ defmodule Moebius.QueryFilterTest do
   #doctest Moebius.QueryFilter
 
   import Moebius.QueryFilter
-  import Moebius.Query
 
   setup context do
     predicates = context[:where] || ""
