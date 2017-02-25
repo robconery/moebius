@@ -51,7 +51,6 @@ defmodule Moebius.Transformer do
       |> Map.put_new(:updated_at, updated_at)
   end
 
-  #defp decode_json(json) when is_map(json), do: Moebius.Transformer.to_atom_map(json)
   defp decode_json(json), do: Poison.decode!(json, keys: :atoms)
 
 end
