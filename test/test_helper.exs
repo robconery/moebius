@@ -19,7 +19,8 @@ create table users(
   first varchar(50),
   last varchar(50),
   order_count integer not null default 10,
-  profile jsonb
+  profile jsonb,
+  roles varchar[]
 );
 
 create table products(

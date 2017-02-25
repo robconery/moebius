@@ -365,12 +365,8 @@ defmodule Moebius.Query do
       cmd.where -> cmd.where
     end
 
-    params = cond do
-      length(cmd.params) > 0 && length(vals) > 0 ->
-        List.flatten(vals,cmd.params)
-      length(vals) > 0 -> vals
-    end
-
+    #add the filter criteria to the update list
+    params = vals ++ cmd.params
     columns = Enum.join(cols, ", ")
 
     sql = "update #{cmd.table_name} set #{columns}#{where} returning *;"
