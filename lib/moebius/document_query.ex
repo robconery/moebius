@@ -29,7 +29,6 @@ defmodule Moebius.DocumentQuery do
   """
 
   alias Moebius.DocumentCommand
-  alias Moebius.Query
 
   @doc """
   Specifies the table or view you want to query.
@@ -98,11 +97,14 @@ defmodule Moebius.DocumentQuery do
   ```
   """
   def filter(%DocumentCommand{} = cmd, criteria, params \\ []) when is_bitstring(criteria) do
-    unless is_list(params) do
-      params = [params]
+
+    param_list = cond do
+      is_list(params) -> params
+      true -> [params]
     end
+
     where = " where #{criteria}"
-    %{cmd | where: where, params: params}
+    %{cmd | where: where, params: param_list}
   end
 
   @doc """
@@ -118,11 +120,12 @@ defmodule Moebius.DocumentQuery do
   ```
   """
   def filter(%DocumentCommand{} = cmd, field, operator, params) do
-    unless is_list(params) do
-      params = [params]
+    param_list = cond do
+      is_list(params) -> params
+      true -> [params]
     end
     where = " where body -> '#{field}' #{operator} $1"
-    %{cmd | where: where, params: params}
+    %{cmd | where: where, params: param_list}
   end
 
   @doc """
@@ -138,11 +141,12 @@ defmodule Moebius.DocumentQuery do
   ```
   """
   def exists(%DocumentCommand{} = cmd, field, params) do
-    unless is_list(params) do
-      params = [params]
+    param_list = cond do
+      is_list(params) -> params
+      true -> [params]
     end
     where = " where body -> '#{field}' ? $1"
-    %{cmd | where: where, params: params}
+    %{cmd | where: where, params: param_list}
   end
 
   @doc """
@@ -168,9 +172,6 @@ defmodule Moebius.DocumentQuery do
   Alias for Query offset
   """
   def offset(%DocumentCommand{} = cmd, len), do: Moebius.Query.offset(cmd, len)
-  @doc """
-  Alias for function
-  """
 
   @doc """
   Sorts the query based on the supplied criteria.
@@ -185,9 +186,9 @@ defmodule Moebius.DocumentQuery do
   ```
   """
   def sort(%DocumentCommand{} = cmd, cols, direction \\ :asc) do
-    order_column = cols
-    if is_atom(cols) do
-      order_column = Atom.to_string cols
+    order_column = cond do
+      is_atom(cols) -> Atom.to_string cols
+      true -> cols
     end
     sort_dir = Atom.to_string direction
     %{cmd | order: " order by body -> '#{order_column}' #{sort_dir}"}

@@ -39,14 +39,16 @@ defmodule Moebius.UpdateTest do
     assert length(cmd.params) == 2
   end
 
-  test "it actually works" do
-      res = db(:date_night)
-        |> filter(id: 1)
-        |> update(date: :calendar.local_time)
-        |> TestDb.run
+  #TODO: Move this to date tests
 
-      assert res.date
-  end
+  # test "it actually works" do
+  #     res = db(:date_night)
+  #       |> filter(id: 1)
+  #       |> update(date: :calendar.local_time)
+  #       |> TestDb.run
+  #
+  #     assert res.date
+  # end
 
 
 end
