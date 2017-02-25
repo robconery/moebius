@@ -1,9 +1,10 @@
 defmodule Moebius.QueryFilterTest do
   use ExUnit.Case
 
-  doctest Moebius.QueryFilter
+  #doctest Moebius.QueryFilter
 
   import Moebius.QueryFilter
+  import Moebius.Query
 
   setup context do
     predicates = context[:where] || ""

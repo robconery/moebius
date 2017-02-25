@@ -96,7 +96,26 @@ defmodule Moebius.QueryFilter do
       {"#{col} = $#{acc}", acc + 1}
     end
 
-    %{cmd | params: vals, where: " where #{Enum.join(filters, " and ")}", where_columns: cols} end
+    %{cmd | params: vals, where: " where #{Enum.join(filters, " and ")}", where_columns: cols}
+  end
+
+  def filter(%{where_columns: existing} = cmd, criteria) when is_list(existing) do
+    cols = Keyword.keys(criteria)
+    vals = Keyword.values(criteria)
+    param_seed = length(cmd.params) + 1
+
+    {filters, _count} = Enum.map_reduce cols, param_seed, fn col, acc ->
+      {"#{col} = $#{acc}", acc + 1}
+    end
+
+    #we have an existing filter, which means we need to append the params and "and" the where
+    new_params = cmd.params ++ vals
+    new_where = Enum.join([cmd.where,"and #{Enum.join(filters, " and ")}"]," ")
+    new_cols = cmd.where_columns ++ cols
+
+    %{cmd | params: new_params, where: new_where, where_columns: new_cols} |> IO.inspect
+  end
+
 
   def filter(%{where: ""} = cmd, criteria, not_in: params) when is_list(params) do
     %{cmd | where: " where #{criteria} NOT IN(#{map_params(params)})", params: params}
