@@ -71,7 +71,7 @@ config :moebius, connection: [
 scripts: "test/db"
 ```
 
-If you want to use environment variables, just set `HOSTNAME`, `USERNAME`, `PASSWORD` or `DATABASE` and they will be read in.
+If you want to use environment variables, just set things using `System.env`.
 
 Under the hood, Moebius uses [the Postgrex driver](https://github.com/ericmj/postgrex) to manage connections and connection pooling. Connections are supervised, so if there's an error any transaction pending will be rolled back effectively (more on that later). The settings you provide in `:connection` will be passed directly to Postgrex (aside from `:url`, which we parse).
 
