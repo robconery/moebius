@@ -34,7 +34,7 @@ Installing Moebius involves a few small steps:
 
     ```ex
     def deps do
-      [{:moebius, "~> 3.0.0"}]
+      [{:moebius, "~> 3.0.1"}]
     end
     ```
 

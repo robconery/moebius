@@ -3,7 +3,8 @@
 use Mix.Config
 
 config :moebius, connection: [
-  database: "meebuss"
+  #database: "meebuss"
+  url: "postgres://localhost/meebuss"
 ],
 test_db: [
   database: "meebuss"

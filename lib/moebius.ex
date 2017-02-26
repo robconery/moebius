@@ -41,7 +41,7 @@ defmodule Moebius do
   end
   def get_connection(key) when is_atom(key) do
     opts = Application.get_env(:moebius, key)
-    cond do
+    opts = cond do
       Keyword.has_key?(opts, :url) -> Keyword.merge(opts, parse_connection(opts[:url]))
       true -> opts
     end
