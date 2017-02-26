@@ -15,6 +15,7 @@ before_script:
 install:
 - mix local.hex --force
 - mix deps.get
+- mix local.rebar --force
 
 script: mix test
 
