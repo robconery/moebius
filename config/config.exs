@@ -8,4 +8,7 @@ config :moebius, connection: [
 test_db: [
   database: "meebuss"
 ],
+chinook: [
+  database: "chinook"
+],
 scripts: "test/db"
