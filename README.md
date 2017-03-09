@@ -12,7 +12,7 @@ Moebius is *not* an ORM. There are no mappings, no schemas, no migrations; only 
 
 - Fixed a number of issues surrounding dates etc
 - Moved to a more Elixiry way of returning results, using `{:ok, result}` and `{:error, error}`. We were always doing the latter, but decided to move to the former to keep in step with other libraries.
-- Moved to Ecto 1.4, along with Dates etc.
+- Moved to Elixir 1.4, along with Dates etc.
 - Removed multiple dependencies, including Timex and Poolboy (which is built into the driver, Postgrex)
 
 
