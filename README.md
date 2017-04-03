@@ -32,7 +32,7 @@ Installing Moebius involves a few small steps:
 
   1. Add moebius to your list of dependencies in `mix.exs`:
 
-    ```ex
+    ```elixir
     def deps do
       [{:moebius, "~> 3.0.1"}]
     end
@@ -40,7 +40,7 @@ Installing Moebius involves a few small steps:
 
   2. Ensure moebius is started before your application:
 
-    ```ex
+    ```elixir
     def application do
       [applications: [:moebius]]
     end
@@ -52,7 +52,7 @@ Run `mix deps.get` and you'll be good to go.
 
 There are various ways to connect to a database with Moebius. You can used a formal, supervised definition or just roll with our default. Either way, you start off by adding connection info in your `config.exs`:
 
-```ex
+```elixir
 config :moebius, connection: [
   hostname: "localhost",
   username: "username",
@@ -64,7 +64,7 @@ scripts: "test/db"
 
 You can also use a URL if you like:
 
-```ex
+```elixir
 config :moebius, connection: [
   url: "postgresql://user:password@host/database"
 ],
@@ -85,7 +85,7 @@ Moebius formalizes the concept of a database connection, so you can supervise ea
 
 First, create a module for your database:
 
-```ex
+```elixir
 defmodule MyApp.Db do
   use Moebius.Database
 
@@ -95,7 +95,7 @@ end
 
 Next, in your `Application` file, add this new module to your supervision tree:
 
-```ex
+```elixir
 def start(_type, _args) do
   start_db
   #...
@@ -112,7 +112,7 @@ That's it. Now, when your app starts you'll have a supervised database you can u
 
 For instance, you might have a sales database and an accounting one; or you might have a read-only connection and a write-only one to spread the load. For this, just specify each as needed:
 
-```ex
+```elixir
 config :moebius, read_only: [
   url: "postgresql://user:password@host/database"
 ],
@@ -124,7 +124,7 @@ scripts: "test/db"
 
 You can now use these in your database module:
 
-```ex
+```elixir
 def start(_type, _args) do
   start_db
   #...
@@ -146,7 +146,7 @@ The rest of the examples you see below use our default database.
 
 When querying the database (read or write), you construct the query and then pass it to the database you want:
 
-```ex
+```elixir
 {:ok, result} = db(:users) |> Moebius.Db.first
 ```
 
@@ -162,7 +162,7 @@ The API is built around the concept of transforming raw data from your database 
 
 This returns a user with the id of 1.
 
-```ex
+```elixir
 {:ok, result} = db(:users)
     |> filter(name: "Steve")
     |> sort(:city, :desc)
@@ -175,7 +175,7 @@ Hopefully it's fairly straightforward what this query returns. All users named S
 
 An `IN` query happens when you pass an array:
 
-```ex
+```elixir
 {:ok, result} = db(:users)
     |> filter(:name, ["mark", "biff", "skip"])
     |> Moebius.Db.run
@@ -189,7 +189,7 @@ An `IN` query happens when you pass an array:
 
 A NOT IN query happens when you specify the `not_in` key:
 
-```ex
+```elixir
 {:ok, result} = db(:users)
     |> filter(:name, not_in: ["mark", "biff", "skip"])
     |> Moebius.Db.run
@@ -197,7 +197,7 @@ A NOT IN query happens when you specify the `not_in` key:
 
 If you don't want to deal with my abstractions, just use SQL:
 
-```ex
+```elixir
 {:ok, result} = "select * from users where id=1 limit 1 offset 1;" |> Moebius.Db.run
 ```
 
@@ -205,7 +205,7 @@ If you don't want to deal with my abstractions, just use SQL:
 
 One of the great features of PostgreSQL is the ability to do intelligent full text searches. We support this functionality directly:
 
-```ex
+```elixir
 {:ok, result} = db(:users)
       |> search(for: "Mike", in: [:first, :last, :email])
       |> Moebius.Db.run
@@ -219,7 +219,7 @@ Moebius supports using PostgreSQL as a document store in its entirety. Get your 
 
 Start by importing `Moebius.DocumentQuery` and saving a document:
 
-```ex
+```elixir
 import Moebius.DocumentQuery
 
 {:ok, new_user} = db(:friends)
@@ -244,7 +244,7 @@ create index idx_NAME on NAME using GIN(body jsonb_path_ops);
 
 The entire `DocumentQuery` module works off the premise that this is how you will store your JSONB docs. Note the `tsvector` field? That's PostgreSQL's built in full text indexing. We can use that if we want during by adding `searchable/1` to the pipe:
 
-```ex
+```elixir
 import Moebius.DocumentQuery
 
 {:ok, new_user} = db(:friends)
@@ -256,7 +256,7 @@ By specifying the searchable fields, the `search` field will be updated with the
 
 Now, we can query our document using full text indexing which is optimized to use the GIN index created above:
 
-```ex
+```elixir
 {:ok, user} = db(:friends)
   |> search("test.com")
   |> Moebius.Db.run
@@ -264,7 +264,7 @@ Now, we can query our document using full text indexing which is optimized to us
 
 Or we can do a simple filter:
 
-```ex
+```elixir
 {:ok, user} = db(:friends)
   |> contains(email: "test@test.com")
   |> Moebius.Db.run
@@ -272,7 +272,7 @@ Or we can do a simple filter:
 
 This query is optimized to use the `@` (or "contains" operator), using the *other* GIN index specified above. There's more we can do...
 
-```ex
+```elixir
 {:ok, users} = db(:friends)
   |> filter(:money_spent, ">", 100)
   |> Moebius.Db.run
@@ -280,7 +280,7 @@ This query is optimized to use the `@` (or "contains" operator), using the *othe
 
 This runs a full table scan so is not terribly optimal, but it does work if you need it once in a while. You can also use the existence (`?`) operator, which is very handy for querying arrays. In the library, it is implemented as `exists`:
 
-```ex
+```elixir
 {:ok, buddies} = db(:friends)
   |> exists(:tags, "best")
   |> Moebius.Db.run
@@ -292,7 +292,7 @@ This will allow you to query embeded documents and arrays rather easily, but aga
 
 If you're a big fan of structs, you can use them directly on `save` and we'll send that same struct back to you, complete with an `id`:
 
-```ex
+```elixir
 defmodule Candy do
   defstruct [
     id: nil,
@@ -314,7 +314,7 @@ I built this for [MassiveJS](https://github.com/robconery/massive-js) and I like
 
 With this library you can do that. Just create a scripts directory and specify it in the config (see above), then execute your file without an extension. Pass in whatever parameters you need:
 
-```ex
+```elixir
 {:ok, result} = sql_file(:my_groovy_query, "a param") |> Moebius.Db.run
 ```
 
@@ -324,7 +324,7 @@ I highly recommend this approach if you have some difficult SQL you want to writ
 
 Inserting is pretty straightforward:
 
-```ex
+```elixir
 {:ok, result} = db(:users)
     |> insert(email: "test@test.com", first: "Test", last: "User")
     |> Moebius.Db.run
@@ -332,7 +332,7 @@ Inserting is pretty straightforward:
 
 Updating can work over multiple rows, or just one, depending on the filter you use:
 
-```ex
+```elixir
 {:ok, result} = db(:users)
     |> filter(id: 1)
     |> update(email: "maggot@test.com")
@@ -341,7 +341,7 @@ Updating can work over multiple rows, or just one, depending on the filter you u
 
 The filter can be a single record, or affect multiple records:
 
-```ex
+```elixir
 {:ok, result} = db(:users)
     |> filter("id > 100")
     |> update(email: "test@test.com")
@@ -356,7 +356,7 @@ The filter can be a single record, or affect multiple records:
 
 Deleting works exactly the same way as `update`, but returns the count of deleted items in the result:
 
-```ex
+```elixir
 {:ok, result} = db(:users)
     |> filter("email LIKE $2", "%test")
     |> delete
@@ -373,7 +373,7 @@ But that's still a pretty good number don't you think?
 
 A bulk insert works by invoking one directly:
 
-```ex
+```elixir
 data = [#let's say 10,000 records or so]
 {:ok, result} = db(:people)
   |> bulk_insert(data)
@@ -386,7 +386,7 @@ If everything works, you'll get back a result indicating the number of records i
 
 Table joins can be applied for a single join or piped to create multiple joins. The table names can be either atoms or binary strings. There are a number of options to customize your joins:
 
-```ex
+```elixir
   :join        # set the type of join. LEFT, RIGHT, FULL, etc. defaults to INNER
   :on          # specify the table to join on
   :foreign_key # specify the tables foreign key column
@@ -396,7 +396,7 @@ Table joins can be applied for a single join or piped to create multiple joins. 
 
 The simplest example is a basic join:
 
-```ex
+```elixir
 {:ok, result} = db(:customers)
     |> join(:orders)
     |> select
@@ -405,7 +405,7 @@ The simplest example is a basic join:
 
 For multiple table joins you can specify the table that you want to join on:
 
-```ex
+```elixir
 {:ok, result} = db(:customers)
     |> join(:orders, on: :customers)
     |> join(:items, on: :orders)
@@ -417,7 +417,7 @@ For multiple table joins you can specify the table that you want to join on:
 
 Transactions are facilitated by using a callback that has a `pid` on it, which you'll need to pass along to each query you want to be part of the transaction. The last execution will be returned. If there's an error, an `{:error, message}` will be returned instead and a `ROLLBACK` fired on the transaction. No need to `COMMIT`, it happens automatically:
 
-```ex
+```elixir
 {:ok, result} = transaction fn(pid) ->
   new_user = db(:users)
     |> insert(pid, email: "frodo@test.com")
@@ -438,7 +438,7 @@ Aggregates are built with a functional approach in mind. This might seem a bit o
 
 So, to that end, we have:
 
-```ex
+```elixir
 {:ok, sum} = db(:products)
   |> map("id > 1")
   |> group(:sku)
@@ -454,13 +454,13 @@ The interface is designed with *routine* aggregation in mind - meaning that ther
 
 PostgreSQL allows you to do so much, especially with functions. If you want to encapsulate a good time, you can execute it with Moebius:
 
-```ex
+```elixir
 {:ok, party} = function(:good_time, [me, you]) |> Moebius.Db.run
 ```
 
 You get the idea. If your function only returns one thing, you can specify you don't want an array back:
 
-```ex
+```elixir
 {:ok, no_party} = function(:bad_time, :single [me]) |> Moebius.Db.run
 ```
 
