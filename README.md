@@ -147,7 +147,7 @@ The rest of the examples you see below use our default database.
 When querying the database (read or write), you construct the query and then pass it to the database you want:
 
 ```elixir
-{:ok, result} = db(:users) |> Moebius.Db.first
+{:ok, result} = Moebius.Query.db(:users) |> Moebius.Db.first
 ```
 
 In this example, `db(:users)` initiates the `QueryCommand`, we can filter it, sort it, do all kinds of things. To run it, however, we need to pass it to the database we want to execute against.
