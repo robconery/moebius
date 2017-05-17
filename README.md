@@ -77,6 +77,19 @@ Under the hood, Moebius uses [the Postgrex driver](https://github.com/ericmj/pos
 
 You might be wondering what the `scripts` entry is? Moebius can execute SQL files directly for you - we'll get to that in a bit.
 
+## Creating a database
+
+Moebius does not create your database for you. The config is only used to connect and execute queries. You have to take care of creating the database yourself. The easiest way to do this is to use pg binary:
+
+`$ createdb my_database`
+ 
+ You can also do this using the psql console:
+ 
+```
+psql
+CREATE DATABASE my_database;
+```
+
 ## Supervision and Databases
 
 Moebius formalizes the concept of a database connection, so you can supervise each independently, or not at all. This allows for a lot of flexibility. You don't have to do it this way, but it really helps.
