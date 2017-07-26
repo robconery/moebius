@@ -32,19 +32,19 @@ Installing Moebius involves a few small steps:
 
   1. Add moebius to your list of dependencies in `mix.exs`:
 
-    ```elixir
+   ```elixir
     def deps do
       [{:moebius, "~> 3.0.1"}]
     end
-    ```
+   ```
 
   2. Ensure moebius is started before your application:
 
-    ```elixir
+   ```elixir
     def application do
       [applications: [:moebius]]
     end
-    ```
+   ```
 
 Run `mix deps.get` and you'll be good to go.
 
