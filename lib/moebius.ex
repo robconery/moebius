@@ -39,6 +39,20 @@ defmodule Moebius do
   def pool_opts do
     [pool: DBConnection.Poolboy]
   end
+
+  def connection_opts do
+    opts = Application.get_env(:moebius, :connection_options)
+    if is_nil(opts) do
+      []
+    else
+      opts
+    end
+  end
+
+  def postgrex_query_options do
+    connection_opts ++ pool_opts
+  end
+
   def get_connection(key) when is_atom(key) do
     opts = Application.get_env(:moebius, key)
     opts = cond do
