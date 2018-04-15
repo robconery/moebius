@@ -1,0 +1,4 @@
+%{
+  "epgsql": {:hex, :epgsql, "4.0.1", "7f6a0dfff22a2a87c426045fa2bd6df105efa094575a114be282f7dfaf46f270", [:rebar3], []},
+  "poolboy": {:hex, :poolboy, "1.5.1", "6b46163901cfd0a1b43d692657ed9d7e599853b3b21b95ae5ae0a777cf9b6ca8", [:rebar], []},
+}
