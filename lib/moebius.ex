@@ -1,78 +1,29 @@
-#this is the default database that is entirely optional
-defmodule Moebius.Db do
-  use Moebius.Database
-end
-
 defmodule Moebius do
 
   use Application
+
   def start(_type, _args) do
-    Moebius.get_connection |> Moebius.Db.start_link
+    import Supervisor.Spec, warn: false
+
+    children = [
+      supervisor(Moebius.Supervisor, [])
+    ]
+
+    opts = [strategy: :one_for_one, name: Moebius.Supervisor]
+    Supervisor.start_link(children, opts)
   end
 
-  @doc """
-  A convenience tool for assembling large queries with multiple commands which we use for testing.
-  These functions hand off to PSQL because Postgrex can't run more than
-  one command per query.
-  """
-  def run_with_psql(sql, opts) do
-    db = opts[:database] || opts[:db]
-    host = opts[:host] || "localhost"
-    port = opts[:port] || "5432"
-
-    args = ["-h", host, "-d", db, "-p", port, "-c", sql,"--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
-
-    args = cond do
-      Enum.member?(opts, "user") -> args ++ ["-u", opts[:user]]
-      true -> args
-    end
-
-    args = cond do
-      Enum.member?(opts, "password") -> args ++ ["-W", opts[:password]]
-      true -> args
-    end
-
-    System.cmd "psql", args
+  def connect() do
+    res = Moebius.Supervisor.connect()
+    res
   end
 
-  def get_connection(), do: get_connection(:connection)
-  def pool_opts do
-    [pool: DBConnection.Poolboy]
-  end
-  def get_connection(key) when is_atom(key) do
-    opts = Application.get_env(:moebius, key)
-    opts = cond do
-      Keyword.has_key?(opts, :url) -> Keyword.merge(opts, parse_connection(opts[:url]))
-      true -> opts
-    end
-    opts ++ pool_opts()
-  end
-
-  #thanks to the Ecto team for this code!
-  def parse_connection(url) when is_binary(url) do
-    info = url |> URI.decode() |> URI.parse()
-
-    if is_nil(info.host) do
-      raise "Invalid URL: host is not present"
-    end
-
-    if is_nil(info.path) or not (info.path =~ ~r"^/([^/])+$") do
-      raise "Invalid URL: path should be a database name"
-    end
-
-    destructure [username, password], info.userinfo && String.split(info.userinfo, ":")
-    "/" <> database = info.path
-
-    opts = [username: username,
-            password: password,
-            database: database,
-            hostname: info.host,
-            port:     info.port]
-
-    #strip off any nils
-    Enum.reject(opts, fn {_k, v} -> is_nil(v) end)
-    #send the values to a char list because that's what :epgsql likes
-    # opts = for {k, v} <- opts, into: %{}, do: {k, String.to_char_list(v)}
+  def query(sql) do
+    {:ok, pid} = connect()
+    # just use equery for everything I think...we could check for params, but squery uses the simple query protocol, 
+    # which is limited usefulness, and queries with no params work fine with the extended protocol.
+    {:ok, cols, rows} = :epgsql.equery(pid, sql)
+    {:ok, rows}
   end
 
 end

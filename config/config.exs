@@ -1,15 +1,12 @@
-# This file is responsible for configuring your application
-# and its dependencies with the aid of the Mix.Config module.
 use Mix.Config
 
-config :moebius, connection: [
-  #database: "meebuss"
-  url: "postgres://localhost/meebuss"
-],
-test_db: [
-  database: "meebuss"
-],
-chinook: [
-  database: "chinook"
-],
-scripts: "test/db"
+config :moebius_pool,
+host: "localhost",
+username: "meebuss",
+password: "password",
+database: "meebuss",
+reconnect: :no_reconnect,
+max_queue: :infinity,
+pool_size: 5,
+pool_max_overflow: 0,
+timeout: 5000
