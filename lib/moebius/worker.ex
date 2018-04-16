@@ -54,4 +54,11 @@ defmodule Moebius.Worker do
     end
   end
 
+  def terminate(reason, state) do
+    # Do Shutdown Stuff
+
+    IO.puts "Going Down: #{inspect(state)}"
+    :normal
+  end
+
 end
