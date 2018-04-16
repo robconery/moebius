@@ -20,12 +20,4 @@ defmodule Moebius.Pool.Worker do
   def execute(command, pid) do
     GenServer.call pid, command
   end
-
-  # def handle_call(%{command: command}, _from, %{pid: pid, opts: opts}) do
-  #   pid = Connector.ensure_connection(pid)
-  #   case command do
-  #     :connect -> {:reply, pid, %{pid: pid}}
-  #   end
-  # end
-
 end

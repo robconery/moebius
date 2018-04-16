@@ -29,5 +29,19 @@ defmodule Moebius do
 
     Supervisor.start_link(children, options)
   end
-  def run(sql, params \\ []), do: Moebius.Runner.execute(sql, params)
+
+  def run(sql, params \\ []) when is_binary(sql) do 
+    Moebius.Runner.execute(sql, params)
+  end
+  
+  def all({:select, %{sql: sql, params: params}}) do 
+    res = run(sql, params) 
+    |> Moebius.Transformer.to_list
+    {:ok, res}
+  end
+  
+  def table(name) do
+    table_name = Atom.to_string(name)
+    {:select, %{table: table_name, sql: "select * from #{table_name}", where: "", limit: 1000, order: "", params: []}}
+  end
 end

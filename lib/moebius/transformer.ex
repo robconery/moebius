@@ -1,4 +1,6 @@
 defmodule Moebius.Transformer do
+  require Logger
+
   def to_list({:error, err}), do: {:error, err}
 
   #a simple pass-through query
@@ -10,20 +12,20 @@ defmodule Moebius.Transformer do
 
   def merge_col_to_row(cols, data) do
     data = Tuple.to_list(data)
-    for {{:column, name, type, _, _, _},idx} <- Enum.with_index(cols) do
+    for {{:column, name, type, _, _, _, _},idx} <- Enum.with_index(cols) do
       data = Enum.at(data,idx) |> convert(type)
       {String.to_atom(name),data}
     end |> to_map
-
   end
   def convert(data,type) do
+    Logger.debug type
     case {type,data} do
       {:inet,{first, second, third, fourth}} -> "#{first},#{second},#{third},#{fourth}" #inet
       {:date, {year, month, day}} -> "#{year}-#{month}-#{day}"
       {:time, {hour, minute, second}} -> "#{hour}:#{minute}::#{second}"
       {:timestamp, {{year, month, day}, {hour, minute, second}}} -> "#{year}-#{month}-#{day} #{hour}:#{minute}::#{second}"
       {:timestamptz, {{year, month, day}, {hour, minute, second}}} -> "#{year}-#{month}-#{day} #{hour}:#{minute}::#{second}"
-      {_, _} -> data
+      {_, thing} -> thing
     end
   end
   def to_single({:error, err}), do: {:error, err}

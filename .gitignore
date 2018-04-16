@@ -1,4 +1,5 @@
 # The directory Mix will write compiled artifacts to.
+.DS_Store
 /_build/
 
 # If you run "mix test --cover", coverage assets end up here.

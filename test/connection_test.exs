@@ -1,4 +1,4 @@
-defmodule Moebius.ConnectionTest do
+defmodule Moebius.PoolTest do
   use ExUnit.Case
 
   describe "Connection bits" do

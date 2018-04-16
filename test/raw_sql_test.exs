@@ -9,6 +9,13 @@ defmodule Moebius.BasicSelect do
         {:error, err} -> flunk err
       end
     end
+    test "It returns an error when error" do
+      res = "select 'nothing'::jsonb" |> Moebius.run
+      case res do
+        {:ok, _, _} -> flunk "Nope"
+        {:error, err} -> assert err
+      end
+    end
   end
 
 end
