@@ -18,12 +18,4 @@ defmodule Moebius do
     res
   end
 
-  # def query(sql) do
-  #   {:ok, pid} = connect()
-  #   # just use equery for everything I think...we could check for params, but squery uses the simple query protocol, 
-  #   # which is limited usefulness, and queries with no params work fine with the extended protocol.
-  #   {:ok, cols, rows} = :epgsql.equery(pid, sql)
-  #   {:ok, rows}
-  # end
-
 end

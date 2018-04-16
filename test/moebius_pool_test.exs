@@ -4,7 +4,7 @@ defmodule MoebiusPoolTest do
   alias Moebius, as: Moebius
 
   test "basic method using connection pool" do
-    1..100
+    1..10
     |> Enum.map(fn i -> getMyShit() end)
     |> Enum.each(fn task -> awaitMyShit(task) end)
   end
@@ -15,14 +15,9 @@ defmodule MoebiusPoolTest do
   end
 
   defp awaitMyShit(task) do 
-        {:ok, pid} = task |> Task.await(5000)
-        # assert pid
-        {:ok, cols, rows} = Moebius.Runner.query(pid, "select * from users")
-
-        # {:ok, cols, rows} = :epgsql.equery(pid, "select * from users")
+        {:ok, cols, rows, pid} = Moebius.Runner.execute("select * from users where email like $1", ["friend@test.com"])
         IO.inspect rows
         IO.inspect pid
-
   end
 
 end
