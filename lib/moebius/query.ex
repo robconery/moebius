@@ -258,8 +258,8 @@ defmodule Moebius.Query do
     concat_list = Enum.map_join(columns, ", ' ',  ", &"#{&1}")
     sql = """
     select *, ts_rank_cd(to_tsvector(concat(#{concat_list})),to_tsquery($1)) as rank from #{cmd.table_name}
-  	where to_tsvector(concat(#{concat_list})) @@ to_tsquery($1)
-  	order by rank desc
+    where to_tsvector(concat(#{concat_list})) @@ to_tsquery($1)
+    order by rank desc
     """
 
     %{cmd | sql: sql, params: [term]}
@@ -468,7 +468,7 @@ defmodule Moebius.Query do
     file_path = Path.join(scripts_dir, "#{Atom.to_string(file)}.sql")
     sql=File.read!(file_path)
 
-    %Moebius.QueryCommand{sql: String.strip(sql), params: params}
+    %Moebius.QueryCommand{sql: String.trim(sql), params: params}
   end
 
   @doc """

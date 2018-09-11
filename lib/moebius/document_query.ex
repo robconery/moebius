@@ -1,5 +1,4 @@
 defmodule Moebius.DocumentQuery do
-
   @moduledoc """
   If you like your Postgres doing document goodness, then you'll want to use this interface. Just include it in your module
   and you can work directly with JSONB in PostgreSQL. We've tried to keep reasonable parity with
@@ -42,8 +41,7 @@ defmodule Moebius.DocumentQuery do
     |> to_list
   ```
   """
-  def db(table) when is_atom(table),
-    do: db(Atom.to_string(table))
+  def db(table) when is_atom(table), do: db(Atom.to_string(table))
 
   @doc """
   Specifies the table or view you want to query and is an alias for the `db/1` function using
@@ -58,8 +56,7 @@ defmodule Moebius.DocumentQuery do
     |> to_list
   ```
   """
-  def db(table),
-    do: %Moebius.DocumentCommand{table_name: table}
+  def db(table), do: %Moebius.DocumentCommand{table_name: table}
 
   @doc """
   This is analagous to `filter` with the Query module, however this method is highly optimized for JSONB as it uses the `@` (contains)
@@ -79,7 +76,7 @@ defmodule Moebius.DocumentQuery do
     map = Enum.into(criteria, %{})
     encoded = Poison.encode!(map)
 
-    #TODO: Do we need to parameterize this? I don't think so
+    # TODO: Do we need to parameterize this? I don't think so
     where = " where #{cmd.json_field} @> '#{encoded}'"
     %{cmd | where: where, params: []}
   end
@@ -97,11 +94,11 @@ defmodule Moebius.DocumentQuery do
   ```
   """
   def filter(%DocumentCommand{} = cmd, criteria, params \\ []) when is_bitstring(criteria) do
-
-    param_list = cond do
-      is_list(params) -> params
-      true -> [params]
-    end
+    param_list =
+      cond do
+        is_list(params) -> params
+        true -> [params]
+      end
 
     where = " where #{criteria}"
     %{cmd | where: where, params: param_list}
@@ -120,10 +117,12 @@ defmodule Moebius.DocumentQuery do
   ```
   """
   def filter(%DocumentCommand{} = cmd, field, operator, params) do
-    param_list = cond do
-      is_list(params) -> params
-      true -> [params]
-    end
+    param_list =
+      cond do
+        is_list(params) -> params
+        true -> [params]
+      end
+
     where = " where body -> '#{field}' #{operator} $1"
     %{cmd | where: where, params: param_list}
   end
@@ -141,10 +140,12 @@ defmodule Moebius.DocumentQuery do
   ```
   """
   def exists(%DocumentCommand{} = cmd, field, params) do
-    param_list = cond do
-      is_list(params) -> params
-      true -> [params]
-    end
+    param_list =
+      cond do
+        is_list(params) -> params
+        true -> [params]
+      end
+
     where = " where body -> '#{field}' ? $1"
     %{cmd | where: where, params: param_list}
   end
@@ -161,6 +162,7 @@ defmodule Moebius.DocumentQuery do
     #{cmd.limit}
     #{cmd.offset};
     """
+
     %{cmd | sql: sql}
   end
 
@@ -168,6 +170,7 @@ defmodule Moebius.DocumentQuery do
   Alias for Query limit
   """
   def limit(%DocumentCommand{} = cmd, len), do: Moebius.Query.limit(cmd, len)
+
   @doc """
   Alias for Query offset
   """
@@ -186,21 +189,22 @@ defmodule Moebius.DocumentQuery do
   ```
   """
   def sort(%DocumentCommand{} = cmd, cols, direction \\ :asc) do
-    order_column = cond do
-      is_atom(cols) -> Atom.to_string cols
-      true -> cols
-    end
-    sort_dir = Atom.to_string direction
+    order_column =
+      cond do
+        is_atom(cols) -> Atom.to_string(cols)
+        true -> cols
+      end
+
+    sort_dir = Atom.to_string(direction)
     %{cmd | order: " order by body -> '#{order_column}' #{sort_dir}"}
   end
 
   def decide_command(%DocumentCommand{} = cmd, doc) do
     cond do
-      Map.has_key?(doc, :id) && doc.id !=nil -> update(cmd, Map.delete(doc, :id), doc.id)
-      true -> insert(cmd,  Map.delete(doc, :id))
+      Map.has_key?(doc, :id) && doc.id != nil -> update(cmd, Map.delete(doc, :id), doc.id)
+      true -> insert(cmd, Map.delete(doc, :id))
     end
   end
-
 
   @doc """
   Marks a set of fields for indexing during save.
@@ -214,55 +218,61 @@ defmodule Moebius.DocumentQuery do
     |> save(product)
   ```
   """
-  def searchable({:error, err}), do: {:error ,err}
+  def searchable({:error, err}), do: {:error, err}
+
   def searchable(%DocumentCommand{} = cmd, search_params) when is_list(search_params) do
     %{cmd | search_fields: search_params}
   end
-
 
   @doc """
   An alias for `delete/1`, removes a document based on the filter setup.
   """
   def remove(%DocumentCommand{} = cmd), do: delete(cmd)
+
   @doc """
   An alias for `delete/1`, removes a document based on the filter setup.
   """
   def remove(%DocumentCommand{} = cmd, pid) when is_pid(pid), do: delete(cmd, pid)
+
   @doc """
   An alias for `delete/2`, removes a document with the specified ID.
   """
   def remove(%DocumentCommand{} = cmd, id), do: delete(cmd, id)
+
   @doc """
   An alias for `delete/2`, removes a document with the specified ID.
   """
   def remove(%DocumentCommand{} = cmd, pid, id) when is_pid(pid), do: delete(cmd, pid, id)
 
+  @doc """
+  Deletes a document based on the filter (if any)
+  """
+  def delete(%DocumentCommand{} = cmd), do: cmd |> delete_command
 
   @doc """
   Deletes a document based on the filter (if any)
   """
-  def delete(%DocumentCommand{} = cmd),  do: cmd |> delete_command
-  @doc """
-  Deletes a document based on the filter (if any)
-  """
-  def delete(%DocumentCommand{} = cmd, pid) when is_pid(pid),  do: cmd |> delete_command
+  def delete(%DocumentCommand{} = cmd, pid) when is_pid(pid), do: cmd |> delete_command
+
   @doc """
   Deletes a document with the given id
   """
   def delete(%DocumentCommand{} = cmd, id), do: cmd |> delete_command(id)
+
   @doc """
   Deletes a document with the given id
   """
   def delete(%DocumentCommand{} = cmd, pid, id) when is_pid(pid), do: cmd |> delete_command(id)
 
-
   def insert(%DocumentCommand{} = cmd, doc) do
     doc = Map.delete(doc, :created_at) |> Map.delete(:updated_at)
+
     sql = """
     insert into #{cmd.table_name}(#{cmd.json_field})
     VALUES($1)
     RETURNING id, #{cmd.json_field}::text, created_at, updated_at;
     """
+
     %{cmd | sql: sql, params: [doc], type: :insert}
   end
 
@@ -272,8 +282,8 @@ defmodule Moebius.DocumentQuery do
   # end
 
   def update(%DocumentCommand{} = cmd, change, id) when is_map(change) and is_integer(id) do
-    #{:ok, encoded} = Poison.encode(change)
-    #remove created/updated
+    # {:ok, encoded} = Poison.encode(change)
+    # remove created/updated
     change = Map.delete(change, :created_at) |> Map.delete(:updated_at)
 
     sql = """
@@ -282,9 +292,9 @@ defmodule Moebius.DocumentQuery do
     updated_at = now()
     where id = #{id} returning id, #{cmd.json_field}::text, created_at, updated_at;
     """
+
     %{cmd | sql: sql, type: :update, params: [change]}
   end
-
 
   @doc """
   Finds a document based on ID using the Primary Key index. An optimized query for finding a single document.
@@ -296,12 +306,13 @@ defmodule Moebius.DocumentQuery do
     |> find(12)
   ```
   """
-  def find(%DocumentCommand{} = cmd, id) when is_integer id do
-    #no need to param this, it's an integer
-    sql = "select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name} where id=#{id}"
+  def find(%DocumentCommand{} = cmd, id) when is_integer(id) do
+    # no need to param this, it's an integer
+    sql =
+      "select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name} where id=#{id}"
+
     %{cmd | sql: sql}
   end
-
 
   @doc """
   Performs a highly-tuned Full Text query on the indexed `search` column. This is set on `save/3`.
@@ -313,12 +324,11 @@ defmodule Moebius.DocumentQuery do
     |> search("test.com")
   ```
   """
-  def search(%DocumentCommand{} = cmd, term) when is_bitstring(term)  do
-
+  def search(%DocumentCommand{} = cmd, term) when is_bitstring(term) do
     sql = """
     select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name}
-  	where search @@ to_tsquery($1)
-  	order by ts_rank_cd(search,to_tsquery($1))  desc
+    where search @@ to_tsquery($1)
+    order by ts_rank_cd(search,to_tsquery($1))  desc
     """
 
     %{cmd | sql: sql, params: [term]}
@@ -340,26 +350,24 @@ defmodule Moebius.DocumentQuery do
 
     sql = """
     select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name}
-  	where to_tsvector(concat(#{terms})) @@ to_tsquery($1)
-  	order by ts_rank_cd(to_tsvector(concat(#{terms})),to_tsquery($1))  desc
+    where to_tsvector(concat(#{terms})) @@ to_tsquery($1)
+    order by ts_rank_cd(to_tsvector(concat(#{terms})),to_tsquery($1))  desc
     """
 
     %{cmd | sql: sql, params: [term]}
-
   end
 
-
   defp delete_command(%DocumentCommand{} = cmd, id) when is_integer(id) do
-    sql = "delete from #{cmd.table_name} where id=#{id} returning id, body::text, created_at, updated_at"
+    sql =
+      "delete from #{cmd.table_name} where id=#{id} returning id, body::text, created_at, updated_at"
+
     %{cmd | sql: sql, type: :delete}
   end
 
   defp delete_command(%DocumentCommand{} = cmd) do
-    sql = "delete from #{cmd.table_name} #{cmd.where} returning id, body::text, created_at, updated_at;"
+    sql =
+      "delete from #{cmd.table_name} #{cmd.where} returning id, body::text, created_at, updated_at;"
+
     %{cmd | sql: sql, type: :delete}
   end
-
-
-
-
 end

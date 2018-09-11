@@ -1,20 +1,13 @@
-![travis](https://travis-ci.org/robconery/moebius.svg?branch=master) [![Hex.pm Version](https://img.shields.io/hexpm/v/moebius.svg)](https://hex.pm/packages/moebius)
+<!-- ![travis](https://travis-ci.org/robconery/moebius.svg?branch=master) [![Hex.pm Version](https://img.shields.io/hexpm/v/moebius.svg)](https://hex.pm/packages/moebius) -->
 
 # Moebius 3.0: A functional query tool for Elixir and PostgreSQL.
 
-*Note: this is version 2.0 and there are significant changes from version 1.0. If you need version 1.x, you can [find the last release here](https://github.com/robconery/moebius/releases/tag/v1)*
+## Fork
+This is a fork of [Rob Conery's moebius](https://github.com/robconery/moebius).
 
 Our goal with creating Moebius is to try and keep as close as possible to the functional nature of Elixir and, at the same time, the goodness that is PostgreSQL. We think working with a database should feel like a natural extension of the language, with as little abstraction wonkery as possible.
 
 Moebius is *not* an ORM. There are no mappings, no schemas, no migrations; only queries and data. We embrace PostgreSQL as much as possible, surfacing the goodness so you be a hero.
-
-## Difference from version 2.0
-
-- Fixed a number of issues surrounding dates etc
-- Moved to a more Elixiry way of returning results, using `{:ok, result}` and `{:error, error}`. We were always doing the latter, but decided to move to the former to keep in step with other libraries.
-- Moved to Elixir 1.4, along with Dates etc.
-- Removed multiple dependencies, including Timex and Poolboy (which is built into the driver, Postgrex)
-
 
 ## Documentation
 

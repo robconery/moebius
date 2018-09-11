@@ -6,19 +6,22 @@ defmodule Moebius.Mixfile do
   def project do
     [
       app: :moebius,
-       description: "A functional approach to data access with Elixir",
-       version: @version,
-       elixir: "~> 1.4",
-       package: package(),
-       build_embedded: Mix.env == :prod,
-       start_permanent: Mix.env == :prod,
-       # ExDoc
-       name: "Moebius",
-       docs: [source_ref: "v#{@version}",
-              main: Moebius.Query,
-              source_url: "https://github.com/robconery/moebius",
-              extras: ["README.md"]],
-       deps: deps()]
+      description: "A functional approach to data access with Elixir",
+      version: @version,
+      elixir: "~> 1.6",
+      package: package(),
+      build_embedded: Mix.env() == :prod,
+      start_permanent: Mix.env() == :prod,
+      # ExDoc
+      name: "Moebius",
+      docs: [
+        source_ref: "v#{@version}",
+        main: Moebius.Query,
+        source_url: "https://github.com/nhalm2/moebius",
+        extras: ["README.md"]
+      ],
+      deps: deps()
+    ]
   end
 
   # Configuration for the OTP application
@@ -31,18 +34,20 @@ defmodule Moebius.Mixfile do
   end
 
   defp deps do
-    [{:postgrex, "~> 0.13.1"},
-     {:inflex, "~> 1.5.0"},
-     {:poolboy,       ">= 0.0.0"},
-     {:poison, "~> 3.0.0"},
-     {:ex_doc, "~> 0.11.2", only: [:dev, :docs]},
-     {:earmark, "~> 0.2.0", only: [:dev, :docs]},
-     {:credo, "~> 0.2.5", only: [:dev, :test]}]
+    [
+      {:postgrex, "~> 0.13.5"},
+      {:inflex, "~> 1.10.0"},
+      {:poolboy, "> 1.5.0"},
+      {:poison, "~> 4.0"},
+      {:ex_doc, "~> 0.19", only: [:dev, :docs]}
+    ]
   end
 
   def package do
-    [maintainers: ["Rob Conery"],
-     licenses: ["New BSD"],
-     links: %{"GitHub" => "https://github.com/robconery/moebius"}]
+    [
+      maintainers: ["Nick Halm"],
+      licenses: ["New BSD"],
+      links: %{"GitHub" => "https://github.com/nhalm2/moebius"}
+    ]
   end
 end
