@@ -45,6 +45,14 @@ Installing Moebius involves a few small steps:
       [applications: [:moebius]]
     end
    ```
+   
+  3. Add a worker to your `Application` module:
+  
+  ```elixir
+  children = [
+    worker(Moebius.Db, [Moebius.get_connection])
+  ]
+  ```
 
 Run `mix deps.get` and you'll be good to go.
 
