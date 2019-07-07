@@ -22,17 +22,18 @@ defmodule Moebius do
 
     args = ["-h", host, "-d", db, "-p", port, "-c", sql,"--quiet", "--set", "ON_ERROR_STOP=1", "--no-psqlrc"]
 
-    args = cond do
-      Enum.member?(opts, "user") -> args ++ ["-u", opts[:user]]
-      true -> args
+    env = []
+    env = cond do
+      Keyword.has_key?(opts, :user) -> [{"PGUSER", opts[:user]} | env]
+      true -> env
     end
 
-    args = cond do
-      Enum.member?(opts, "password") -> args ++ ["-W", opts[:password]]
-      true -> args
+    env = cond do
+      Keyword.has_key?(opts, :password) -> [{"PGPASSWORD", opts[:password]} | env]
+      true -> env
     end
 
-    System.cmd "psql", args
+    System.cmd "psql", args, env: env
   end
 
   def get_connection(), do: get_connection(:connection)
