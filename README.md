@@ -38,19 +38,11 @@ Installing Moebius involves a few small steps:
     end
    ```
 
-  2. Ensure moebius is started before your application:
-
-   ```elixir
-    def application do
-      [applications: [:moebius]]
-    end
-   ```
-   
-  3. Add a worker to your `Application` module:
+  2. Add the db child process to your `Application` module:
   
   ```elixir
   children = [
-    worker(Moebius.Db, [Moebius.get_connection])
+    Moebius.Db
   ]
   ```
 
@@ -110,9 +102,11 @@ def start(_type, _args) do
 end
 
 def start_db do
-  #create a worker
-  db_worker = worker(MyApp.Db, [Moebius.get_connection])
-  Supervisor.start_link [db_worker], strategy: :one_for_one
+  #create a child process
+  children = [
+    {MyApp.Db, [Moebius.get_connection]}
+  ]
+  Supervisor.start_link children, strategy: :one_for_one
 end
 ```
 
