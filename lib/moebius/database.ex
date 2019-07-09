@@ -13,6 +13,16 @@ defmodule Moebius.Database do
 
       end
 
+      def child_spec([]), do: child_spec(Moebius.get_connection)
+
+      def child_spec(arg) do
+        %{
+          id: @name,
+          start: {@name, :start_link, [arg]}
+        }
+      end
+
+
       def prepare_extensions(opts) do
 
         #make sure we convert a tuple list, which will happen if our db is a worker
