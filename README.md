@@ -4,9 +4,9 @@
 
 *Note: this is version 2.0 and there are significant changes from version 1.0. If you need version 1.x, you can [find the last release here](https://github.com/robconery/moebius/releases/tag/v1)*
 
-Our goal with creating Moebius is to try and keep as close as possible to the functional nature of Elixir and, at the same time, the goodness that is PostgreSQL. We think working with a database should feel like a natural extension of the language, with as little abstraction wonkery as possible.
+Our goal with creating Moebius is to try and keep it as close as possible to the functional nature of Elixir and, at the same time, maintain the goodness that is PostgreSQL. We think working with a database should feel like a natural extension of the language, with as little abstraction wonkery as possible.
 
-Moebius is *not* an ORM. There are no mappings, no schemas, no migrations; only queries and data. We embrace PostgreSQL as much as possible, surfacing the goodness so you be a hero.
+Moebius is *not* an ORM. There are no mappings, no schemas, no migrations; only queries and data. We embrace PostgreSQL as much as possible, surfacing the goodness so you can be a hero.
 
 ## Difference from version 2.0
 
@@ -50,7 +50,7 @@ Run `mix deps.get` and you'll be good to go.
 
 ## Connecting to PostgreSQL
 
-There are various ways to connect to a database with Moebius. You can used a formal, supervised definition or just roll with our default. Either way, you start off by adding connection info in your `config.exs`:
+There are various ways to connect to a database with Moebius. You can use a formal, supervised definition or just roll with the default. Either way, you start off by adding connection info to `config.exs`:
 
 ```elixir
 config :moebius, connection: [
