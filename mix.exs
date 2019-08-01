@@ -8,7 +8,7 @@ defmodule Moebius.Mixfile do
       app: :moebius,
       description: "A functional approach to data access with Elixir",
       version: @version,
-      elixir: "~> 1.6",
+      elixir: "~> 1.8",
       package: package(),
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
@@ -35,11 +35,12 @@ defmodule Moebius.Mixfile do
 
   defp deps do
     [
-      {:postgrex, "~> 0.13.5"},
-      {:inflex, "~> 1.10.0"},
-      {:poolboy, "> 1.5.0"},
-      {:poison, "~> 4.0"},
-      {:ex_doc, "~> 0.19", only: [:dev, :docs]}
+      {:postgrex, "~> 0.15.0"},
+      {:inflex, "~> 2.0"},
+      {:poolboy,"~> 1.5"},
+      # {:poison, "~> 4.0"},
+      {:jason, "~> 1.1"},
+      {:ex_doc, "~> 0.21.1", only: [:dev, :docs]}
     ]
   end
 

@@ -74,7 +74,7 @@ defmodule Moebius.DocumentQuery do
   """
   def contains(%DocumentCommand{} = cmd, criteria) do
     map = Enum.into(criteria, %{})
-    encoded = Poison.encode!(map)
+    encoded = Jason.encode!(map)
 
     # TODO: Do we need to parameterize this? I don't think so
     where = " where #{cmd.json_field} @> '#{encoded}'"
@@ -276,13 +276,7 @@ defmodule Moebius.DocumentQuery do
     %{cmd | sql: sql, params: [doc], type: :insert}
   end
 
-  # def insert(%DocumentCommand{} = cmd, doc) when is_list(doc) or is_map(doc) do
-  #   {:ok, encoded} = Poison.encode(doc)
-  #   insert(cmd, encoded)
-  # end
-
   def update(%DocumentCommand{} = cmd, change, id) when is_map(change) and is_integer(id) do
-    # {:ok, encoded} = Poison.encode(change)
     # remove created/updated
     change = Map.delete(change, :created_at) |> Map.delete(:updated_at)
 

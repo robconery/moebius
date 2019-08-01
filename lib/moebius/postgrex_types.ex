@@ -1,1 +1,1 @@
-Postgrex.Types.define(Moebius.PostgrexTypes, [], json: Poison)
+Postgrex.Types.define(Moebius.PostgrexTypes, [], json: Jason)
