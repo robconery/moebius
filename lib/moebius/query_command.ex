@@ -10,7 +10,6 @@ defmodule Moebius.QueryCommand do
       columns: nil,
       vals: nil,
       type: :select,
-      sql: nil,
       where: "",
       order: "",
       limit: "",

@@ -77,7 +77,7 @@ defmodule Moebius.DocumentQuery do
   """
   def contains(%DocumentCommand{} = cmd, criteria) do
     map = Enum.into(criteria, %{})
-    encoded = Poison.encode!(map)
+    encoded = Jason.encode!(map)
 
     #TODO: Do we need to parameterize this? I don't think so
     where = " where #{cmd.json_field} @> '#{encoded}'"
@@ -317,8 +317,8 @@ defmodule Moebius.DocumentQuery do
 
     sql = """
     select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name}
-  	where search @@ to_tsquery($1)
-  	order by ts_rank_cd(search,to_tsquery($1))  desc
+    where search @@ to_tsquery($1)
+    order by ts_rank_cd(search,to_tsquery($1))  desc
     """
 
     %{cmd | sql: sql, params: [term]}
@@ -340,8 +340,8 @@ defmodule Moebius.DocumentQuery do
 
     sql = """
     select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name}
-  	where to_tsvector(concat(#{terms})) @@ to_tsquery($1)
-  	order by ts_rank_cd(to_tsvector(concat(#{terms})),to_tsquery($1))  desc
+    where to_tsvector(concat(#{terms})) @@ to_tsquery($1)
+    order by ts_rank_cd(to_tsvector(concat(#{terms})),to_tsquery($1))  desc
     """
 
     %{cmd | sql: sql, params: [term]}

@@ -38,7 +38,7 @@ defmodule Moebius do
 
   def get_connection(), do: get_connection(:connection)
   def pool_opts do
-    [pool: DBConnection.Poolboy]
+    [pool: DBConnection.ConnectionPool]
   end
   def get_connection(key) when is_atom(key) do
     opts = Application.get_env(:moebius, key)

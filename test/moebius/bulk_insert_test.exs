@@ -42,7 +42,7 @@ defmodule MoebiusBulkInsertTest do
     res = db(:people)
       |> bulk_insert(data)
       |> TestDb.transact_batch
-    assert {:error, "null value in column \"first_name\" violates not-null constraint"} == res
+    assert {:error, "null value in column \"first_name\" of relation \"people\" violates not-null constraint"} == res
     # no records were written to the db either...
   end
 

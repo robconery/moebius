@@ -121,6 +121,14 @@ defmodule Moebius.Database do
       end
 
       def save(%Moebius.DocumentCommand{} = cmd, doc) when is_list(doc), do: save(cmd, Enum.into(doc, %{}))
+
+      def save(%Moebius.DocumentCommand{} = cmd, doc) when is_struct(doc) do
+        case save(%Moebius.DocumentCommand{} = cmd, Map.from_struct(doc)) do
+          {:error, err} -> {:error, err}
+          {:ok, res} -> {:ok, Map.put_new(res, :__struct__, doc.__struct__)}
+        end
+      end
+
       def save(%Moebius.DocumentCommand{} = cmd, doc) when is_map(doc) do
         res = %{cmd | conn: @name}
           |> Moebius.DocumentQuery.decide_command(doc)
@@ -141,6 +149,7 @@ defmodule Moebius.Database do
           |> check_struct(doc)
 
       end
+
       def create_document_table(name) when is_atom(name) do
         case Moebius.DocumentQuery.db(name) |> create_document_table(nil) do
           {:error, err} -> {:error, err}
