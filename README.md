@@ -175,26 +175,78 @@ This returns a user with the id of 1.
 
 Hopefully it's fairly straightforward what this query returns. All users named Steve sorted by city... skipping the first two, returning the next 10.
 
-An `IN` query happens when you pass an array:
+### Operators
+
+
+An "=" (Equal) query happens when you pass a column name and a value:
+
+```elixir
+{:ok, result} = db(:users)
+    |> filter(name: "mark")
+    |> Moebius.Db.run
+
+# or, if you want to be more precise, specify the `eq` key:
+
+{:ok, result} = db(:users)
+    |> filter(:name, eq: "mark"])
+    |> Moebius.Db.run
+```
+
+A "!=" (Not Equal) query happens when you specify the `neq` key:
+
+```elixir
+{:ok, result} = db(:users)
+    |> filter(:name, neq: "mark")
+    |> Moebius.Db.run
+```
+
+A ">" (Greater Than) query happens when you specify the `gt` key:
+
+```elixir
+{:ok, result} = db(:users)
+    |> filter(:order_count, gt: 5)
+    |> Moebius.Db.run
+```
+
+Additionally, the following comparison operators are available:
+
+- "<" (Less Than): `lt`
+- ">=" (Greater Than or Equal To): `gte`
+- "<=" (Less Than or Equal To) `lte`
+
+An "IN" query happens when you pass an array:
 
 ```elixir
 {:ok, result} = db(:users)
     |> filter(:name, ["mark", "biff", "skip"])
     |> Moebius.Db.run
 
-#or, if you want to be more precise
+# or, if you want to be more precise, specify the `in` key:
 
 {:ok, result} = db(:users)
     |> filter(:name, in: ["mark", "biff", "skip"])
     |> Moebius.Db.run
 ```
 
-A NOT IN query happens when you specify the `not_in` key:
+A "NOT IN" query happens when you specify the `not_in` or `nin` key:
 
 ```elixir
 {:ok, result} = db(:users)
     |> filter(:name, not_in: ["mark", "biff", "skip"])
     |> Moebius.Db.run
+```
+
+If you prefer a more SQL-like syntax, you can use the following aliases:
+
+- db: `from`
+- filter: `where`
+- sort: `order_by`
+
+```elixir
+{:ok, result} = from(:users)
+    |> where(name: "Steve")
+    |> where(:order_count, gt: 5)
+    |> order_by(id: :asc, name: :desc)
 ```
 
 If you don't want to deal with my abstractions, just use SQL:
