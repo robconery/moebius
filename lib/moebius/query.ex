@@ -24,6 +24,13 @@ defmodule Moebius.Query do
   result = db("membership.users")
     |> to_list
   ```
+
+  Or if you prefer more SQL-like syntax, you can use _from_, which is an alias for _db_:
+
+  ```
+  result = from(:users)
+    |> to_list
+  ```
   """
   def db(table) when is_atom(table),
     do: db(Atom.to_string(table))
@@ -31,6 +38,7 @@ defmodule Moebius.Query do
   def db(table),
     do: %QueryCommand{table_name: table}
 
+  defdelegate from(table), to: __MODULE__, as: :db
 
   @doc """
   Executes a given pipeline and returns the last matching result. You should specify a `sort` to be sure first works as intended.
@@ -53,24 +61,52 @@ defmodule Moebius.Query do
   @doc """
   Sets the order by. Ascending using `:asc` is the default, you can send in `:desc` if you like.
 
-  cols      -   The atomized name of the columns, such as `:company`
-  direction -   `:asc` (default) or `:desc`
+  col             -  The atomized name of the column, such as `:company`
+  dir (optional)  -  `:asc` (default) or `:desc`
 
-  Example:
-
+  Example of single order by:
   ```
   result = db(:users)
       |> sort(:name, :desc)
       |> to_list
   ```
+
+  Example of multiple order by:
+  ```
+  result = db(:users)
+      |> sort(id: :asc, name: :desc)
+      |> to_list
+  ```
+
+  Or if you prefer more SQL-like syntax, you can use "order_by", which is an alias for "sort":
+
+  ```
+  result = db(:users)
+      |> order_by(id: :asc, name: :desc)
+      |> to_list
+  ```
   """
-  #def sort(%QueryCommand{} = cmd, cols, direction \\ :asc)
+  def sort(%QueryCommand{} = cmd, col, dir) when is_atom(col) do
+    sort(cmd, Atom.to_string(col), dir)
+  end
 
-  def sort(%QueryCommand{} = cmd, cols, direction) when is_atom(cols),
-    do: sort(cmd, Atom.to_string(cols), direction)
+  def sort(%QueryCommand{} = cmd, col, dir) when is_binary(col) do
+    %{cmd | order: " order by #{col} #{dir}"}
+  end
 
-  def sort(%QueryCommand{} = cmd, cols, direction) when is_binary(cols),
-    do: %{cmd | order: " order by #{cols} #{direction}"}
+  def sort(%QueryCommand{} = cmd, criteria) when is_list(criteria) do
+    orders =
+      criteria
+      |> Enum.map(fn {col, dir} -> "#{col} #{dir}" end)
+      |> Enum.join(", ")
+
+    %{cmd | order: " order by #{orders}"}
+  end
+
+  def sort(%QueryCommand{} = cmd, col), do: sort(cmd, col, :asc)
+
+  defdelegate order_by(cmd, cols), to: __MODULE__, as: :sort
+  defdelegate order_by(cmd, cols, direction), to: __MODULE__, as: :sort
 
   @doc """
   Sets the limit of the return.
@@ -121,11 +157,10 @@ defmodule Moebius.Query do
   @doc """
   Creates a SELECT command based on the assembled pipeline. Uses the QueryCommand as its core structure.
 
-  cols  -   Any columns (specified as a string) that you want to have aliased or restricted in your return.
-            For example `now() as current_time, name, description`
+  cols  -   Any columns (specified as a string or list) that you want to have aliased or restricted in your return.
+            For example `now() as current_time, name, description`, `["name", "description"]` or `[:name, :description]`
 
-  Example:
-
+  Example of String:
   ```
   command = db(:users)
       |> limit(20)
@@ -134,8 +169,26 @@ defmodule Moebius.Query do
 
   #command is a QueryCommand object with all of the pipelined settings applied
   ```
+
+  Example of List:
+  ```
+  command = db(:users)
+      |> limit(20)
+      |> offset(2)
+      |> select([:name, :description])
+
+  #command is a QueryCommand object with all of the pipelined settings applied
+  ```
   """
   def select(%QueryCommand{} = cmd, cols \\ "*") when is_bitstring(cols) do
+    select_sql(cmd, cols)
+  end
+
+  def select(%QueryCommand{} = cmd, cols) when is_list(cols) do
+    select_sql(cmd, Enum.join(cols, ", "))
+  end
+
+  defp select_sql(cmd, cols) do
     %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
   end
 

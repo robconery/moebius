@@ -53,6 +53,7 @@ defmodule Moebius.Database do
       def run(%Moebius.QueryCommand{type: :delete} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_single
       def run(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn), do: execute(cmd, conn) |> Moebius.Transformer.to_list
 
+      defdelegate all(table), to: __MODULE__, as: :run
 
       def run_batch(%Moebius.CommandBatch{} = batch) do
         batch.commands
@@ -95,6 +96,8 @@ defmodule Moebius.Database do
           |> execute
           |> Moebius.Transformer.to_single
       end
+
+      defdelegate one(table), to: __MODULE__, as: :first
 
       def find(%Moebius.QueryCommand{} = cmd, id) do
         sql = "select * from #{cmd.table_name} where id=#{id}"
@@ -249,7 +252,6 @@ defmodule Moebius.Database do
 
 
   def execute(cmd) do
-
     case Postgrex.query(cmd.conn, cmd.sql, cmd.params, Moebius.pool_opts) do
       {:ok, result} -> {:ok, result}
       {:error, err} -> {:error, err.postgres.message}
