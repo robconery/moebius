@@ -1,1 +1,7 @@
-Postgrex.Types.define(Moebius.PostgrexTypes, [], json: Jason)
+types = Application.get_env(:moebius, :types)
+
+if types == nil do
+  Postgrex.Types.define(PostgresTypes, [], json: Jason)
+else
+  types
+end

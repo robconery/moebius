@@ -2,7 +2,7 @@
 
 # Moebius 3.0: A functional query tool for Elixir and PostgreSQL.
 
-*Note: this is version 2.0 and there are significant changes from version 1.0. If you need version 1.x, you can [find the last release here](https://github.com/robconery/moebius/releases/tag/v1)*
+*Note: this is version 3.0 and there are significant changes from version 1.0. If you need version 1.x, you can [find the last release here](https://github.com/robconery/moebius/releases/tag/v1)*
 
 Our goal with creating Moebius is to try and keep as close as possible to the functional nature of Elixir and, at the same time, the goodness that is PostgreSQL. We think working with a database should feel like a natural extension of the language, with as little abstraction wonkery as possible.
 
@@ -34,7 +34,7 @@ Installing Moebius involves a few small steps:
 
    ```elixir
     def deps do
-      [{:moebius, "~> 3.0.1"}]
+      [{:moebius, "~> 3.1.0"}]
     end
    ```
 
@@ -69,6 +69,23 @@ config :moebius, connection: [
   url: "postgresql://user:password@host/database"
 ],
 scripts: "test/db"
+```
+
+You can also configure custom [Postgres Extensions](https://hexdocs.pm/postgrex/Postgrex.Extension.html#content):
+
+```elixir
+config :moebius,
+  connection: [url: "postgresql://user:password@host/database"],
+  types: PostgresTypes
+```
+
+And define your custom types in your application under `lib/postgres_types.ex`
+
+```elixir
+types = [Geo.PostGIS.Extension, Some.Custom.Extension]
+opts = [json: Jason]
+
+Postgrex.Types.define(PostgresTypes, types, opts)
 ```
 
 If you want to use environment variables, just set things using `System.env`.
