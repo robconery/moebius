@@ -33,7 +33,7 @@ defmodule Moebius.Database do
 
         opts
           |> Keyword.put_new(:name, @name)
-          |> Keyword.put_new(:types, Moebius.PostgrexTypes)
+          |> Keyword.put_new(:types, PostgresTypes)
       end
 
       def run(sql) when is_binary(sql), do: run(sql, [])
