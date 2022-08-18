@@ -31,12 +31,12 @@ defmodule Moebius.Mixfile do
   end
 
   defp deps do
-    [{:postgrex, "~> 0.16.3"},
+    [{:postgrex, "~> 0.16.4"},
      {:inflex, "~> 2.1.0"},
      {:jason, "~> 1.3.0"},
      {:ex_doc, "~> 0.28.4", only: [:dev, :docs]},
-     {:earmark, "~> 1.4.26", only: [:dev, :docs]},
-     {:credo, "~> 1.6.4", only: [:dev, :test]}]
+     {:earmark, "~> 1.4.27", only: [:dev, :docs]},
+     {:credo, "~> 1.6.6", only: [:dev, :test]}]
   end
 
   def package do
