@@ -193,7 +193,7 @@ defmodule Moebius.Query do
   end
 
   @doc """
-  Executes a COUNT query based on the assembled pipeline. Analagous to `map/reduce(:count)`. Returns an integer.
+  Executes a COUNT query based on the assembled pipeline. Analogous to `map/reduce(:count)`. Returns an integer.
 
   Example:
 
@@ -297,7 +297,7 @@ defmodule Moebius.Query do
   You will need to be sure that you exclude that search column from your query.
 
   for:  -   The string term you want to query against.
-  in:   -   An atomized list of columns to search againts.
+  in:   -   An atomized list of columns to search against.
 
   Example:
 
