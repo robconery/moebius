@@ -357,7 +357,7 @@ This runs a full table scan so is not terribly optimal, but it does work if you 
   |> Moebius.Db.run
 ```
 
-This will allow you to query embeded documents and arrays rather easily, but again doesn't use the JSONB-optimized GIN index. You *can* index for using existence, have a look at the PostgreSQL docs.
+This will allow you to query embedded documents and arrays rather easily, but again doesn't use the JSONB-optimized GIN index. You *can* index for using existence, have a look at the PostgreSQL docs.
 
 ### Using Structs
 

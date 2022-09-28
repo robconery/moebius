@@ -62,7 +62,7 @@ defmodule Moebius.DocumentQuery do
     do: %Moebius.DocumentCommand{table_name: table}
 
   @doc """
-  This is analagous to `filter` with the Query module, however this method is highly optimized for JSONB as it uses the `@` (contains)
+  This is analogous to `filter` with the Query module, however this method is highly optimized for JSONB as it uses the `@` (contains)
   operator. This flexes the GIN index created for your table (see above).
 
   criteria:   -     A list of elements to look for. This list must be complete, partial matches won't work.
