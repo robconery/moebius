@@ -31,33 +31,24 @@ defmodule Moebius.DocumentQuery do
   alias Moebius.DocumentCommand
 
   @doc """
-  Specifies the table or view you want to query.
+  Specifies the table or view you want to query. 'with' is an alias for the `db/1` function using
+  a string as a table name. This is useful for specifying a table within a schema.
 
-  :table  -   the name of the table you want to query, such as `:users`
+  :table  -   the name of the table you want to query, such as `:users` or `membership.user_docs`
 
   Example
 
   ```
   result = db(:users)
     |> to_list
+
+  result = with("membership.user_docs")
+  |> to_list
   ```
   """
   def db(table) when is_atom(table),
     do: db(Atom.to_string(table))
 
-  @doc """
-  Specifies the table or view you want to query and is an alias for the `db/1` function using
-  a string as a table name. This is useful for specifying a table within a schema.
-
-  "table"  -   the name of the table you want to query, such as `membership.user_docs`
-
-  Example
-
-  ```
-  result = with("membership.user_docs")
-    |> to_list
-  ```
-  """
   def db(table),
     do: %Moebius.DocumentCommand{table_name: table}
 

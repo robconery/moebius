@@ -22,7 +22,9 @@ defmodule Moebius.Transformer do
     format_ok_result(map_list)
   end
 
-  def atomize_columns(cols), do: for col <- cols, do: String.to_atom(col)
+  def atomize_columns(cols) do
+    for col <- cols, do: String.to_atom(col)
+  end
 
   def match_columns_to_row(row, cols), do: List.zip([cols, row])
   def to_map(list) do
