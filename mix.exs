@@ -1,14 +1,14 @@
 defmodule Moebius.Mixfile do
   use Mix.Project
 
-  @version "3.1.0"
+  @version "3.2.0"
 
   def project do
     [
       app: :moebius,
        description: "A functional approach to data access with Elixir",
        version: @version,
-       elixir: "~> 1.4",
+       elixir: "~> 1.15",
        package: package(),
        build_embedded: Mix.env == :prod,
        start_permanent: Mix.env == :prod,
@@ -31,12 +31,12 @@ defmodule Moebius.Mixfile do
   end
 
   defp deps do
-    [{:postgrex, "~> 0.16.4"},
+    [{:postgrex, "~> 0.17"},
      {:inflex, "~> 2.1.0"},
-     {:jason, "~> 1.3.0"},
-     {:ex_doc, "~> 0.28.4", only: [:dev, :docs]},
-     {:earmark, "~> 1.4.27", only: [:dev, :docs]},
-     {:credo, "~> 1.6.6", only: [:dev, :test]}]
+     {:jason, "~> 1.4"},
+     {:ex_doc, "~> 0.30.4", only: [:dev, :docs]},
+     {:earmark, "~> 1.4.39", only: [:dev, :docs]},
+     {:credo, "~> 1.7.0", only: [:dev, :test]}]
   end
 
   def package do
