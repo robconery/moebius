@@ -210,42 +210,23 @@ defmodule Moebius.DocumentQuery do
     %{cmd | search_fields: search_params}
   end
 
-
   @doc """
-  An alias for `delete/1`, removes a document based on the filter setup.
+  - An alias for `delete/1`, removes a document based on the filter setup.
+  - An alias for `delete/2`, removes a document with the specified ID.
   """
   def remove(%DocumentCommand{} = cmd), do: delete(cmd)
-  @doc """
-  An alias for `delete/1`, removes a document based on the filter setup.
-  """
   def remove(%DocumentCommand{} = cmd, pid) when is_pid(pid), do: delete(cmd, pid)
-  @doc """
-  An alias for `delete/2`, removes a document with the specified ID.
-  """
   def remove(%DocumentCommand{} = cmd, id), do: delete(cmd, id)
-  @doc """
-  An alias for `delete/2`, removes a document with the specified ID.
-  """
   def remove(%DocumentCommand{} = cmd, pid, id) when is_pid(pid), do: delete(cmd, pid, id)
 
-
   @doc """
-  Deletes a document based on the filter (if any)
+  - Deletes a document based on the filter (if any)
+  - Deletes a document with the given id
   """
   def delete(%DocumentCommand{} = cmd),  do: cmd |> delete_command
-  @doc """
-  Deletes a document based on the filter (if any)
-  """
   def delete(%DocumentCommand{} = cmd, pid) when is_pid(pid),  do: cmd |> delete_command
-  @doc """
-  Deletes a document with the given id
-  """
   def delete(%DocumentCommand{} = cmd, id), do: cmd |> delete_command(id)
-  @doc """
-  Deletes a document with the given id
-  """
   def delete(%DocumentCommand{} = cmd, pid, id) when is_pid(pid), do: cmd |> delete_command(id)
-
 
   def insert(%DocumentCommand{} = cmd, doc) do
     doc = Map.delete(doc, :created_at) |> Map.delete(:updated_at)
@@ -303,6 +284,16 @@ defmodule Moebius.DocumentQuery do
   users = db(:user_docs)
     |> search("test.com")
   ```
+
+  Performs a Full Text query using a full table scan. Not a good choice for larger tables. If possible,
+  specify your search columns on `save/3` and use `search/2`.
+
+  Example:
+
+  ```
+  users = db(:user_docs)
+    |> search(for: "test.com", in: [:email])
+  ```
   """
   def search(%DocumentCommand{} = cmd, term) when is_bitstring(term)  do
 
@@ -315,17 +306,6 @@ defmodule Moebius.DocumentQuery do
     %{cmd | sql: sql, params: [term]}
   end
 
-  @doc """
-  Performs a Full Text query using a full table scan. Not a good choice for larger tables. If possible,
-  specify your search columns on `save/3` and use `search/2`.
-
-  Example:
-
-  ```
-  users = db(:user_docs)
-    |> search(for: "test.com", in: [:email])
-  ```
-  """
   def search(%DocumentCommand{} = cmd, for: term, in: fields) do
     terms = Enum.map_join(fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
 

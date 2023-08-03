@@ -223,11 +223,7 @@ defmodule Moebius.Query do
     |> group(:company)
     |> reduce(:sum, :money_spent)
   ```
-  """
-  def group(%QueryCommand{} = cmd, cols) when is_atom(cols),
-    do: group(cmd, Atom.to_string(cols))
 
-  @doc """
   Specifies a GROUP BY for a `map/reduce` (aggregate) query that is a string.
 
   cols  -   A string specifying the column to GROUP BY. Will also be part of the SELECT list.
@@ -241,6 +237,9 @@ defmodule Moebius.Query do
     |> reduce(:sum, :money_spent)
   ```
   """
+  def group(%QueryCommand{} = cmd, cols) when is_atom(cols),
+    do: group(cmd, Atom.to_string(cols))
+
   def group(%QueryCommand{} = cmd, cols),
     do: %{cmd | group_by: cols}
 
