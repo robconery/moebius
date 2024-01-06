@@ -1,6 +1,11 @@
-![travis](https://travis-ci.org/robconery/moebius.svg?branch=master) [![Hex.pm Version](https://img.shields.io/hexpm/v/moebius.svg)](https://hex.pm/packages/moebius)
+# This Project is Archived
 
-# Moebius 3.0: A functional query tool for Elixir and PostgreSQL.
+I'm hoping to get back to this project at some point, but it will require significant changes in things I can't control. The biggest issue is Postgrex, the Postgres driver, which, after 10 years, is still < 1.0.0. This has put me in the unfortunate position of having to rev every time Postgrex breaks things, which it had been doing for a while, which is why I gave up.
+
+I know I can use the Erlang drivers but there are enough improvements in Postgrex that I would like to stay within the Elixir ecosystem, it just makes things difficult when I have to keep revving this project when Postgrex does something because Ecto needs it. 
+
+
+## A functional query tool for Elixir and PostgreSQL.
 
 *Note: this is version 3.0 and there are significant changes from version 1.0. If you need version 1.x, you can [find the last release here](https://github.com/robconery/moebius/releases/tag/v1)*
 
