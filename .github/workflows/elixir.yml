@@ -16,7 +16,7 @@ jobs:
 
     env:
       MIX_ENV: test
-      DB_PASSWORD: postgres
+      PGPASSWORD: postgres
       DB_HOST: db
 
     services:
