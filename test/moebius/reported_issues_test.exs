@@ -42,7 +42,6 @@ defmodule Moebius.GithubIssues do
   #     |> filter(last: nil)
   #     |> TestDb.run
   #
-  #   IO.inspect cmd
   #   #assert(res.email == "null@test.com")
   # end
 end

@@ -18,7 +18,6 @@
 
 #   test "they connect to different dbs" do
 #     {:ok, res} = db(:artist) |> limit(1) |> DB2.run
-#     IO.inspect res
 #   end
 
 # end

@@ -13,7 +13,7 @@ defmodule Mix.Tasks.Helpers do
   defp database_cmd(cmd) do
     db_cmd = "psql -U postgres " <> cmd
 
-    case System.shell(db_cmd) |> IO.inspect() do
+    case System.shell(db_cmd) do
       {output, 0} ->
         output
 

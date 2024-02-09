@@ -16,18 +16,14 @@ defmodule Moebius do
   one command per query.
   """
   def run_with_psql(sql, opts) do
-    IO.inspect("Moebius.run_with_psql")
-    IO.inspect(opts: opts)
-    db = opts[:database] || opts[:db]
-    host = opts[:hostname] || "localhost"
-    port = to_string(opts[:port]) || "5432"
+    port = if is_binary(opts[:port]), do: opts[:port], else: to_string(opts[:port])
 
     args =
       [
         "-h",
-        host,
+        opts[:hostname],
         "-d",
-        db,
+        opts[:database],
         "-p",
         port,
         "-c",
@@ -38,25 +34,25 @@ defmodule Moebius do
         "--no-psqlrc"
       ]
 
-    IO.inspect(args: args)
+    env = set_env(opts)
 
-    env = []
+    System.cmd("psql", args, env: env)
+  end
 
-    env =
-      cond do
-        Keyword.has_key?(opts, :username) -> [{"PGUSER", opts[:username]} | env]
-        true -> env
-      end
+  def set_env(opts) do
+    cond do
+      Keyword.has_key?(opts, :username) and Keyword.has_key?(opts, :password) ->
+        [{"PGUSER", opts[:username]}, {"PGPASSWORD", opts[:password]}]
 
-    env =
-      cond do
-        Keyword.has_key?(opts, :password) -> [{"PGPASSWORD", opts[:password]} | env]
-        true -> env
-      end
+      Keyword.has_key?(opts, :username) ->
+        [{"PGUSER", opts[:username]}]
 
-    IO.inspect(env: env)
+      Keyword.has_key?(opts, :password) ->
+        [{"PGPASSWORD", opts[:password]}]
 
-    System.cmd("psql", args, env: env) |> IO.inspect()
+      true ->
+        []
+    end
   end
 
   def get_connection(), do: get_connection(:connection)
