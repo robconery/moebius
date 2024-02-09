@@ -1,0 +1,1 @@
+CREATE DATABASE modebius_test;

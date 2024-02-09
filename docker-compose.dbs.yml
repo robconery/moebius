@@ -7,7 +7,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./dev/postgres:/docker-entrypoint-initdb.d/
+      - ./test/db/create:/docker-entrypoint-initdb.d/
     command: postgres -c config_file=/etc/postgresql/postgresql.conf 
     environment:
       POSTGRES_HOST: /var/run/postgresql

@@ -296,8 +296,11 @@ defmodule Moebius.Database do
 
   def execute(cmd) do
     case Postgrex.query(cmd.conn, cmd.sql, cmd.params, Moebius.pool_opts()) do
-      {:ok, result} -> {:ok, result}
-      {:error, err} -> {:error, err.postgres.message}
+      {:ok, result} ->
+        {:ok, result}
+
+      {:error, err} ->
+        {:error, err.postgres.message}
     end
   end
 
@@ -307,8 +310,11 @@ defmodule Moebius.Database do
   """
   def execute(cmd, %DBConnection{} = conn) do
     case Postgrex.query(conn, cmd.sql, cmd.params, Moebius.pool_opts()) do
-      {:ok, result} -> {:ok, result}
-      {:error, err} -> Postgrex.query(conn, "ROLLBACK", []) && raise err.postgres.message
+      {:ok, result} ->
+        {:ok, result}
+
+      {:error, err} ->
+        Postgrex.query(conn, "ROLLBACK", []) && raise err.postgres.message
     end
   end
 end
