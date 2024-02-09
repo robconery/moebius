@@ -20,7 +20,9 @@ defmodule Mix.Tasks.Moebius.Migrate do
       :test ->
         "test/db/tables.sql"
         |> File.read!()
+        |> IO.inspect()
         |> Moebius.run_with_psql(db: database)
+        |> IO.inspect()
 
       _ ->
         raise "You can only run migrations in the test environment"
