@@ -5,11 +5,14 @@ defmodule Mix.Tasks.Moebius.Migrate do
   use Mix.Task
 
   def run(_args) do
+    IO.inspect("Migrating database")
     Mix.Task.run("app.start")
 
     Moebius.get_connection()
+    |> IO.inspect()
     |> Keyword.get(:database)
     |> migrate_database()
+    |> IO.inspect()
   end
 
   defp migrate_database(database) do
