@@ -1,5 +1,3 @@
 defmodule Moebius.CommandBatch do
-  defstruct [
-    commands: [],
-  ]
+  defstruct commands: []
 end

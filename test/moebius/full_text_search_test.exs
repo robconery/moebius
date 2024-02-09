@@ -3,19 +3,20 @@ defmodule Moebius.FullTextSearch do
   import Moebius.Query
 
   setup_all do
-    {:ok, res} = db(:users)
+    {:ok, res} =
+      db(:users)
       |> insert(first: "Mike", last: "Booger", email: "boogerbob@test.com")
-      |> TestDb.run
+      |> TestDb.run()
+
     {:ok, user: res}
   end
 
   test "a simple full text query", %{user: user} do
-
-    {:ok,result} = db(:users)
-          |> search(for: user.first, in: [:first, :last, :email])
-          |> TestDb.run
+    {:ok, result} =
+      db(:users)
+      |> search(for: user.first, in: [:first, :last, :email])
+      |> TestDb.run()
 
     assert length(result) > 0
   end
-
 end

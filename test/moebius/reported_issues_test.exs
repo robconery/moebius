@@ -4,31 +4,32 @@ defmodule Moebius.GithubIssues do
 
   test "multiple filters #70" do
     db(:users)
-      |> insert(first: "Super", last: "Filter", email: "superfilter@test.com")
-      |> TestDb.run
+    |> insert(first: "Super", last: "Filter", email: "superfilter@test.com")
+    |> TestDb.run()
 
-    {:ok, res} = db(:users)
+    {:ok, res} =
+      db(:users)
       |> filter(first: "Super")
       |> filter(last: "Filter")
-      |> TestDb.first
+      |> TestDb.first()
 
     assert(res.email == "superfilter@test.com")
-
   end
 
   test "It can update an array column #80" do
     db(:users)
-      |> insert(email: "array@test.com", first: "Test", last: "User", roles: ["admin"])
-      |> TestDb.run
+    |> insert(email: "array@test.com", first: "Test", last: "User", roles: ["admin"])
+    |> TestDb.run()
 
     {:ok, res: true}
 
-    {:ok, res} = db(:users)
+    {:ok, res} =
+      db(:users)
       |> filter(email: "array@test.com")
       |> update(roles: ["admin"])
-      |> TestDb.first
+      |> TestDb.first()
 
-    #if we got here we're happy
+    # if we got here we're happy
     assert(res.email == "array@test.com")
   end
 

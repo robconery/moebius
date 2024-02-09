@@ -1,14 +1,14 @@
 defmodule Moebius.QueryFilterTest do
   use ExUnit.Case
 
-  #doctest Moebius.QueryFilter
+  # doctest Moebius.QueryFilter
 
   import Moebius.QueryFilter
 
   setup context do
     predicates = context[:where] || ""
     params = context[:params] || []
-    cmd = %Moebius.QueryCommand{table_name: 'users', where: predicates, params: params}
+    cmd = %Moebius.QueryCommand{table_name: ~c"users", where: predicates, params: params}
     {:ok, [query: cmd]}
   end
 
@@ -172,8 +172,9 @@ defmodule Moebius.QueryFilterTest do
   end
 
   test "basic select with a where string", %{query: query} do
-    cmd = filter(query, "name=$1 OR thing=$2", ["Steve", "Bill"])
-          |> Moebius.Query.select
+    cmd =
+      filter(query, "name=$1 OR thing=$2", ["Steve", "Bill"])
+      |> Moebius.Query.select()
 
     assert cmd.sql == "select * from users where name=$1 OR thing=$2;"
   end
