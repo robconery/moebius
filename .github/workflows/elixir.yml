@@ -55,6 +55,7 @@ jobs:
 
     - name: Set up test data
       run: |
+        echo "MIX_ENV: $MIX_ENV"
         mix moebius.migrate
         mix moebius.seed
       env:
