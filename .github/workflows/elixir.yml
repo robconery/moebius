@@ -24,7 +24,9 @@ jobs:
         image: postgres
         ports: ['5432:5432']
         env:
+          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: moebius_test
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -32,6 +34,11 @@ jobs:
           --health-retries 5
     steps:
     - uses: actions/checkout@v3
+
+    - name: Create database
+      run: |
+        psql -h localhost -U postgres -c "CREATE DATABASE moebius_test;"
+
     - name: Setup Elixir
       uses: erlef/setup-beam@v1
       with:
@@ -52,7 +59,9 @@ jobs:
         mix deps.get
 
     - name: Set up test data
-      run: mix moebius.setup
+      run: |
+        mix moebius.migrate
+        mix moebius.seed
 
     - name: Check warnings
       run: |
