@@ -2,6 +2,6 @@ import Config
 
 config :moebius,
   connection: [
-    url: "postgresql://postgres:postgres@localhost/moebius_test"
+    url: "postgres://postgres:postgres@localhost:5432/moebius_test"
   ],
   scripts: "test/db"

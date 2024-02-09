@@ -1,1 +1,0 @@
-CREATE DATABASE moebius_test;
