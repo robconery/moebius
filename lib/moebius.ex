@@ -19,8 +19,8 @@ defmodule Moebius do
     IO.inspect("Moebius.run_with_psql")
     IO.inspect(opts: opts)
     db = opts[:database] || opts[:db]
-    host = opts[:host] || "localhost"
-    port = opts[:port] || "5432"
+    host = opts[:hostname] || "localhost"
+    port = to_string(opts[:port]) || "5432"
 
     args =
       [
@@ -44,7 +44,7 @@ defmodule Moebius do
 
     env =
       cond do
-        Keyword.has_key?(opts, :user) -> [{"PGUSER", opts[:user]} | env]
+        Keyword.has_key?(opts, :username) -> [{"PGUSER", opts[:username]} | env]
         true -> env
       end
 
@@ -56,7 +56,7 @@ defmodule Moebius do
 
     IO.inspect(env: env)
 
-    System.cmd("psql", args, env: env)
+    System.cmd("psql", args, env: env) |> IO.inspect()
   end
 
   def get_connection(), do: get_connection(:connection)

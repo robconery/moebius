@@ -10,18 +10,17 @@ defmodule Mix.Tasks.Moebius.Migrate do
 
     Moebius.get_connection()
     |> IO.inspect()
-    |> Keyword.get(:database)
     |> migrate_database()
     |> IO.inspect()
   end
 
-  defp migrate_database(database) do
+  defp migrate_database(opts) do
     case Mix.env() do
       :test ->
         "test/db/tables.sql"
         |> File.read!()
         |> IO.inspect()
-        |> Moebius.run_with_psql(db: database)
+        |> Moebius.run_with_psql(opts)
         |> IO.inspect()
 
       _ ->
