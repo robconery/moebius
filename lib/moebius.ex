@@ -17,6 +17,7 @@ defmodule Moebius do
   """
   def run_with_psql(sql, opts) do
     IO.inspect("Moebius.run_with_psql")
+    IO.inspect(opts: opts)
     db = opts[:database] || opts[:db]
     host = opts[:host] || "localhost"
     port = opts[:port] || "5432"
