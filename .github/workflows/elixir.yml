@@ -58,6 +58,8 @@ jobs:
       run: |
         mix moebius.migrate
         mix moebius.seed
+      env:
+        MIX_ENV: test
 
     - name: Check warnings
       run: |
