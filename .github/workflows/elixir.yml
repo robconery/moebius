@@ -17,16 +17,15 @@ jobs:
     env:
       MIX_ENV: test
       PGPASSWORD: postgres
-      DB_HOST: db
 
     services:
       db:
         image: postgres
         ports: ['5432:5432']
         env:
+          POSTGRES_DB: moebius_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: moebius_test
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
