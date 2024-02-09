@@ -16,24 +16,28 @@ defmodule Moebius do
   one command per query.
   """
   def run_with_psql(sql, opts) do
+    IO.inspect("Moebius.run_with_psql")
     db = opts[:database] || opts[:db]
     host = opts[:host] || "localhost"
     port = opts[:port] || "5432"
 
-    args = [
-      "-h",
-      host,
-      "-d",
-      db,
-      "-p",
-      port,
-      "-c",
-      sql,
-      "--quiet",
-      "--set",
-      "ON_ERROR_STOP=1",
-      "--no-psqlrc"
-    ]
+    args =
+      [
+        "-h",
+        host,
+        "-d",
+        db,
+        "-p",
+        port,
+        "-c",
+        sql,
+        "--quiet",
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--no-psqlrc"
+      ]
+
+    IO.inspect(args: args)
 
     env = []
 
@@ -48,6 +52,8 @@ defmodule Moebius do
         Keyword.has_key?(opts, :password) -> [{"PGPASSWORD", opts[:password]} | env]
         true -> env
       end
+
+    IO.inspect(env: env)
 
     System.cmd("psql", args, env: env)
   end
