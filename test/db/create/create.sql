@@ -1,1 +1,1 @@
-CREATE DATABASE modebius_test;
+CREATE DATABASE moebius_test;
