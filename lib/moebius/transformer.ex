@@ -8,17 +8,21 @@ defmodule Moebius.Transformer do
   def to_single({:ok, %{command: :delete, num_rows: count}}), do: {:ok, %{deleted: count}}
   def to_single({:ok, %{num_rows: count}}) when count == 0, do: {:ok, nil}
   def to_single({:error, message}) when is_binary(message), do: {:error, message}
-  def to_single({:error, %{postgres: %{message: message}}}),  do: {:error, message}
+  def to_single({:error, %{postgres: %{message: message}}}), do: {:error, message}
+
   def to_single({:ok, %{rows: _rows, columns: _cols}} = res) do
     {:ok, result_list} = to_list(res)
-    result_list |> List.first |> format_ok_result
+    result_list |> List.first() |> format_ok_result
   end
 
   def to_list({:ok, %{rows: nil}}), do: []
   def to_list({:error, message}) when is_binary(message), do: {:error, message}
-  def to_list({:error, %{postgres: %{message: message}}}),  do: {:error, message}
+  def to_list({:error, %{postgres: %{message: message}}}), do: {:error, message}
+
   def to_list({:ok, %{rows: rows, columns: cols}}) do
-    map_list = for row <- rows, cols = atomize_columns(cols), do: match_columns_to_row(row,cols) |> to_map
+    map_list =
+      for row <- rows, cols = atomize_columns(cols), do: match_columns_to_row(row, cols) |> to_map
+
     format_ok_result(map_list)
   end
 
@@ -27,17 +31,20 @@ defmodule Moebius.Transformer do
   end
 
   def match_columns_to_row(row, cols), do: List.zip([cols, row])
+
   def to_map(list) do
-    Enum.into(list,%{})
+    Enum.into(list, %{})
   end
 
   def from_json({:error, err}), do: {:error, err}
+
   def from_json({:ok, res}) do
-     res = Enum.map(res.rows, &handle_row/1)
-     {:ok, res}
+    res = Enum.map(res.rows, &handle_row/1)
+    {:ok, res}
   end
 
   def from_json({:error, err}, _), do: {:error, err}
+
   def from_json({:ok, %{rows: rows}}, :single) do
     res = List.first(rows) |> handle_row
     {:ok, res}
@@ -47,10 +54,10 @@ defmodule Moebius.Transformer do
 
   defp handle_row([id, json, created_at, updated_at]) do
     json
-      |> decode_json
-      |> Map.put_new(:id, id)
-      |> Map.put_new(:created_at, created_at)
-      |> Map.put_new(:updated_at, updated_at)
+    |> decode_json
+    |> Map.put_new(:id, id)
+    |> Map.put_new(:created_at, created_at)
+    |> Map.put_new(:updated_at, updated_at)
   end
 
   defp decode_json(json), do: Jason.decode!(json, keys: :atoms)

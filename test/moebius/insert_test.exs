@@ -4,8 +4,10 @@ defmodule MoebiusInsertTest do
   import Moebius.Query
 
   setup_all do
-    cmd = db(:users)
-        |> insert(email: "test@test.com", first: "Test", last: "User")
+    cmd =
+      db(:users)
+      |> insert(email: "test@test.com", first: "Test", last: "User")
+
     {:ok, cmd: cmd}
   end
 
@@ -18,11 +20,9 @@ defmodule MoebiusInsertTest do
   end
 
   test "it actually works" do
-    assert {:ok,%{email: "test@test.com", first: "Test", id: _id, last: "User", profile: nil}} =
-      db(:users)
-        |> insert(email: "test@test.com", first: "Test", last: "User")
-        |> TestDb.run
-
+    assert {:ok, %{email: "test@test.com", first: "Test", id: _id, last: "User", profile: nil}} =
+             db(:users)
+             |> insert(email: "test@test.com", first: "Test", last: "User")
+             |> TestDb.run()
   end
-
 end

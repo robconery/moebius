@@ -1,35 +1,12 @@
-# This Project is Archived
-
-I'm hoping to get back to this project at some point, but it will require significant changes in things I can't control. The biggest issue is Postgrex, the Postgres driver, which, after 10 years, is still < 1.0.0. This has put me in the unfortunate position of having to rev every time Postgrex breaks things, which it had been doing for a while, which is why I gave up.
-
-I know I can use the Erlang drivers but there are enough improvements in Postgrex that I would like to stay within the Elixir ecosystem, it just makes things difficult when I have to keep revving this project when Postgrex does something because Ecto needs it. 
-
-
 ## A functional query tool for Elixir and PostgreSQL.
-
-*Note: this is version 3.0 and there are significant changes from version 1.0. If you need version 1.x, you can [find the last release here](https://github.com/robconery/moebius/releases/tag/v1)*
 
 Our goal with creating Moebius is to try and keep as close as possible to the functional nature of Elixir and, at the same time, the goodness that is PostgreSQL. We think working with a database should feel like a natural extension of the language, with as little abstraction wonkery as possible.
 
 Moebius is *not* an ORM. There are no mappings, no schemas, no migrations; only queries and data. We embrace PostgreSQL as much as possible, surfacing the goodness so you be a hero.
 
-## Difference from version 2.0
-
-- Fixed a number of issues surrounding dates etc
-- Moved to a more Elixiry way of returning results, using `{:ok, result}` and `{:error, error}`. We were always doing the latter, but decided to move to the former to keep in step with other libraries.
-- Moved to Elixir 1.4, along with Dates etc.
-- Removed multiple dependencies, including Timex and Poolboy (which is built into the driver, Postgrex)
-
-
 ## Documentation
 
 API documentation is available at http://hexdocs.pm/moebius
-
-## Building docs from source
-
-```bash
-$ MIX_ENV=dev mix docs
-```
 
 ## Installation
 
@@ -43,7 +20,7 @@ Installing Moebius involves a few small steps:
     end
    ```
 
-  2. Add the db child process to your `Application` module:
+  2. Add the db child process to your `Application` module's supervision tree:
   
   ```elixir
   children = [
@@ -187,12 +164,13 @@ The API is built around the concept of transforming raw data from your database 
 This returns a user with the id of 1.
 
 ```elixir
-{:ok, result} = db(:users)
-    |> filter(name: "Steve")
-    |> sort(:city, :desc)
-    |> limit(10)
-    |> offset(2)
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> filter(name: "Steve")
+  |> sort(:city, :desc)
+  |> limit(10)
+  |> offset(2)
+  |> Moebius.Db.run
 ```
 
 Hopefully it's fairly straightforward what this query returns. All users named Steve sorted by city... skipping the first two, returning the next 10.
@@ -203,31 +181,35 @@ Hopefully it's fairly straightforward what this query returns. All users named S
 An "=" (Equal) query happens when you pass a column name and a value:
 
 ```elixir
-{:ok, result} = db(:users)
-    |> filter(name: "mark")
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> filter(name: "mark")
+  |> Moebius.Db.run
 
 # or, if you want to be more precise, specify the `eq` key:
 
-{:ok, result} = db(:users)
-    |> filter(:name, eq: "mark"])
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> filter(:name, eq: "mark"])
+  |> Moebius.Db.run
 ```
 
 A "!=" (Not Equal) query happens when you specify the `neq` key:
 
 ```elixir
-{:ok, result} = db(:users)
-    |> filter(:name, neq: "mark")
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> filter(:name, neq: "mark")
+  |> Moebius.Db.run
 ```
 
 A ">" (Greater Than) query happens when you specify the `gt` key:
 
 ```elixir
-{:ok, result} = db(:users)
-    |> filter(:order_count, gt: 5)
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> filter(:order_count, gt: 5)
+  |> Moebius.Db.run
 ```
 
 Additionally, the following comparison operators are available:
@@ -239,23 +221,26 @@ Additionally, the following comparison operators are available:
 An "IN" query happens when you pass an array:
 
 ```elixir
-{:ok, result} = db(:users)
-    |> filter(:name, ["mark", "biff", "skip"])
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> filter(:name, ["mark", "biff", "skip"])
+  |> Moebius.Db.run
 
 # or, if you want to be more precise, specify the `in` key:
 
-{:ok, result} = db(:users)
-    |> filter(:name, in: ["mark", "biff", "skip"])
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> filter(:name, in: ["mark", "biff", "skip"])
+  |> Moebius.Db.run
 ```
 
 A "NOT IN" query happens when you specify the `not_in` or `nin` key:
 
 ```elixir
-{:ok, result} = db(:users)
-    |> filter(:name, not_in: ["mark", "biff", "skip"])
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> filter(:name, not_in: ["mark", "biff", "skip"])
+  |> Moebius.Db.run
 ```
 
 If you prefer a more SQL-like syntax, you can use the following aliases:
@@ -265,10 +250,11 @@ If you prefer a more SQL-like syntax, you can use the following aliases:
 - sort: `order_by`
 
 ```elixir
-{:ok, result} = from(:users)
-    |> where(name: "Steve")
-    |> where(:order_count, gt: 5)
-    |> order_by(id: :asc, name: :desc)
+{:ok, result} =
+  from(:users)
+  |> where(name: "Steve")
+  |> where(:order_count, gt: 5)
+  |> order_by(id: :asc, name: :desc)
 ```
 
 If you don't want to deal with my abstractions, just use SQL:
@@ -282,9 +268,10 @@ If you don't want to deal with my abstractions, just use SQL:
 One of the great features of PostgreSQL is the ability to do intelligent full text searches. We support this functionality directly:
 
 ```elixir
-{:ok, result} = db(:users)
-      |> search(for: "Mike", in: [:first, :last, :email])
-      |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> search(for: "Mike", in: [:first, :last, :email])
+  |> Moebius.Db.run
 ```
 
 The `search` function builds a `tsvector` search on the fly for you and executes it over the columns you send in. The results are ordered in descending order using `ts_rank`.
@@ -298,7 +285,8 @@ Start by importing `Moebius.DocumentQuery` and saving a document:
 ```elixir
 import Moebius.DocumentQuery
 
-{:ok, new_user} = db(:friends)
+{:ok, new_user} =
+  db(:friends)
   |> Moebius.Db.save(email: "test@test.com", name: "Moe Test")
 ```
 
@@ -323,7 +311,8 @@ The entire `DocumentQuery` module works off the premise that this is how you wil
 ```elixir
 import Moebius.DocumentQuery
 
-{:ok, new_user} = db(:friends)
+{:ok, new_user} =
+  db(:friends)
   |> searchable([:name])
   |> Moebius.Db.save(email: "test@test.com", name: "Moe Test")
 ```
@@ -333,7 +322,8 @@ By specifying the searchable fields, the `search` field will be updated with the
 Now, we can query our document using full text indexing which is optimized to use the GIN index created above:
 
 ```elixir
-{:ok, user} = db(:friends)
+{:ok, user} =
+  db(:friends)
   |> search("test.com")
   |> Moebius.Db.run
 ```
@@ -341,7 +331,8 @@ Now, we can query our document using full text indexing which is optimized to us
 Or we can do a simple filter:
 
 ```elixir
-{:ok, user} = db(:friends)
+{:ok, user} =
+  db(:friends)
   |> contains(email: "test@test.com")
   |> Moebius.Db.run
 ```
@@ -349,7 +340,8 @@ Or we can do a simple filter:
 This query is optimized to use the `@` (or "contains" operator), using the *other* GIN index specified above. There's more we can do...
 
 ```elixir
-{:ok, users} = db(:friends)
+{:ok, users} =
+  db(:friends)
   |> filter(:money_spent, ">", 100)
   |> Moebius.Db.run
 ```
@@ -357,7 +349,8 @@ This query is optimized to use the `@` (or "contains" operator), using the *othe
 This runs a full table scan so is not terribly optimal, but it does work if you need it once in a while. You can also use the existence (`?`) operator, which is very handy for querying arrays. In the library, it is implemented as `exists`:
 
 ```elixir
-{:ok, buddies} = db(:friends)
+{:ok, buddies} =
+  db(:friends)
   |> exists(:tags, "best")
   |> Moebius.Db.run
 ```
@@ -401,42 +394,46 @@ I highly recommend this approach if you have some difficult SQL you want to writ
 Inserting is pretty straightforward:
 
 ```elixir
-{:ok, result} = db(:users)
-    |> insert(email: "test@test.com", first: "Test", last: "User")
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> insert(email: "test@test.com", first: "Test", last: "User")
+  |> Moebius.Db.run
 ```
 
 Updating can work over multiple rows, or just one, depending on the filter you use:
 
 ```elixir
-{:ok, result} = db(:users)
-    |> filter(id: 1)
-    |> update(email: "maggot@test.com")
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> filter(id: 1)
+  |> update(email: "maggot@test.com")
+  |> Moebius.Db.run
 ```
 
 The filter can be a single record, or affect multiple records:
 
 ```elixir
-{:ok, result} = db(:users)
-    |> filter("id > 100")
-    |> update(email: "test@test.com")
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> filter("id > 100")
+  |> update(email: "test@test.com")
+  |> Moebius.Db.run
 
-{:ok, result} = db(:users)
-    |> filter("email LIKE $2", "%test")
-    |> update(email: "ox@test.com")
-    |> Moebius.Db.run
-
+{:ok, result} =
+  db(:users)
+  |> filter("email LIKE $2", "%test")
+  |> update(email: "ox@test.com")
+  |> Moebius.Db.run
 ```
 
 Deleting works exactly the same way as `update`, but returns the count of deleted items in the result:
 
 ```elixir
-{:ok, result} = db(:users)
-    |> filter("email LIKE $2", "%test")
-    |> delete
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:users)
+  |> filter("email LIKE $2", "%test")
+  |> delete
+  |> Moebius.Db.run
 
 #result.deleted = 10, for instance
 ```
@@ -451,7 +448,8 @@ A bulk insert works by invoking one directly:
 
 ```elixir
 data = [#let's say 10,000 records or so]
-{:ok, result} = db(:people)
+{:ok, result} =
+  db(:people)
   |> bulk_insert(data)
   |> Moebius.Db.transact_batch
 ```
@@ -473,20 +471,22 @@ Table joins can be applied for a single join or piped to create multiple joins. 
 The simplest example is a basic join:
 
 ```elixir
-{:ok, result} = db(:customers)
-    |> join(:orders)
-    |> select
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:customer)
+  |> join(:order)
+  |> select
+  |> Moebius.Db.run
 ```
 
 For multiple table joins you can specify the table that you want to join on:
 
 ```elixir
-{:ok, result} = db(:customers)
-    |> join(:orders, on: :customers)
-    |> join(:items, on: :orders)
-    |> select
-    |> Moebius.Db.run
+{:ok, result} =
+  db(:customer)
+  |> join(:order, on: :customer)
+  |> join(:item, on: :order)
+  |> select
+  |> Moebius.Db.run
 ```
 
 ## Transactions
@@ -495,7 +495,8 @@ Transactions are facilitated by using a callback that has a `pid` on it, which y
 
 ```elixir
 {:ok, result} = transaction fn(pid) ->
-  new_user = db(:users)
+  new_user =
+    db(:users)
     |> insert(pid, email: "frodo@test.com")
     |> Moebius.Db.run(pid)
 
@@ -515,7 +516,8 @@ Aggregates are built with a functional approach in mind. This might seem a bit o
 So, to that end, we have:
 
 ```elixir
-{:ok, sum} = db(:products)
+{:ok, sum} =
+  db(:products)
   |> map("id > 1")
   |> group(:sku)
   |> reduce(:sum, :id)
@@ -538,6 +540,15 @@ You get the idea. If your function only returns one thing, you can specify you d
 
 ```elixir
 {:ok, no_party} = function(:bad_time, :single [me]) |> Moebius.Db.run
+```
+
+## Test
+
+You'll need a local postgres instance running.
+
+```bash
+MIX_ENV=test mix moebius.setup
+MIX_ENV=test mix test
 ```
 
 ## Help?

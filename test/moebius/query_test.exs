@@ -21,7 +21,7 @@ defmodule Moebius.QueryTest do
   end
 
   test "multiple column sort" do
-    cmd = db(:users) |> sort([id: :desc, email: :asc])
+    cmd = db(:users) |> sort(id: :desc, email: :asc)
 
     assert cmd.order == " order by id desc, email asc"
   end

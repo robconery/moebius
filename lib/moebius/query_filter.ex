@@ -1,5 +1,4 @@
 defmodule Moebius.QueryFilter do
-
   @moduledoc """
 
   The QueryFilter module is used to build WHERE clauses to be used in queries. You can
@@ -108,9 +107,10 @@ defmodule Moebius.QueryFilter do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
 
-    {filters, _count} = Enum.map_reduce cols, 1, fn col, acc ->
-      {"#{col} = $#{acc}", acc + 1}
-    end
+    {filters, _count} =
+      Enum.map_reduce(cols, 1, fn col, acc ->
+        {"#{col} = $#{acc}", acc + 1}
+      end)
 
     %{cmd | params: vals, where: " where #{Enum.join(filters, " and ")}", where_columns: cols}
   end
@@ -120,13 +120,14 @@ defmodule Moebius.QueryFilter do
     vals = Keyword.values(criteria)
     param_seed = length(cmd.params) + 1
 
-    {filters, _count} = Enum.map_reduce cols, param_seed, fn col, acc ->
-      {"#{col} = $#{acc}", acc + 1}
-    end
+    {filters, _count} =
+      Enum.map_reduce(cols, param_seed, fn col, acc ->
+        {"#{col} = $#{acc}", acc + 1}
+      end)
 
-    #we have an existing filter, which means we need to append the params and "and" the where
+    # we have an existing filter, which means we need to append the params and "and" the where
     new_params = cmd.params ++ vals
-    new_where = Enum.join([cmd.where,"and #{Enum.join(filters, " and ")}"]," ")
+    new_where = Enum.join([cmd.where, "and #{Enum.join(filters, " and ")}"], " ")
     new_cols = cmd.where_columns ++ cols
 
     %{cmd | params: new_params, where: new_where, where_columns: new_cols}

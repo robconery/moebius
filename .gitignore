@@ -8,3 +8,12 @@ db.sql
 *.DS_Store
 
 /*.beam
+
+.elixir_ls/
+
+# VSCode
+.vscode/
+
+# .DS_Store files from macOS
+.DS_Store
+**/.DS_Store

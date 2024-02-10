@@ -1,9 +1,8 @@
 defmodule Moebius.Query do
+  use Moebius.QueryFilter
 
-  import Inflex, only: [singularize: 1]
   alias Moebius.QueryCommand
   alias Moebius.CommandBatch
-  use Moebius.QueryFilter
 
   @moduledoc """
   The main query interface for Moebius. Import this module into your code and query like a champ
@@ -18,17 +17,20 @@ defmodule Moebius.Query do
   Example
 
   ```
-  result = db(:users)
+  result =
+    db(:users)
     |> to_list
 
-  result = db("membership.users")
+  result =
+    db("membership.users")
     |> to_list
   ```
 
   Or if you prefer more SQL-like syntax, you can use _from_, which is an alias for _db_:
 
   ```
-  result = from(:users)
+  result =
+    from(:users)
     |> to_list
   ```
   """
@@ -46,7 +48,8 @@ defmodule Moebius.Query do
             For example `now() as current_time, name, description`. Defaults to "*"
   Example:
   ```
-  cheap_skate = db(:users)
+  cheap_skate =
+    db(:users)
     |> sort(:money_spent, :desc)
     |> last("first, last, email")
   ```
@@ -55,7 +58,6 @@ defmodule Moebius.Query do
     cmd
     |> sort(sort_by, :desc)
     |> select
-
   end
 
   @doc """
@@ -66,24 +68,27 @@ defmodule Moebius.Query do
 
   Example of single order by:
   ```
-  result = db(:users)
-      |> sort(:name, :desc)
-      |> to_list
+  result =
+    db(:users)
+    |> sort(:name, :desc)
+    |> to_list
   ```
 
   Example of multiple order by:
   ```
-  result = db(:users)
-      |> sort(id: :asc, name: :desc)
-      |> to_list
+  result =
+    db(:users)
+    |> sort(id: :asc, name: :desc)
+    |> to_list
   ```
 
   Or if you prefer more SQL-like syntax, you can use "order_by", which is an alias for "sort":
 
   ```
-  result = db(:users)
-      |> order_by(id: :asc, name: :desc)
-      |> to_list
+  result =
+    db(:users)
+    |> order_by(id: :asc, name: :desc)
+    |> to_list
   ```
   """
   def sort(%QueryCommand{} = cmd, col, dir) when is_atom(col) do
@@ -116,9 +121,10 @@ defmodule Moebius.Query do
   Example:
 
   ```
-  result = db(:users)
-      |> limit(20)
-      |> to_list
+  result =
+    db(:users)
+    |> limit(20)
+    |> to_list
   ```
   """
   def limit(cmd, bound) when is_integer(bound),
@@ -130,10 +136,11 @@ defmodule Moebius.Query do
   Example:
 
   ```
-  result = db(:users)
-      |> limit(20)
-      |> offset(2)
-      |> to_list
+  result =
+    db(:users)
+    |> limit(20)
+    |> offset(2)
+    |> to_list
   ```
   """
   def offset(cmd, n),
@@ -145,10 +152,11 @@ defmodule Moebius.Query do
   Example:
 
   ```
-  result = db(:users)
-      |> limit(20)
-      |> skip(2)
-      |> to_list
+  result =
+    db(:users)
+    |> limit(20)
+    |> skip(2)
+    |> to_list
   ```
   """
   def skip(%QueryCommand{} = cmd, n),
@@ -162,25 +170,29 @@ defmodule Moebius.Query do
 
   Example of String:
   ```
-  command = db(:users)
-      |> limit(20)
-      |> offset(2)
-      |> select("now() as current_time, name, description")
+  command =
+    db(:users)
+    |> limit(20)
+    |> offset(2)
+    |> select("now() as current_time, name, description")
 
   #command is a QueryCommand object with all of the pipelined settings applied
   ```
 
   Example of List:
   ```
-  command = db(:users)
-      |> limit(20)
-      |> offset(2)
-      |> select([:name, :description])
+  command =
+    db(:users)
+    |> limit(20)
+    |> offset(2)
+    |> select([:name, :description])
 
   #command is a QueryCommand object with all of the pipelined settings applied
   ```
   """
-  def select(%QueryCommand{} = cmd, cols \\ "*") when is_bitstring(cols) do
+  def select(cmd, cols \\ "*")
+
+  def select(%QueryCommand{} = cmd, cols) when is_bitstring(cols) do
     select_sql(cmd, cols)
   end
 
@@ -189,7 +201,11 @@ defmodule Moebius.Query do
   end
 
   defp select_sql(cmd, cols) do
-    %{cmd | sql: "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
+    %{
+      cmd
+      | sql:
+          "select #{cols} from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"
+    }
   end
 
   @doc """
@@ -197,28 +213,33 @@ defmodule Moebius.Query do
 
   Example:
 
-  count = db(:users)
-      |> limit(20)
-      |> count
-      |> single
+  count =
+    db(:users)
+    |> limit(20)
+    |> count
+    |> single
 
   #count == 20
   """
   def count(%QueryCommand{} = cmd) do
-    %{cmd | type: :count, sql: "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"}
+    %{
+      cmd
+      | type: :count,
+        sql:
+          "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"
+    }
   end
-
 
   @doc """
   Specifies a GROUP BY for a `map/reduce` (aggregate) query.
 
   cols  -   An atom indicating the column to GROUP BY. Will also be part of the SELECT list.
 
-
   Example:
 
   ```
-  result = db(:users)
+  result =
+    db(:users)
     |> map("money_spent > 100")
     |> group(:company)
     |> reduce(:sum, :money_spent)
@@ -231,7 +252,8 @@ defmodule Moebius.Query do
   Example:
 
   ```
-  result = db(:users)
+  result =
+    db(:users)
     |> map("money_spent > 100")
     |> group("company, state")
     |> reduce(:sum, :money_spent)
@@ -251,7 +273,8 @@ defmodule Moebius.Query do
   Example:
 
   ```
-  result = db(:users)
+  result =
+    db(:users)
     |> map("money_spent > 100")
     |> reduce(:sum, :money_spent)
   ```
@@ -268,7 +291,8 @@ defmodule Moebius.Query do
   Example:
 
   ```
-  result = db(:users)
+  result =
+    db(:users)
     |> map("money_spent > 100")
     |> reduce(:sum, :money_spent)
   ```
@@ -277,15 +301,16 @@ defmodule Moebius.Query do
     do: reduce(cmd, op, Atom.to_string(column))
 
   def reduce(%QueryCommand{} = cmd, op, column) when is_bitstring(column) do
-    sql = cond do
-      cmd.group_by ->
-        "select #{op}(#{column}), #{cmd.group_by} from #{cmd.table_name}#{cmd.join}#{cmd.where} GROUP BY #{cmd.group_by}"
-      true ->
-        "select #{op}(#{column}) from #{cmd.table_name}#{cmd.join}#{cmd.where}"
-    end
+    sql =
+      cond do
+        cmd.group_by ->
+          "select #{op}(#{column}), #{cmd.group_by} from #{cmd.table_name}#{cmd.join}#{cmd.where} GROUP BY #{cmd.group_by}"
+
+        true ->
+          "select #{op}(#{column}) from #{cmd.table_name}#{cmd.join}#{cmd.where}"
+      end
 
     %{cmd | sql: sql}
-
   end
 
   @doc """
@@ -301,13 +326,15 @@ defmodule Moebius.Query do
   Example:
 
   ```
-  result = db(:users)
-        |> search(for: "Mike", in: [:first, :last, :email])
-        |> run
+  result =
+    db(:users)
+    |> search(for: "Mike", in: [:first, :last, :email])
+    |> run
   ```
   """
-  def search(%QueryCommand{} = cmd, for: term, in: columns) when is_list columns do
+  def search(%QueryCommand{} = cmd, for: term, in: columns) when is_list(columns) do
     concat_list = Enum.map_join(columns, ", ' ',  ", &"#{&1}")
+
     sql = """
     select *, ts_rank_cd(to_tsvector(concat(#{concat_list})),to_tsquery($1)) as rank from #{cmd.table_name}
     where to_tsvector(concat(#{concat_list})) @@ to_tsquery($1)
@@ -316,7 +343,6 @@ defmodule Moebius.Query do
 
     %{cmd | sql: sql, params: [term]}
   end
-
 
   @doc """
   Insert multiple rows at once, within a single transaction, returning the inserted records. Pass in a composite list, containing the rows  to be inserted.
@@ -338,7 +364,8 @@ defmodule Moebius.Query do
 
   def bulk_insert(%QueryCommand{} = cmd, list) when is_list(list) do
     # do this once and get a canonnical map for the records -
-    column_map = list |> hd |> Keyword.keys
+    column_map = list |> hd |> Keyword.keys()
+
     cmd
     |> bulk_insert_batch(list, [], column_map)
   end
@@ -352,8 +379,9 @@ defmodule Moebius.Query do
     column_count = length(column_map)
     max_records_per_command = div(max_params, column_count)
 
-    { current, next_batch } = Enum.split(list, max_records_per_command)
+    {current, next_batch} = Enum.split(list, max_records_per_command)
     new_cmd = bulk_insert_command(cmd, current, column_map)
+
     case next_batch do
       [] -> %CommandBatch{commands: Enum.reverse([new_cmd | acc])}
       _ -> db(cmd.table_name) |> bulk_insert_batch(next_batch, [new_cmd | acc], column_map)
@@ -364,21 +392,23 @@ defmodule Moebius.Query do
     column_count = length(column_map)
     row_count = length(list)
 
-    param_list = for row <- 0..row_count-1 do
-      list = (row * column_count + 1 .. (row * column_count) + column_count)
-        |> Enum.to_list
-        |> Enum.map_join(",", &"$#{&1}")
-      "(#{list})"
-    end
+    param_list =
+      for row <- 0..(row_count - 1) do
+        list =
+          (row * column_count + 1)..(row * column_count + column_count)
+          |> Enum.to_list()
+          |> Enum.map_join(",", &"$#{&1}")
+
+        "(#{list})"
+      end
 
     params = for row <- list, {_k, v} <- row, do: v
 
-    column_names = Enum.map_join(column_map,", ", &"#{&1}")
-    value_sql = Enum.join param_list, ","
+    column_names = Enum.map_join(column_map, ", ", &"#{&1}")
+    value_sql = Enum.join(param_list, ",")
     sql = "insert into #{cmd.table_name}(#{column_names}) values #{value_sql};"
     %{cmd | sql: sql, params: params, type: :insert}
   end
-
 
   @doc """
   Creates an insert command based on the assembled pipeline
@@ -386,9 +416,11 @@ defmodule Moebius.Query do
   def insert(%QueryCommand{} = cmd, criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
-    column_names = Enum.map_join(cols,", ", &"#{&1}")
+    column_names = Enum.map_join(cols, ", ", &"#{&1}")
     parameter_placeholders = Enum.map_join(1..length(cols), ", ", &"$#{&1}")
-    sql = "insert into #{cmd.table_name}(#{column_names}) values(#{parameter_placeholders}) returning *;"
+
+    sql =
+      "insert into #{cmd.table_name}(#{column_names}) values(#{parameter_placeholders}) returning *;"
 
     %{cmd | sql: sql, params: vals, type: :insert}
   end
@@ -397,35 +429,36 @@ defmodule Moebius.Query do
   Creates an update command based on the assembled pipeline.
   """
   def update(%QueryCommand{} = cmd, criteria) do
-
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
 
-    {cols, col_count} = Enum.map_reduce cols, 1, fn col, acc ->
-      {"#{col} = $#{acc}", acc + 1}
-    end
+    {cols, col_count} =
+      Enum.map_reduce(cols, 1, fn col, acc ->
+        {"#{col} = $#{acc}", acc + 1}
+      end)
 
-    #here's something for John to clean up :):)
-    where = cond do
+    # here's something for John to clean up :):)
+    where =
+      cond do
+        length(cmd.where_columns) > 0 ->
+          {filters, _count} =
+            Enum.map_reduce(cmd.where_columns, col_count, fn col, acc ->
+              {"#{col} = $#{acc}", acc + 1}
+            end)
 
-      length(cmd.where_columns) > 0 ->
-        {filters, _count} = Enum.map_reduce cmd.where_columns, col_count, fn col, acc ->
-          {"#{col} = $#{acc}", acc + 1}
-        end
-        " where " <> Enum.join(filters, " and ")
+          " where " <> Enum.join(filters, " and ")
 
-      cmd.where -> cmd.where
-    end
+        cmd.where ->
+          cmd.where
+      end
 
-    #add the filter criteria to the update list
+    # add the filter criteria to the update list
     params = vals ++ cmd.params
     columns = Enum.join(cols, ", ")
 
     sql = "update #{cmd.table_name} set #{columns}#{where} returning *;"
     %{cmd | sql: sql, type: :update, params: params}
   end
-
-
 
   @doc """
   Creates a DELETE command
@@ -434,8 +467,6 @@ defmodule Moebius.Query do
     sql = "delete from #{cmd.table_name}" <> cmd.where <> ";"
     %{cmd | sql: sql, type: :delete}
   end
-
-
 
   @doc """
   Build a table join for your query. There are a number of options to handle various joins.
@@ -447,36 +478,65 @@ defmodule Moebius.Query do
   :primary_key - specify the joining tables primary key column
   :using       - used to specify a USING queries list of columns to join on
 
-  Example of simple join:
+  Example of simple join (assumes primary key is "id" and foreign key is "customer_id"):
   ```
-    cmd = db(:customers)
-        |> join(:orders)
-        |> select
+    cmd =
+      db(:customer)
+      |> join(:order)
+      |> select
+  ```
+
+   Example specifying the primary key (customer.customer_id):
+  ```
+    cmd =
+      db(:customer)
+      |> join(:order, primary_key: :customer_id)
+      |> select
+  ```
+
+   Example specifying the foreign key (order.customer_number):
+  ```
+    cmd =
+      db(:customer)
+      |> join(:order, foreign_key: :customer_number)
+      |> select
   ```
 
   Example of multiple table joins:
   ```
-    cmd = db(:customers)
-        |> join(:orders, on: :customers)
-        |> join(:items, on: :orders)
+    cmd =
+      db(:customer)
+      |> join(:order, on: :customer)
+      |> join(:item, on: :order)
+      |> select
+  ```
+
+  Example of outer joins:
+  ```
+    cmd =
+        db(:customer)
+        |> join(:order, join: :left)
         |> select
   ```
   """
   def join(%QueryCommand{} = cmd, table, opts \\ []) do
-    join_type   = Keyword.get(opts, :join, "inner")
-    join_table  = Keyword.get(opts, :on, cmd.table_name)
-    foreign_key = Keyword.get(opts, :foreign_key, "#{singularize(join_table)}_id")
+    join_type = Keyword.get(opts, :join, "inner")
+    join_table = Keyword.get(opts, :on, cmd.table_name)
+    foreign_key = Keyword.get(opts, :foreign_key, "#{join_table}_id")
     primary_key = Keyword.get(opts, :primary_key, "id")
-    using       = Keyword.get(opts, :using, nil)
+    using = Keyword.get(opts, :using, nil)
 
-    join_condition = case using do
-      nil ->
-        " #{join_type} join #{table} on #{join_table}.#{primary_key} = #{table}.#{foreign_key}"
-      cols ->
-        " #{join_type} join #{table} using (#{Enum.join(cols, ", ")})"
-    end
+    condition = join_condition(table, join_type, join_table, foreign_key, primary_key, using)
 
-    %{cmd | join: [cmd.join|join_condition]}
+    %{cmd | join: [cmd.join | condition]}
+  end
+
+  defp join_condition(table, join_type, join_table, foreign_key, primary_key, nil) do
+    " #{join_type} join #{table} on #{join_table}.#{primary_key} = #{table}.#{foreign_key}"
+  end
+
+  defp join_condition(table, join_type, _join_table, _foreign_key, _primary_key, cols) do
+    " #{join_type} join #{table} using (#{Enum.join(cols, ", ")})"
   end
 
   @doc """
@@ -490,7 +550,6 @@ defmodule Moebius.Query do
     file
     |> sql_file_command([])
   end
-
 
   @doc """
   Executes the SQL in a given SQL file with the specified parameters. Specify the scripts
@@ -511,34 +570,34 @@ defmodule Moebius.Query do
   """
   def sql_file_command(file, params \\ [])
 
-  def sql_file_command(file, params) when not is_list(params),
-    do: sql_file_command(file, [params])
+  def sql_file_command(file, params) when not is_list(params) do
+    sql_file_command(file, [params])
+  end
 
   def sql_file_command(file, params) do
-    #find the DB dir
-    scripts_dir = Application.get_env(:moebius, :scripts)
-    file_path = Path.join(scripts_dir, "#{Atom.to_string(file)}.sql")
-    sql=File.read!(file_path)
+    sql =
+      Application.get_env(:moebius, :scripts)
+      |> Path.join("#{Atom.to_string(file)}.sql")
+      |> File.read!()
+      |> String.trim()
 
-    %Moebius.QueryCommand{sql: String.trim(sql), params: params}
+    %Moebius.QueryCommand{sql: sql, params: params}
   end
 
   @doc """
   Executes a function with the given name, passed as an atom.
 
   Example:
-
   ```
-  result = db(:users)
+  result =
+    db(:users)
     |> function(:all_users)
-
   ```
   """
   def function(function_name) do
     function_name
     |> function_command([])
   end
-
 
   @doc """
   Executes a function with the given name, passed as an atom.
@@ -548,16 +607,15 @@ defmodule Moebius.Query do
   Example:
 
   ```
-  result = db(:users)
-    |> function(:friends, ["mike","jane"])
-
+  result =
+    db(:users)
+    |> function(:friends, ["mike", "jane"])
   ```
   """
   def function(function_name, params) do
     function_name
     |> function_command(params)
   end
-
 
   @doc """
   Creates a function command
@@ -568,14 +626,13 @@ defmodule Moebius.Query do
     do: function_command(function_name, [params])
 
   def function_command(function_name, params) do
-    arg_list = cond do
-      length(params) > 0 ->  Enum.map_join(1..length(params), ", ", &"$#{&1}")
-      true -> ""
-    end
+    arg_list =
+      cond do
+        length(params) > 0 -> Enum.map_join(1..length(params), ", ", &"$#{&1}")
+        true -> ""
+      end
 
     sql = "select * from #{function_name}(#{arg_list});"
     %Moebius.QueryCommand{sql: sql, params: params}
   end
-
-
 end
