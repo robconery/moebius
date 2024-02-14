@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.Helpers do
+defmodule Mix.Tasks.Moebius.Helpers do
   @moduledoc false
   def create_database(database_name) do
     "-c \"CREATE DATABASE #{database_name};\""

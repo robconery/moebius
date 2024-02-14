@@ -4,7 +4,7 @@ defmodule Mix.Tasks.Moebius.Drop do
   """
   use Mix.Task
 
-  alias Mix.Tasks.Helpers
+  alias Mix.Tasks.Moebius.Helpers
 
   def run(_args) do
     Mix.Task.run("app.start")
