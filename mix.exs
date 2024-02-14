@@ -48,10 +48,11 @@ defmodule Moebius.Mixfile do
     ]
   end
 
-  def package do
+  defp package() do
     [
+      files: ~w(lib test .formatter.exs mix.exs README* LICENSE*),
       maintainers: ["Rob Conery", "Chase Pursley"],
-      licenses: ["New BSD"],
+      licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/robconery/moebius"}
     ]
   end
