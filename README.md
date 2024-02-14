@@ -16,7 +16,7 @@ Installing Moebius involves a few small steps:
 
    ```elixir
     def deps do
-      [{:moebius, "~> 3.2.0"}]
+      [{:moebius, "~> 4.0.0"}]
     end
    ```
 
