@@ -16,7 +16,6 @@ defmodule Moebius.Mixfile do
       name: "Moebius",
       docs: [
         source_ref: "v#{@version}",
-        main: Moebius.Query,
         source_url: "https://github.com/robconery/moebius",
         extras: ["README.md"]
       ],
@@ -26,12 +25,10 @@ defmodule Moebius.Mixfile do
     ]
   end
 
-  # Configuration for the OTP application
-  #
-  # Type "mix help compile.app" for more information
+  # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      applications: [:logger, :postgrex]
+      extra_applications: [:logger]
     ]
   end
 
@@ -41,8 +38,7 @@ defmodule Moebius.Mixfile do
       {:jason, "~> 1.4"},
 
       # Dev & Test
-      {:ex_doc, "~> 0.31.1", only: [:dev, :docs]},
-      {:earmark, "~> 1.4.46", only: [:dev, :docs]},
+      {:ex_doc, "~> 0.31.1", only: :dev},
       {:credo, "~> 1.7.4", only: [:dev, :test]},
       {:sobelow, "~> 0.12", only: [:dev, :test], runtime: false}
     ]

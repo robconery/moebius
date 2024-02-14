@@ -545,6 +545,7 @@ defmodule Moebius.Query do
 
   ```
   result = sql_file(:simple)
+  ```
   """
   def sql_file(file) do
     file
