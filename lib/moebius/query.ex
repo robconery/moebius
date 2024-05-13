@@ -433,11 +433,11 @@ defmodule Moebius.Query do
     vals = Keyword.values(criteria)
 
     first_available_param = length(cmd.params) + 1
+
     {cols, _col_count} =
-      Enum.map_reduce(cols, first_available_param,
-                      fn col, acc ->
-                        {"#{col} = $#{acc}", acc + 1}
-                      end)
+      Enum.map_reduce(cols, first_available_param, fn col, acc ->
+        {"#{col} = $#{acc}", acc + 1}
+      end)
 
     params = cmd.params ++ vals
     columns = Enum.join(cols, ", ")

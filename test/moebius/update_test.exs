@@ -43,9 +43,9 @@ defmodule Moebius.UpdateTest do
     assert cmd.params == ["test", "ox@test.com"]
   end
 
-
   test "basic update with 'in' filter" do
     names = ["Super", "Mike"]
+
     cmd =
       db(:users)
       |> filter(:first, in: names)
@@ -56,18 +56,16 @@ defmodule Moebius.UpdateTest do
     assert cmd.params == names ++ [["newrole"]]
   end
 
-
   test "basic update with '>' filter" do
     cmd =
       db(:users)
       |> filter(:order_count, gt: 5)
       |> update(roles: ["newrole"])
+
     assert cmd.sql == "update users set roles = $2 where order_count > $1 returning *;"
     assert length(cmd.params) == 2
     assert cmd.params == [5, ["newrole"]]
   end
-
-
 
   # TODO: Move this to date tests
 
