@@ -13,8 +13,9 @@ defmodule Moebius.UpdateTest do
   end
 
   test "a basic user update", %{cmd: cmd} do
-    assert cmd.sql == "update users set email = $1 where id = $2 returning *;"
+    assert cmd.sql == "update users set email = $2 where id = $1 returning *;"
     assert length(cmd.params) == 2
+    assert cmd.params == [1, "maggot@test.com"]
   end
 
   test "a basic user insert has params set", %{cmd: cmd} do
@@ -34,11 +35,36 @@ defmodule Moebius.UpdateTest do
   test "a bulk update with a string filter and params" do
     cmd =
       db(:users)
-      |> filter("email LIKE %$2", "test")
+      |> filter("email LIKE %$1", "test")
       |> update(email: "ox@test.com")
 
-    assert cmd.sql == "update users set email = $1 where email LIKE %$2 returning *;"
+    assert cmd.sql == "update users set email = $2 where email LIKE %$1 returning *;"
     assert length(cmd.params) == 2
+    assert cmd.params == ["test", "ox@test.com"]
+  end
+
+  test "basic update with 'in' filter" do
+    names = ["Super", "Mike"]
+
+    cmd =
+      db(:users)
+      |> filter(:first, in: names)
+      |> update(roles: ["newrole"])
+
+    assert cmd.sql == "update users set roles = $3 where first IN($1, $2) returning *;"
+    assert length(cmd.params) == 3
+    assert cmd.params == names ++ [["newrole"]]
+  end
+
+  test "basic update with '>' filter" do
+    cmd =
+      db(:users)
+      |> filter(:order_count, gt: 5)
+      |> update(roles: ["newrole"])
+
+    assert cmd.sql == "update users set roles = $2 where order_count > $1 returning *;"
+    assert length(cmd.params) == 2
+    assert cmd.params == [5, ["newrole"]]
   end
 
   # TODO: Move this to date tests

@@ -432,31 +432,17 @@ defmodule Moebius.Query do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
 
-    {cols, col_count} =
-      Enum.map_reduce(cols, 1, fn col, acc ->
+    first_available_param = length(cmd.params) + 1
+
+    {cols, _col_count} =
+      Enum.map_reduce(cols, first_available_param, fn col, acc ->
         {"#{col} = $#{acc}", acc + 1}
       end)
 
-    # here's something for John to clean up :):)
-    where =
-      cond do
-        length(cmd.where_columns) > 0 ->
-          {filters, _count} =
-            Enum.map_reduce(cmd.where_columns, col_count, fn col, acc ->
-              {"#{col} = $#{acc}", acc + 1}
-            end)
-
-          " where " <> Enum.join(filters, " and ")
-
-        cmd.where ->
-          cmd.where
-      end
-
-    # add the filter criteria to the update list
-    params = vals ++ cmd.params
+    params = cmd.params ++ vals
     columns = Enum.join(cols, ", ")
 
-    sql = "update #{cmd.table_name} set #{columns}#{where} returning *;"
+    sql = "update #{cmd.table_name} set #{columns}#{cmd.where} returning *;"
     %{cmd | sql: sql, type: :update, params: params}
   end
 
