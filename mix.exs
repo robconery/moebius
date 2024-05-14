@@ -1,7 +1,7 @@
 defmodule Moebius.Mixfile do
   use Mix.Project
 
-  @version "4.0.2"
+  @version "4.1.0"
 
   def project do
     [
