@@ -1,7 +1,7 @@
 defmodule Moebius.Mixfile do
   use Mix.Project
 
-  @version "4.1.0"
+  @version "4.1.1"
 
   def project do
     [
@@ -34,12 +34,12 @@ defmodule Moebius.Mixfile do
 
   defp deps do
     [
-      {:postgrex, "~> 0.17.4"},
-      {:jason, "~> 1.4"},
+      {:postgrex, "~> 0.18.0"},
+      {:jason, "~> 1.4.3"},
 
       # Dev & Test
-      {:ex_doc, "~> 0.31.1", only: :dev},
-      {:credo, "~> 1.7.4", only: [:dev, :test]},
+      {:ex_doc, "~> 0.34.2", only: :dev},
+      {:credo, "~> 1.7.7", only: [:dev, :test]},
       {:sobelow, "~> 0.12", only: [:dev, :test], runtime: false}
     ]
   end
