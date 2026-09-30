@@ -6,7 +6,7 @@ defmodule Moebius.QueryFilter do
 
   Here is an example of adding a predicate to match an email address:
 
-    iex> cmd = %Moebius.QueryCommand{table_name: 'users'}
+    iex> cmd = %Moebius.QueryCommand{table_name: "users"}
     iex> cmd = Moebius.QueryFilter.filter(cmd, email: "test@test.com")
     iex> cmd.where
     " where email = $1"
@@ -15,7 +15,10 @@ defmodule Moebius.QueryFilter do
 
   Or if you prefer a more SQL-like syntax, you can use "where", which is an alias for "filter":
 
+    iex> cmd = %Moebius.QueryCommand{table_name: "users"}
     iex> cmd = Moebius.QueryFilter.where(cmd, email: "test@test.com")
+    iex> cmd.where
+    " where email = $1"
 
   Although there are more examples in the Moebius.Query module here are a few to show filters in
   action:
@@ -40,7 +43,7 @@ defmodule Moebius.QueryFilter do
     iex> cmd.sql
     "select * from users where order_count > $1;"
     iex> cmd.params
-    ["phillip", "lela", "bender"]
+    [5]
 
     Basic Select using 'IN' Operator:
 
@@ -86,7 +89,7 @@ defmodule Moebius.QueryFilter do
     iex> cmd.sql
     "select * from users where email LIKE $1 and name NOT IN($2, $3, $4) and order_count > $5;"
     iex> cmd.params
-    ["%test.com%", "phillip", "lela", "bender"]
+    ["%test.com%", "phillip", "lela", "bender", 5]
 
   """
 

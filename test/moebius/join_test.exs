@@ -1,5 +1,5 @@
 defmodule Moebius.JoinTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   import Moebius.Query
 
   test "a basic join" do

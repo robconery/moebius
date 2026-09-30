@@ -1,5 +1,5 @@
 defmodule Moebius.QueryTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   import Moebius.Query
 
   test "single column default (ASC) sort" do

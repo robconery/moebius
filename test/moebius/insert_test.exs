@@ -1,28 +1,49 @@
-defmodule MoebiusInsertTest do
+defmodule Moebius.InsertTest do
   use ExUnit.Case
-
   import Moebius.Query
 
-  setup_all do
-    cmd =
-      db(:users)
-      |> insert(email: "test@test.com", first: "Test", last: "User")
-
-    {:ok, cmd: cmd}
+  setup do
+    Moebius.TestData.reset_users!()
+    :ok
   end
 
-  test "a basic user insert", %{cmd: cmd} do
+  test "builds an insert with a placeholder per column" do
+    cmd = db(:users) |> insert(email: "test@test.com", first: "Test", last: "User")
+
     assert cmd.sql == "insert into users(email, first, last) values($1, $2, $3) returning *;"
+    assert cmd.params == ["test@test.com", "Test", "User"]
+    assert cmd.type == :insert
   end
 
-  test "a basic user insert has params set", %{cmd: cmd} do
-    assert length(cmd.params) == 3
-  end
-
-  test "it actually works" do
-    assert {:ok, %{email: "test@test.com", first: "Test", id: _id, last: "User", profile: nil}} =
+  test "returns the inserted row, defaults included" do
+    assert {:ok,
+            %{
+              email: "test@test.com",
+              first: "Test",
+              last: "User",
+              id: id,
+              order_count: 10,
+              profile: nil,
+              roles: nil
+            }} =
              db(:users)
              |> insert(email: "test@test.com", first: "Test", last: "User")
+             |> TestDb.run()
+
+    assert is_integer(id)
+  end
+
+  test "returns an error on a constraint violation" do
+    {:ok, _} = db(:users) |> insert(email: "dupe@test.com") |> TestDb.run()
+
+    assert {:error, "duplicate key value violates unique constraint \"users_email_key\""} =
+             db(:users) |> insert(email: "dupe@test.com") |> TestDb.run()
+  end
+
+  test "json and array columns round-trip" do
+    assert {:ok, %{profile: %{"theme" => "dark"}, roles: ["admin", "dev"]}} =
+             db(:users)
+             |> insert(email: "json@test.com", profile: %{theme: "dark"}, roles: ["admin", "dev"])
              |> TestDb.run()
   end
 end

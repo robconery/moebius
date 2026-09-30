@@ -1,47 +1,46 @@
-defmodule Moebius.GithubIssues do
+defmodule Moebius.ReportedIssuesTest do
   use ExUnit.Case
   import Moebius.Query
 
-  test "multiple filters #70" do
-    db(:users)
-    |> insert(first: "Super", last: "Filter", email: "superfilter@test.com")
-    |> TestDb.run()
-
-    {:ok, res} =
-      db(:users)
-      |> filter(first: "Super")
-      |> filter(last: "Filter")
-      |> TestDb.first()
-
-    assert(res.email == "superfilter@test.com")
+  setup do
+    Moebius.TestData.reset_users!()
+    :ok
   end
 
-  test "It can update an array column #80" do
-    db(:users)
-    |> insert(email: "array@test.com", first: "Test", last: "User", roles: ["admin"])
-    |> TestDb.run()
-
-    {:ok, res: true}
-
-    {:ok, res} =
+  test "multiple filters are joined with and (#70)" do
+    {:ok, _} =
       db(:users)
-      |> filter(email: "array@test.com")
-      |> update(roles: ["admin"])
-      |> TestDb.first()
+      |> insert(first: "Super", last: "Filter", email: "superfilter@test.com")
+      |> TestDb.run()
 
-    # if we got here we're happy
-    assert(res.email == "array@test.com")
+    {:ok, _} =
+      db(:users) |> insert(first: "Super", last: "Other", email: "other@test.com") |> TestDb.run()
+
+    assert {:ok, [%{email: "superfilter@test.com"}]} =
+             db(:users)
+             |> filter(first: "Super")
+             |> filter(last: "Filter")
+             |> TestDb.run()
   end
 
-  # test "Filtering on NULL values from #35" do
-  #   db(:users)
-  #     |> insert(email: "null@test.com", first: "Test")
-  #     |> TestDb.run
-  #
-  #   cmd = db(:users)
-  #     |> filter(last: nil)
-  #     |> TestDb.run
-  #
-  #   #assert(res.email == "null@test.com")
-  # end
+  test "an array column can be updated (#80)" do
+    {:ok, _} = db(:users) |> insert(email: "array@test.com", roles: ["admin"]) |> TestDb.run()
+
+    assert {:ok, %{email: "array@test.com", roles: ["admin", "owner"]}} =
+             db(:users)
+             |> filter(email: "array@test.com")
+             |> update(roles: ["admin", "owner"])
+             |> TestDb.first()
+  end
+
+  @tag skip:
+         "filter(col: nil) builds `col = $1`, which never matches NULL. Fixed with the epgsql swap."
+  test "filtering on nil matches NULL (#35)" do
+    {:ok, _} = db(:users) |> insert(email: "null@test.com", first: "Test") |> TestDb.run()
+
+    {:ok, _} =
+      db(:users) |> insert(email: "notnull@test.com", first: "Test", last: "Set") |> TestDb.run()
+
+    assert {:ok, [%{email: "null@test.com"}]} = db(:users) |> filter(last: nil) |> TestDb.run()
+  end
 end

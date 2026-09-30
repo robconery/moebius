@@ -1,14 +1,14 @@
 defmodule Moebius.QueryFilterTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
-  # doctest Moebius.QueryFilter
+  doctest Moebius.QueryFilter
 
   import Moebius.QueryFilter
 
   setup context do
     predicates = context[:where] || ""
     params = context[:params] || []
-    cmd = %Moebius.QueryCommand{table_name: ~c"users", where: predicates, params: params}
+    cmd = %Moebius.QueryCommand{table_name: "users", where: predicates, params: params}
     {:ok, [query: cmd]}
   end
 
@@ -88,7 +88,7 @@ defmodule Moebius.QueryFilterTest do
     test "a 'WHERE' statement using 'NOT IN'", %{query: query} do
       not_in = ["phillip", "lela", "bender"]
       not_in_query = filter(query, :name, not_in: not_in)
-      nin_query = filter(query, :name, not_in: not_in)
+      nin_query = filter(query, :name, nin: not_in)
 
       assert " where name NOT IN($1, $2, $3)" == not_in_query.where
       assert " where name NOT IN($1, $2, $3)" == nin_query.where

@@ -20,6 +20,14 @@ Core modules (all in `lib/moebius/`):
 - `database.ex`: `use Moebius.Database` macro (run/first/find/save/transaction) plus the Postgrex `execute`
 - `transformer.ex`: turns Postgrex results into maps
 
+## Skills (in `.claude/skills/`)
+
+Load the matching skill before you change code:
+- `erlang-otp`: processes, supervision, the pool, calling Erlang (epgsql, pooler). Its `references/` document the epgsql and pooler APIs.
+- `postgres-sql`: any function that builds SQL, DDL, indexes, pagination, bulk writes, transactions.
+- `supabase-postgres-best-practices`: general Postgres rules with examples (installed from supabase/agent-skills; update with `npx skills update`).
+- `elixir-testing`: anything under `test/`. Every test owns its data. Check for flaky tests with `mix test --repeat-until-failure 20`.
+
 ## Running tests
 
 Tests need a local Postgres with a `moebius_test` database, reachable as `postgres:postgres@localhost:5432` (see `config/test.exs`).

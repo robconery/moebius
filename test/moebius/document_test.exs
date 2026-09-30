@@ -1,283 +1,221 @@
-defmodule Candy do
-  defstruct id: nil,
-            sticky: true,
-            chocolate: :gooey
-end
-
-defmodule Moebius.DocTest do
+defmodule Moebius.DocumentTest do
   use ExUnit.Case
   import Moebius.DocumentQuery
 
+  defmodule Candy do
+    @moduledoc false
+    defstruct id: nil, sticky: true, chocolate: "gooey"
+  end
+
   setup do
-    "delete from user_docs;" |> TestDb.run()
-    "drop table if exists monkies;" |> TestDb.run()
-    doc = [email: "steve@test.com", first: "Steve", money_spent: 500, pets: ["poopy", "skippy"]]
+    TestDb.run("delete from user_docs;")
+    TestDb.run("drop table if exists monkies;")
+    TestDb.run("drop table if exists artists;")
 
-    monkey = %{sku: "stuff", name: "Chicken Wings", description: "duck dog lamb"}
+    {:ok, monkey} =
+      db(:monkies)
+      |> searchable([:name, :description])
+      |> TestDb.save(%{sku: "stuff", name: "Chicken Wings", description: "duck dog lamb"})
 
-    db(:monkies)
-    |> searchable([:name, :description])
-    |> TestDb.save(monkey)
-
-    {:ok, res} =
+    {:ok, steve} =
       db(:user_docs)
-      |> TestDb.save(doc)
+      |> TestDb.save(
+        email: "steve@test.com",
+        first: "Steve",
+        money_spent: 500,
+        pets: ["poopy", "skippy"]
+      )
 
-    {:ok, res: res}
+    {:ok, steve: steve, monkey: monkey}
   end
 
-  test "A document table will created by calling create_document_table" do
-    res = TestDb.create_document_table(:poop)
-    assert res == {:ok, "Table created"}
-  end
+  describe "document tables" do
+    test "create_document_table/1 creates the table" do
+      TestDb.run("drop table if exists vats;")
 
-  test "a document can be saved if one of the values has a single quote" do
-    "drop table if exists artists;" |> TestDb.run()
+      assert TestDb.create_document_table(:vats) == {:ok, "Table created"}
+      assert {:ok, []} = db(:vats) |> TestDb.run()
+    end
 
-    thing = %{
-      collections: ["equipment"],
-      cost: 67743,
-      description:
-        "Why walk **when you can fly**! Weak Martian gravity means you too can fly wherever you want, whenever you want with some rockets on your back. Light, portable and really loud - you'll be the talk of the Martian skies! ",
-      domain: "localhost",
-      image: "johnny-liftoff.jpg",
-      inventory: 43,
-      name: "Johnny Liftoff Rocket Suit",
-      price: 8_933_300,
-      published_at: "2016-02-12T01:21:29.147Z",
-      sku: "johnny-liftoff",
-      status: "published",
-      summary: "Keep your feet off the ground with our space-age rocket suit",
-      vendor: %{name: "Martian Armaments, Ltd", slug: "martian-armaments"}
-    }
+    test "save creates the table if it doesn't exist" do
+      assert {:ok, %{name: "Spiff", id: 1}} = db(:artists) |> TestDb.save(%{name: "Spiff"})
+    end
 
-    {:ok, res} = db(:artists) |> TestDb.save(thing)
-    assert res.sku == "johnny-liftoff"
-  end
+    test "save creates the table even when an id is included" do
+      assert {:ok, %{name: "jeff", id: 1}} = db(:artists) |> TestDb.save(%{name: "jeff", id: 100})
+    end
 
-  test "save creates table if it doesn't exist" do
-    "drop table if exists artists;" |> TestDb.run()
-    {:ok, res} = db(:artists) |> TestDb.save(%{name: "Spiff"})
-    assert res.name == "Spiff"
-  end
-
-  test "nil is returned when id is not found in docs" do
-    {:ok, res} = db(:monkies) |> TestDb.find(155_555)
-    assert res == nil
-  end
-
-  test "the document is returned with find" do
-    {:ok, res} = db(:monkies) |> TestDb.find(1)
-    assert res.name == "Chicken Wings"
-  end
-
-  test "the document is returned with created and updated" do
-    {:ok, res} = db(:monkies) |> TestDb.find(1)
-    assert res.created_at
-  end
-
-  test "updated_at is overridden" do
-    {:ok, res} = db(:monkies) |> TestDb.save(%{name: "bip", updated_at: "poop"})
-    assert res.updated_at == res.created_at
-  end
-
-  test "saving a struct" do
-    thing = %Candy{}
-    {:ok, res} = db(:monkies) |> TestDb.save(thing)
-    assert res.id
-  end
-
-  test "returns a struct if a struct was passed in" do
-    thing = %Candy{}
-    assert thing.__struct__ == Candy
-    {:ok, res} = db(:monkies) |> TestDb.save(thing)
-    assert res.__struct__ == Candy
-  end
-
-  test "can pull out a single record by id with find" do
-    {:ok, res} = db(:monkies) |> TestDb.find(1)
-    assert res.id == 1
-  end
-
-  test "first creates table if it doesn't exist" do
-    "drop table if exists artists;" |> TestDb.run()
-    {:ok, res} = db(:artists) |> TestDb.first()
-
-    case res do
-      {:error, _err} -> flunk("Nope")
-      res -> res
+    test "first creates the table if it doesn't exist" do
+      assert {:ok, nil} = db(:artists) |> TestDb.first()
     end
   end
 
-  test "save creates table if it doesn't exist even when an id is included" do
-    "drop table if exists artists;" |> TestDb.run()
-    assert {:ok, %{name: "jeff", id: 1}} = db(:artists) |> TestDb.save(%{name: "jeff", id: 100})
+  describe "save/2 inserting" do
+    test "a keyword list returns the saved document", %{steve: steve} do
+      assert %{email: "steve@test.com", first: "Steve", money_spent: 500} = steve
+      assert steve.pets == ["poopy", "skippy"]
+      assert is_integer(steve.id) and steve.id > 0
+    end
+
+    test "a map returns the saved document with an id" do
+      assert {:ok, %{email: "new_person@test.com", id: id}} =
+               db(:user_docs) |> TestDb.save(%{email: "new_person@test.com"})
+
+      assert is_integer(id)
+    end
+
+    test "values with single quotes and nested maps round-trip" do
+      thing = %{
+        description: "Why walk when you can fly! You'll be the talk of the Martian skies!",
+        name: "Johnny Liftoff Rocket Suit",
+        price: 8_933_300,
+        sku: "johnny-liftoff",
+        vendor: %{name: "Martian Armaments, Ltd", slug: "martian-armaments"}
+      }
+
+      assert {:ok, saved} = db(:artists) |> TestDb.save(thing)
+      assert saved.description == thing.description
+      assert saved.vendor == %{name: "Martian Armaments, Ltd", slug: "martian-armaments"}
+    end
+
+    test "created_at and updated_at are set by the database and can't be overridden" do
+      assert {:ok, saved} = db(:monkies) |> TestDb.save(%{name: "bip", updated_at: "nope"})
+      assert %DateTime{} = saved.created_at
+      assert saved.updated_at == saved.created_at
+    end
+
+    test "saving a struct returns the same struct type" do
+      assert {:ok, %Candy{id: id, sticky: true, chocolate: "gooey"}} =
+               db(:monkies) |> TestDb.save(%Candy{})
+
+      assert is_integer(id)
+    end
   end
 
-  test "a simple insert as a list returns the record", %{res: res} do
-    assert res.email == "steve@test.com"
+  describe "save/2 updating" do
+    test "a document with an id is updated in place", %{steve: steve} do
+      assert {:ok, %{email: "blurgh@test.com", id: id}} =
+               db(:user_docs) |> TestDb.save(%{email: "blurgh@test.com", id: steve.id})
+
+      assert id == steve.id
+      assert {:ok, [%{email: "blurgh@test.com"}]} = db(:user_docs) |> TestDb.run()
+    end
+
+    test "updated_at moves forward", %{steve: steve} do
+      {:ok, updated} = db(:user_docs) |> TestDb.save(Map.put(steve, :first, "Steven"))
+
+      assert updated.first == "Steven"
+      assert DateTime.compare(updated.updated_at, steve.created_at) in [:gt, :eq]
+    end
+
+    test "searchable fields are indexed on save" do
+      {:ok, _} =
+        db(:monkies)
+        |> searchable([:name, :description])
+        |> TestDb.save(%{sku: "hot", name: "Buffalo Wings", description: "spicy"})
+
+      assert {:ok, [%{name: "Buffalo Wings"}]} = db(:monkies) |> search("spicy") |> TestDb.run()
+    end
   end
 
-  test "a simple insert as a list returns the id", %{res: res} do
-    assert res.id > 0
+  describe "finding documents" do
+    test "find returns the document by id", %{steve: steve} do
+      assert {:ok, %{id: id, email: "steve@test.com"}} = db(:user_docs) |> TestDb.find(steve.id)
+      assert id == steve.id
+    end
+
+    test "find returns created_at", %{monkey: monkey} do
+      assert {:ok, %{name: "Chicken Wings", created_at: %DateTime{}}} =
+               db(:monkies) |> TestDb.find(monkey.id)
+    end
+
+    test "find returns nil when the id doesn't exist" do
+      assert {:ok, nil} = db(:monkies) |> TestDb.find(155_555)
+    end
+
+    test "run with no criteria returns every document" do
+      assert {:ok, [%{email: "steve@test.com", id: _}]} = db(:user_docs) |> TestDb.run()
+    end
+
+    test "first returns a single document" do
+      assert {:ok, %{email: "steve@test.com", id: _}} = db(:user_docs) |> TestDb.first()
+    end
+
+    test "contains/2 matches with the containment operator", %{steve: steve} do
+      assert {:ok, %{id: id}} = db(:user_docs) |> contains(email: steve.email) |> TestDb.first()
+      assert id == steve.id
+    end
+
+    test "contains/2 returns nil when nothing matches" do
+      assert {:ok, nil} = db(:monkies) |> contains(email: "dog@dog.comdog") |> TestDb.first()
+    end
+
+    test "filter/3 with a string and a param", %{steve: steve} do
+      assert {:ok, %{id: id}} =
+               db(:user_docs) |> filter("body ->> 'email' = $1", steve.email) |> TestDb.first()
+
+      assert id == steve.id
+    end
+
+    test "filter/4 with a field, an operator and a value" do
+      assert {:ok, [%{email: "steve@test.com"}]} =
+               db(:user_docs) |> filter(:money_spent, ">", 100) |> TestDb.run()
+
+      assert {:ok, []} = db(:user_docs) |> filter(:money_spent, ">", 1000) |> TestDb.run()
+    end
+
+    test "exists/3 matches an element of an array", %{steve: steve} do
+      assert {:ok, %{id: id}} = db(:user_docs) |> exists(:pets, "poopy") |> TestDb.first()
+      assert id == steve.id
+    end
+
+    test "sort, limit and offset combine" do
+      {:ok, _} =
+        db(:user_docs) |> TestDb.save(email: "rich@test.com", money_spent: 900, pets: ["poopy"])
+
+      assert {:ok, %{email: "rich@test.com"}} =
+               db(:user_docs)
+               |> exists(:pets, "poopy")
+               |> sort(:money_spent, :desc)
+               |> limit(1)
+               |> offset(0)
+               |> TestDb.first()
+
+      assert {:ok, [%{email: "steve@test.com"}]} =
+               db(:user_docs)
+               |> exists(:pets, "poopy")
+               |> sort(:money_spent, :desc)
+               |> limit(1)
+               |> offset(1)
+               |> TestDb.run()
+    end
   end
 
-  test "a simple insert as a map" do
-    doc = %{email: "steve@test.com", first: "Steve"}
+  describe "full text search" do
+    test "search/2 uses the indexed search column" do
+      assert {:ok, [%{name: "Chicken Wings"}]} = db(:monkies) |> search("duck") |> TestDb.run()
+    end
 
-    {:ok, res} =
-      db(:user_docs)
-      |> TestDb.save(doc)
-
-    assert res.id > 0
+    test "search/2 with for: and in: searches on the fly" do
+      assert {:ok, [%{name: "Chicken Wings"}]} =
+               db(:monkies) |> search(for: "duck", in: [:name, :description]) |> TestDb.run()
+    end
   end
 
-  test "a simple document query with the DocumentQuery lib" do
-    assert {:ok, [%{email: "steve@test.com", id: _id}]} =
-             db(:user_docs)
-             |> TestDb.run()
-  end
+  describe "deleting documents" do
+    test "delete/2 with an id returns the deleted document", %{steve: steve} do
+      assert {:ok, %{id: id, email: "steve@test.com"}} =
+               db(:user_docs) |> delete(steve.id) |> TestDb.first()
 
-  test "a simple single document query with the DocumentQuery lib" do
-    assert {:ok, %{email: "steve@test.com", id: _id}} =
-             db(:user_docs)
-             |> TestDb.first()
-  end
+      assert id == steve.id
+      assert {:ok, []} = db(:user_docs) |> TestDb.run()
+    end
 
-  test "updating a document", %{res: res} do
-    change = %{email: "blurgh@test.com", id: res.id}
+    test "delete/1 with criteria returns the deleted documents", %{steve: steve} do
+      assert {:ok, [%{email: "steve@test.com"}]} =
+               db(:user_docs) |> contains(email: steve.email) |> delete() |> TestDb.run()
 
-    assert {:ok, %{email: "blurgh@test.com", id: _id}} =
-             db(:user_docs)
-             |> TestDb.save(change)
-  end
-
-  test "the save shortcut inserts a document without an id" do
-    new_doc = %{email: "new_person@test.com"}
-
-    assert {:ok, %{email: "new_person@test.com", id: _id}} =
-             db(:user_docs)
-             |> TestDb.save(new_doc)
-  end
-
-  test "the save shortcut works updating a document", %{res: _res} do
-    change = %{email: "blurgh@test.com"}
-
-    assert {:ok, %{email: "blurgh@test.com", id: _id}} =
-             db(:user_docs)
-             |> TestDb.save(change)
-  end
-
-  test "delete works with just an id", %{res: res} do
-    {:ok, res} =
-      db(:user_docs)
-      |> delete(res.id)
-      |> TestDb.first()
-
-    assert res.id
-  end
-
-  test "delete works with criteria", %{res: res} do
-    {:ok, res} =
-      db(:user_docs)
-      |> contains(email: res.email)
-      |> delete
-      |> TestDb.run()
-
-    assert res != []
-  end
-
-  test "select works with filter", %{res: res} do
-    {:ok, return} =
-      db(:user_docs)
-      |> contains(email: res.email)
-      |> TestDb.first()
-
-    assert return.email == res.email
-  end
-
-  test "select works with string criteria", %{res: res} do
-    {:ok, return} =
-      db(:user_docs)
-      |> filter("body -> 'email' = $1", res.email)
-      |> TestDb.first()
-
-    assert return.email == res.email
-  end
-
-  test "select works with basic criteria", %{res: _res} do
-    {:ok, return} =
-      db(:user_docs)
-      |> filter(:money_spent, ">", 100)
-      |> TestDb.run()
-
-    assert return != []
-  end
-
-  test "select works with existence operator", %{res: res} do
-    {:ok, return} =
-      db(:user_docs)
-      |> exists(:pets, "poopy")
-      |> TestDb.first()
-
-    assert return.id == res.id
-  end
-
-  test "setting search fields works" do
-    new_doc = %{sku: "stuff", name: "Chicken Wings", description: "duck dog lamb"}
-
-    db(:monkies)
-    |> searchable([:name, :description])
-    |> TestDb.save(new_doc)
-  end
-
-  test "select works with sort limit offset" do
-    {:ok, return} =
-      db(:user_docs)
-      |> exists(:pets, "poopy")
-      |> sort(:money_spent)
-      |> limit(1)
-      |> offset(0)
-      |> TestDb.first()
-
-    assert return
-  end
-
-  test "full text search works" do
-    {:ok, res} =
-      db(:monkies)
-      |> search("duck")
-      |> TestDb.run()
-
-    assert res != []
-  end
-
-  test "full text search on the fly works" do
-    {:ok, res} =
-      db(:monkies)
-      |> search(for: "duck", in: [:name, :description])
-      |> TestDb.run()
-
-    assert res != []
-  end
-
-  test "single returns nil when no match" do
-    {:ok, res} =
-      db(:monkies)
-      |> contains(email: "dog@dog.comdog")
-      |> TestDb.first()
-
-    assert res == nil
-  end
-
-  test "finds by id", %{res: res} do
-    monkey =
-      db(:user_docs)
-      |> TestDb.find(res.id)
-
-    case monkey do
-      {:error, err} -> raise err
-      {:ok, steve} -> assert steve.id == res.id
+      assert {:ok, []} = db(:user_docs) |> TestDb.run()
     end
   end
 end

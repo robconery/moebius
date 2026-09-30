@@ -1,22 +1,34 @@
-defmodule Moebius.FullTextSearch do
+defmodule Moebius.FullTextSearchTest do
   use ExUnit.Case
   import Moebius.Query
 
-  setup_all do
-    {:ok, res} =
+  setup do
+    Moebius.TestData.reset_users!()
+
+    {:ok, mike} =
       db(:users)
       |> insert(first: "Mike", last: "Booger", email: "boogerbob@test.com")
       |> TestDb.run()
 
-    {:ok, user: res}
+    {:ok, _} =
+      db(:users) |> insert(first: "Jane", last: "Doe", email: "jane@test.com") |> TestDb.run()
+
+    {:ok, mike: mike}
   end
 
-  test "a simple full text query", %{user: user} do
-    {:ok, result} =
-      db(:users)
-      |> search(for: user.first, in: [:first, :last, :email])
-      |> TestDb.run()
+  test "search/2 builds a ranked full text query" do
+    cmd = db(:users) |> search(for: "Mike", in: [:first, :last])
 
-    assert result != []
+    assert cmd.sql =~ "to_tsvector(concat(first, ' ',  last)) @@ to_tsquery($1)"
+    assert cmd.sql =~ "order by rank desc"
+    assert cmd.params == ["Mike"]
+  end
+
+  test "search/2 returns only the matching rows, with a rank", %{mike: mike} do
+    assert {:ok, [%{id: id, rank: rank}]} =
+             db(:users) |> search(for: "Mike", in: [:first, :last, :email]) |> TestDb.run()
+
+    assert id == mike.id
+    assert is_float(rank) and rank > 0
   end
 end

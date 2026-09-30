@@ -97,8 +97,14 @@ defmodule Moebius.Database do
         |> Moebius.Transformer.from_json()
       end
 
-      def first(%Moebius.DocumentCommand{} = cmd) do
+      def first(%Moebius.DocumentCommand{sql: nil} = cmd) do
         Moebius.DocumentQuery.select(cmd)
+        |> execute
+        |> Moebius.Transformer.from_json(:single)
+      end
+
+      def first(%Moebius.DocumentCommand{} = cmd) do
+        cmd
         |> execute
         |> Moebius.Transformer.from_json(:single)
       end

@@ -4,89 +4,72 @@ defmodule Moebius.BasicSelectTest do
   import TestDb
 
   setup do
-    db(:logs) |> delete |> run
-    db(:users) |> delete |> run
-    {:ok, user} = db(:users) |> insert(email: "friend@test.com") |> run
-    db(:users) |> insert(email: "enemy@test.com") |> run
-    {:ok, res: user}
+    Moebius.TestData.reset_users!()
+    {:ok, friend} = db(:users) |> insert(email: "friend@test.com") |> run()
+    {:ok, _enemy} = db(:users) |> insert(email: "enemy@test.com") |> run()
+    {:ok, friend: friend}
   end
 
-  test "a basic select *" do
-    cmd =
-      db(:users)
-      |> select
+  describe "select/2 SQL" do
+    test "a basic select *" do
+      assert db(:users) |> select() |> Map.get(:sql) == "select * from users;"
+    end
 
-    assert cmd.sql == "select * from users;"
+    test "a binary table name" do
+      assert db("users") |> select() |> Map.get(:sql) == "select * from users;"
+    end
+
+    test "columns as a string" do
+      assert db(:users) |> select("first, last") |> Map.get(:sql) ==
+               "select first, last from users;"
+    end
+
+    test "columns as a list" do
+      assert db(:users) |> select([:first, :last]) |> Map.get(:sql) ==
+               "select first, last from users;"
+    end
+
+    test "with order" do
+      cmd = db(:users) |> sort(:name, :desc) |> select()
+
+      assert cmd.sql == "select * from users order by name desc;"
+    end
+
+    test "with order and limit" do
+      cmd = db(:users) |> sort(:name, :desc) |> limit(10) |> select()
+
+      assert cmd.sql == "select * from users order by name desc limit 10;"
+    end
+
+    test "with order, limit and offset" do
+      cmd = db(:users) |> sort(:name, :desc) |> limit(10) |> offset(2) |> select()
+
+      assert cmd.sql == "select * from users order by name desc limit 10 offset 2;"
+    end
   end
 
-  test "a basic select * using binary for tablename" do
-    cmd =
-      db("users")
-      |> select
+  describe "running selects" do
+    test "first returns the first row of the sort" do
+      assert {:ok, %{email: "friend@test.com"}} = db(:users) |> sort(:id) |> first()
+    end
 
-    assert cmd.sql == "select * from users;"
-  end
+    test "first returns nil when nothing matches" do
+      assert {:ok, nil} = db(:users) |> filter(email: "nobody@test.com") |> first()
+    end
 
-  test "a basic select with columns" do
-    cmd =
-      db(:users)
-      |> select("first, last")
+    test "find returns a single record", %{friend: friend} do
+      assert {:ok, %{id: id, email: "friend@test.com"}} = db(:users) |> find(friend.id)
+      assert id == friend.id
+    end
 
-    assert cmd.sql == "select first, last from users;"
-  end
+    test "filter returns the matching records", %{friend: friend} do
+      assert {:ok, [%{email: "friend@test.com"}]} = db(:users) |> filter(id: friend.id) |> run()
+    end
 
-  test "a basic select with order" do
-    cmd =
-      db(:users)
-      |> sort(:name, :desc)
-      |> select
+    test "run with no filter returns every row" do
+      {:ok, rows} = db(:users) |> run()
 
-    assert cmd.sql == "select * from users order by name desc;"
-  end
-
-  test "a basic select with order and limit without skip" do
-    cmd =
-      db(:users)
-      |> sort(:name, :desc)
-      |> limit(10)
-      |> select
-
-    assert cmd.sql == "select * from users order by name desc limit 10;"
-  end
-
-  test "a basic select with order and limit with offset" do
-    cmd =
-      db(:users)
-      |> sort(:name, :desc)
-      |> limit(10)
-      |> offset(2)
-      |> select
-
-    assert cmd.sql == "select * from users order by name desc limit 10 offset 2;"
-  end
-
-  test "first returns first" do
-    {:ok, res} =
-      db(:users)
-      |> first
-
-    assert res.email == "friend@test.com"
-  end
-
-  test "find returns a single record", %{res: user} do
-    {:ok, found} =
-      db(:users)
-      |> find(user.id)
-
-    assert found.id == user.id
-  end
-
-  test "filter returns a few records", %{res: user} do
-    {:ok, found} =
-      db(:users)
-      |> filter(id: user.id)
-      |> run
-
-    assert found != []
+      assert rows |> Enum.map(& &1.email) |> Enum.sort() == ["enemy@test.com", "friend@test.com"]
+    end
   end
 end

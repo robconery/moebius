@@ -15,7 +15,7 @@ defmodule Moebius.Transformer do
     result_list |> List.first() |> format_ok_result
   end
 
-  def to_list({:ok, %{rows: nil}}), do: []
+  def to_list({:ok, %{rows: nil}}), do: {:ok, []}
   def to_list({:error, message}) when is_binary(message), do: {:error, message}
   def to_list({:error, %{postgres: %{message: message}}}), do: {:error, message}
 
