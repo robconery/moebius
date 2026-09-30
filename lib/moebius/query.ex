@@ -212,24 +212,25 @@ defmodule Moebius.Query do
   end
 
   @doc """
-  Executes a COUNT query based on the assembled pipeline. Analogous to `map/reduce(:count)`. Returns an integer.
+  Executes a COUNT query based on the assembled pipeline. Analogous to `map/reduce(:count)`.
+  Filters and joins apply; `sort`, `limit` and `offset` are ignored, since a count is one row.
 
   Example:
 
-  count =
+  ```
+  {:ok, %{count: count}} =
     db(:users)
-    |> limit(20)
+    |> filter("order_count > 1")
     |> count
-    |> single
-
-  #count == 20
+    |> Moebius.Db.run
+  ```
   """
+  # a count has one row, so sort, limit and offset don't apply (and "order by" would be invalid SQL)
   def count(%QueryCommand{} = cmd) do
     %{
       cmd
       | type: :count,
-        sql:
-          "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where}#{cmd.order}#{cmd.limit}#{cmd.offset};"
+        sql: "select count(1) from #{cmd.table_name}#{cmd.join}#{cmd.where};"
     }
   end
 
@@ -319,11 +320,11 @@ defmodule Moebius.Query do
   end
 
   @doc """
-  Full text search using Postgres' built in indexing, ranked using `tsrank`. This query will result in a full table scan and is not optimized for large result
-  sets. For better results, create a `tsvector` field and populate it with a trigger on insert/update. This will cause some side
-  effects, one of them being that Postgrex, the Elixir driver we use, doesn't know how to resolve the tsvector type, and will throw.
+  Full text search, ranked with `ts_rank_cd`. The `tsvector` is built on the fly, so this scans
+  the table; for a large table, keep a `tsvector` column with a GIN index and query it directly.
 
-  You will need to be sure that you exclude that search column from your query.
+  The term goes through `websearch_to_tsquery`, so anything a person types into a search box
+  works: `"red shoes"`, `"O'Brien"`, `"apple -pie"`, `"\"exact phrase\""`.
 
   for:  -   The string term you want to query against.
   in:   -   An atomized list of columns to search against.
@@ -341,8 +342,8 @@ defmodule Moebius.Query do
     concat_list = Enum.map_join(columns, ", ' ',  ", &Identifier.name!/1)
 
     sql = """
-    select *, ts_rank_cd(to_tsvector(concat(#{concat_list})),to_tsquery($1)) as rank from #{cmd.table_name}
-    where to_tsvector(concat(#{concat_list})) @@ to_tsquery($1)
+    select *, ts_rank_cd(to_tsvector(concat(#{concat_list})),websearch_to_tsquery($1)) as rank from #{cmd.table_name}
+    where to_tsvector(concat(#{concat_list})) @@ websearch_to_tsquery($1)
     order by rank desc
     """
 
@@ -350,8 +351,12 @@ defmodule Moebius.Query do
   end
 
   @doc """
-  Insert multiple rows at once, within a single transaction, returning the inserted records. Pass in a composite list, containing the rows  to be inserted.
-  Note, the columns to be inserted are defined based on the first record in the list. All records to be inserted must adhere to the same schema.
+  Builds multi-row inserts for a list of rows (keyword lists or maps), split into commands that
+  stay under Postgres's parameter limit. Run the result with `run_batch/1`, or with
+  `transact_batch/1` for all or nothing. For very large loads, `copy/3` is faster.
+
+  The columns come from the first row; every row must have the same keys, in any order. A row
+  missing a column raises `ArgumentError`. The rows are not returned.
 
   Example:
 
@@ -363,37 +368,54 @@ defmodule Moebius.Query do
     [first_name: "Paul", last_name: "Starkey", address: "012 Main St.", city: "Portland", state: "OR", zip: "98204"],
 
   ]
-  result = db(:people) |> insert(data)
+  result = db(:people) |> bulk_insert(data) |> Moebius.Db.transact_batch()
   ```
   """
+  def bulk_insert(%QueryCommand{} = cmd, [first | _] = list) do
+    # the first row decides the columns; each row is read by those keys, not by position
+    keys = row_keys(first)
+    column_map = Enum.map(keys, &Identifier.name!/1)
 
-  def bulk_insert(%QueryCommand{} = cmd, list) when is_list(list) do
-    # do this once and get a canonnical map for the records -
-    column_map = list |> hd |> Keyword.keys() |> Enum.map(&Identifier.name!/1)
-
-    cmd
-    |> bulk_insert_batch(list, [], column_map)
+    bulk_insert_batch(cmd, list, [], keys, column_map)
   end
 
-  defp bulk_insert_batch(%QueryCommand{} = cmd, list, acc, column_map) when is_list(list) do
-    # split the records into command batches that won't overwhelm postgres with params:
-    # 20,000 seems to be the optimal number here. Technically you can go up to 34,464, but I think Postgrex imposes a lower limit, as I
-    # hit a wall at 34,000, but succeeded at 30,000. Perf on 100k records is best at 20,000.
+  def bulk_insert(%QueryCommand{}, []),
+    do: raise(ArgumentError, "bulk_insert needs at least one row")
 
+  defp row_keys(row) when is_map(row), do: Map.keys(row)
+  defp row_keys(row) when is_list(row), do: Keyword.keys(row)
+
+  defp row_value(row, key) when is_map(row) and is_map_key(row, key), do: Map.fetch!(row, key)
+
+  defp row_value(row, key) when is_list(row) and is_atom(key) do
+    case Keyword.fetch(row, key) do
+      {:ok, value} -> value
+      :error -> missing_column!(key, row)
+    end
+  end
+
+  defp row_value(row, key), do: missing_column!(key, row)
+
+  defp missing_column!(key, row),
+    do: raise(ArgumentError, "bulk_insert row is missing #{inspect(key)}: #{inspect(row)}")
+
+  defp bulk_insert_batch(%QueryCommand{} = cmd, list, acc, keys, column_map) do
+    # split the rows into commands that stay well under the protocol's 65,535 parameter limit;
+    # 20,000 parameters per command benchmarked best on 100k rows
     max_params = 20000
     column_count = length(column_map)
     max_records_per_command = div(max_params, column_count)
 
     {current, next_batch} = Enum.split(list, max_records_per_command)
-    new_cmd = bulk_insert_command(cmd, current, column_map)
+    new_cmd = bulk_insert_command(cmd, current, keys, column_map)
 
     case next_batch do
       [] -> %CommandBatch{commands: Enum.reverse([new_cmd | acc])}
-      _ -> db(cmd.table_name) |> bulk_insert_batch(next_batch, [new_cmd | acc], column_map)
+      _ -> bulk_insert_batch(db(cmd.table_name), next_batch, [new_cmd | acc], keys, column_map)
     end
   end
 
-  defp bulk_insert_command(%QueryCommand{} = cmd, list, column_map) when is_list(list) do
+  defp bulk_insert_command(%QueryCommand{} = cmd, list, keys, column_map) do
     column_count = length(column_map)
     row_count = length(list)
 
@@ -407,7 +429,7 @@ defmodule Moebius.Query do
         "(#{list})"
       end
 
-    params = for row <- list, {_k, v} <- row, do: v
+    params = for row <- list, key <- keys, do: row_value(row, key)
 
     column_names = Enum.join(column_map, ", ")
     value_sql = Enum.join(param_list, ",")
@@ -418,7 +440,7 @@ defmodule Moebius.Query do
   @doc """
   Creates an insert command based on the assembled pipeline
   """
-  def insert(%QueryCommand{} = cmd, criteria) do
+  def insert(%QueryCommand{} = cmd, [_ | _] = criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
     column_names = Identifier.names!(cols)
@@ -430,10 +452,12 @@ defmodule Moebius.Query do
     %{cmd | sql: sql, params: vals, type: :insert}
   end
 
+  def insert(%QueryCommand{}, []), do: raise(ArgumentError, "insert needs at least one column")
+
   @doc """
   Creates an update command based on the assembled pipeline.
   """
-  def update(%QueryCommand{} = cmd, criteria) do
+  def update(%QueryCommand{} = cmd, [_ | _] = criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
 
@@ -450,6 +474,8 @@ defmodule Moebius.Query do
     sql = "update #{cmd.table_name} set #{columns}#{cmd.where} returning *;"
     %{cmd | sql: sql, type: :update, params: params}
   end
+
+  def update(%QueryCommand{}, []), do: raise(ArgumentError, "update needs at least one column")
 
   @doc """
   Creates a DELETE command

@@ -110,6 +110,9 @@ defmodule Moebius.QueryFilter do
   def filter(cmd, criteria) when is_bitstring(criteria),
     do: filter(cmd, criteria, [])
 
+  # nothing to filter on: the command is unchanged
+  def filter(cmd, []), do: cmd
+
   # keyword criteria: equality, joined with and. nil means IS NULL and takes no parameter.
   def filter(cmd, criteria) when is_list(criteria) do
     {predicates, params} =

@@ -49,8 +49,7 @@ defmodule Moebius do
     end
   end
 
-  defp connect_error({:error, _, _, _, message, _}), do: message
-  defp connect_error(reason), do: inspect(reason)
+  defp connect_error(reason), do: Moebius.Error.from_epgsql(reason).message
 
   def get_connection(), do: get_connection(:connection)
 
@@ -71,15 +70,16 @@ defmodule Moebius do
   def parse_connection(url) when is_binary(url) do
     info = url |> URI.decode() |> URI.parse()
 
-    if is_nil(info.host) do
-      raise "Invalid URL: host is not present"
+    if info.host in [nil, ""] do
+      raise ArgumentError, "invalid database URL: host is not present"
     end
 
     if is_nil(info.path) or not (info.path =~ ~r"^/([^/])+$") do
-      raise "Invalid URL: path should be a database name"
+      raise ArgumentError, "invalid database URL: path should be a database name"
     end
 
-    destructure [username, password], info.userinfo && String.split(info.userinfo, ":")
+    # only the first colon separates user from password; a password may contain colons
+    destructure [username, password], info.userinfo && String.split(info.userinfo, ":", parts: 2)
     "/" <> database = info.path
 
     opts = [

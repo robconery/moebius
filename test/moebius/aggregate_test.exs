@@ -17,6 +17,13 @@ defmodule Moebius.AggregateTest do
       assert {:ok, %{count: 3}} = db(:users) |> count() |> TestDb.run()
     end
 
+    test "ignores sort, limit and offset, which don't apply to a count" do
+      cmd = db(:users) |> sort(:email) |> limit(1) |> offset(1) |> count()
+
+      assert cmd.sql == "select count(1) from users;"
+      assert {:ok, %{count: 3}} = TestDb.run(cmd)
+    end
+
     test "respects filters" do
       assert {:ok, %{count: 2}} =
                db(:users) |> filter("order_count > 1") |> count() |> TestDb.run()

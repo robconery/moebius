@@ -13,6 +13,20 @@ defmodule Moebius.Connection do
 
   alias Moebius.{Error, Result}
 
+  require Record
+
+  Record.defrecordp(
+    :pg_statement,
+    :statement,
+    Record.extract(:statement, from_lib: "epgsql/include/epgsql.hrl")
+  )
+
+  Record.defrecordp(
+    :pg_column,
+    :column,
+    Record.extract(:column, from_lib: "epgsql/include/epgsql.hrl")
+  )
+
   @codecs [
     {Moebius.Codec.DateTime, []},
     {Moebius.Codec.Numeric, []},
@@ -122,8 +136,7 @@ defmodule Moebius.Connection do
     end
   end
 
-  # the #statement{} record: {:statement, name, columns, types, parameter_info}
-  defp statement_types({:statement, _name, _columns, types, _info}), do: types
+  defp statement_types(pg_statement(types: types)), do: types
 
   # A select says what it is by returning columns; asking the connection for the command
   # tag would cost another call to its process on the hottest path.
@@ -154,8 +167,7 @@ defmodule Moebius.Connection do
     }
   end
 
-  # the #column{} record: {:column, name, type, oid, size, modifier, format, table_oid, table_attr}
-  defp column_name(column), do: elem(column, 1)
+  defp column_name(pg_column(name: name)), do: name
 
   defp command(pid), do: status(pid)
 

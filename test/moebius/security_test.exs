@@ -97,6 +97,21 @@ defmodule Moebius.SecurityTest do
       assert cmd.where == " where body -> 'x'' = ''x'' or ''a' > $1"
     end
 
+    test "document field names can't contain a backslash" do
+      assert_raise ArgumentError, ~r/backslash/, fn ->
+        Moebius.DocumentQuery.db(:docs)
+        |> Moebius.DocumentQuery.sort(:"x\\'; drop table users; --")
+      end
+    end
+
+    test "stream chunk sizes must be positive integers" do
+      assert_raise ArgumentError, ~r/:chunk/, fn ->
+        db(:users) |> TestDb.stream(chunk: "1; drop")
+      end
+
+      assert_raise ArgumentError, ~r/:chunk/, fn -> db(:users) |> TestDb.stream(chunk: 0) end
+    end
+
     test "document operators are checked" do
       assert_raise ArgumentError, ~r/unsupported document operator/, fn ->
         Moebius.DocumentQuery.db(:docs) |> Moebius.DocumentQuery.filter(:a, "= 1 or 1 =", 1)

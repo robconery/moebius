@@ -83,16 +83,15 @@ defmodule Moebius.PoolTest do
     end
 
     test "a connection that dies mid-transaction is replaced" do
-      log =
-        capture_log(fn ->
-          assert {:error, "connection lost" <> _} =
-                   TinyDb.transaction(fn tx ->
-                     Process.exit(tx.pid, :kill)
-                     TinyDb.run("select 1", tx)
-                   end)
-        end)
+      # pooler logs the dead member asynchronously; capture_log only keeps the run quiet
+      capture_log(fn ->
+        assert {:error, "connection lost" <> _} =
+                 TinyDb.transaction(fn tx ->
+                   Process.exit(tx.pid, :kill)
+                   TinyDb.run("select 1", tx)
+                 end)
+      end)
 
-      assert is_binary(log)
       assert {:ok, [%{n: 1}]} = retry(fn -> TinyDb.run("select 1 as n") end)
     end
 

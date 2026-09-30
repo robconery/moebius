@@ -3,11 +3,13 @@
 > Read this FIRST. Directory → purpose. Drill into an area only when needed.
 > Fill `TODO` purposes via a single batched pass; they survive rebuilds.
 
-- `.` (13 files: 5.md, 4·, 2.exs) — mix.exs (deps, version), README (full API docs by example), .formatter.exs, .tool-versions
+- `.` (16 files: 8.md, 4·, 2.exs) — mix.exs (deps, version), README (full API docs by example), .formatter.exs, .tool-versions
 - `.claude/skills/elixir-testing` (1 files: 1.md) — Skill: ExUnit standards for this suite (data isolation on a shared DB, assertion style, flake checks)
 - `.claude/skills/erlang-otp` (3 files: 3.md) — Skill: OTP rules for a library on epgsql + pooler; references/epgsql.md and references/pooler.md document both APIs as used here
 - `.claude/skills/postgres-sql` (1 files: 1.md) — Skill: how the builders must write SQL (params, identifier checks, index-friendly SQL, pagination, bulk writes, transactions)
 - `.claude/skills/supabase-postgres-best-practices` (36 files: 36.md) — Skill (third-party, supabase/agent-skills): general Postgres rules; references/<category>-<rule>.md
+- `.github` (1 files: 1.md) — PR template
+- `.github/ISSUE_TEMPLATE` (3 files: 2.md, 1.yml) — GitHub issue forms (bug, feature) and config
 - `.github/workflows` (1 files: 1.yml) — CI: GitHub Actions, Postgres service, `mix test` under MIX_ENV=test
 - `config` (4 files: 4.exs) — config.exs imports <env>.exs; test.exs sets `:moebius, connection: [url: ...]` and `scripts: "test/db"` (sql_file dir)
 - `lib` (1 files: 1.ex) — moebius.ex — `Moebius` (get_connection, parse_connection URL→opts, run_script/2 for multi-statement SQL) and the ready-made `Moebius.Db`

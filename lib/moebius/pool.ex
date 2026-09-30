@@ -29,7 +29,7 @@ defmodule Moebius.Pool do
 
   def start_link(name, opts) do
     opts = Keyword.merge(@defaults, opts)
-    # open every connection up front, as Postgrex did, so the first burst of traffic doesn't
+    # open every connection up front, so the first burst of traffic doesn't
     # wait on connection setup; pool_min below pool_size lets an idle pool shrink instead
     opts = Keyword.put_new(opts, :pool_min, opts[:pool_size])
     :persistent_term.put({__MODULE__, name}, %{checkout_timeout: opts[:checkout_timeout]})
@@ -119,7 +119,7 @@ defmodule Moebius.Pool do
   rescue
     ArgumentError -> not_started(pool)
   catch
-    :exit, _ -> not_started(pool)
+    :exit, {:noproc, _} -> not_started(pool)
   end
 
   defp not_started(pool),

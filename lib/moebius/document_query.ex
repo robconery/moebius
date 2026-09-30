@@ -55,8 +55,12 @@ defmodule Moebius.DocumentQuery do
     do: %Moebius.DocumentCommand{table_name: Identifier.name!(table)}
 
   @doc """
-  This is analogous to `filter` with the Query module, however this method is highly optimized for JSONB as it uses the `@` (contains)
+  This is analogous to `filter` with the Query module, however this method is highly optimized for JSONB as it uses the `@>` (contains)
   operator. This flexes the GIN index created for your table (see above).
+
+  Document predicates (`contains/2`, `filter/3`, `filter/4`, `exists/3`) each set the whole
+  `where` clause; the last one in a pipeline wins. To combine conditions, put them in one
+  `contains/2` map or write the SQL in `filter/3`.
 
   criteria:   -     A list of elements to look for. This list must be complete, partial matches won't work.
 
@@ -273,7 +277,8 @@ defmodule Moebius.DocumentQuery do
   end
 
   @doc """
-  Performs a highly-tuned Full Text query on the indexed `search` column. This is set on `save/3`.
+  Performs a Full Text query on the indexed `search` column, which `searchable/2` fills on save.
+  The term goes through `websearch_to_tsquery`, so anything typed into a search box works.
 
   Example:
 
@@ -295,8 +300,8 @@ defmodule Moebius.DocumentQuery do
   def search(%DocumentCommand{} = cmd, term) when is_bitstring(term) do
     sql = """
     select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name}
-    where search @@ to_tsquery($1)
-    order by ts_rank_cd(search,to_tsquery($1))  desc
+    where search @@ websearch_to_tsquery($1)
+    order by ts_rank_cd(search,websearch_to_tsquery($1))  desc
     """
 
     %{cmd | sql: sql, params: [term]}
@@ -307,8 +312,8 @@ defmodule Moebius.DocumentQuery do
 
     sql = """
     select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name}
-    where to_tsvector(concat(#{terms})) @@ to_tsquery($1)
-    order by ts_rank_cd(to_tsvector(concat(#{terms})),to_tsquery($1))  desc
+    where to_tsvector(concat(#{terms})) @@ websearch_to_tsquery($1)
+    order by ts_rank_cd(to_tsvector(concat(#{terms})),websearch_to_tsquery($1))  desc
     """
 
     %{cmd | sql: sql, params: [term]}

@@ -134,8 +134,14 @@ defmodule Moebius.Database do
       db(:events) |> sort(:id) |> MyApp.Db.stream() |> Stream.each(&handle/1) |> Stream.run()
       ```
       """
-      def stream(cmd, opts \\ []),
-        do: Moebius.Database.stream(@name, cmd, Keyword.get(opts, :chunk, 500))
+      def stream(cmd, opts \\ []) do
+        chunk = Keyword.get(opts, :chunk, 500)
+
+        unless is_integer(chunk) and chunk > 0,
+          do: raise(ArgumentError, ":chunk must be a positive integer, got: #{inspect(chunk)}")
+
+        Moebius.Database.stream(@name, cmd, chunk)
+      end
 
       @doc """
       Asks Postgres how it will run a query, and returns the plan as text.
@@ -278,7 +284,9 @@ defmodule Moebius.Database do
   def document_select(cmd), do: cmd
 
   @doc false
-  # Reading a document table that doesn't exist yet creates it (once) and tries again.
+  # Reading a document table that doesn't exist yet creates it (once) and tries again. Inside
+  # a transaction the failed statement has already aborted it, so there the error stands;
+  # call create_document_table/1 first if the table might be new.
   def execute_document(pool, cmd) do
     case execute(%{cmd | conn: pool}) do
       {:error, %Error{name: :undefined_table}} ->

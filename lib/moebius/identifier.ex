@@ -41,8 +41,9 @@ defmodule Moebius.Identifier do
   def names!(names) when is_list(names), do: Enum.map_join(names, ", ", &name!/1)
 
   @doc """
-  Quotes a JSON key as a SQL string literal, for `body -> 'key'`. Single quotes are doubled,
-  so any key is safe.
+  Quotes a JSON key as a SQL string literal, for `body -> 'key'`. Single quotes are doubled.
+  A backslash raises `ArgumentError`: with `standard_conforming_strings` off (a legacy server
+  setting) it would escape the closing quote, so it is never written into SQL.
 
       iex> Moebius.Identifier.json_key(:email)
       "'email'"
@@ -50,7 +51,17 @@ defmodule Moebius.Identifier do
       "'o''brien'"
   """
   def json_key(key) when is_atom(key), do: key |> Atom.to_string() |> json_key()
-  def json_key(key) when is_binary(key), do: "'" <> String.replace(key, "'", "''") <> "'"
+
+  def json_key(key) when is_binary(key) do
+    if String.contains?(key, "\\"),
+      do:
+        raise(
+          ArgumentError,
+          "invalid document field name (contains a backslash): #{inspect(key)}"
+        )
+
+    "'" <> String.replace(key, "'", "''") <> "'"
+  end
 
   @doc "Returns the sort direction as SQL, or raises `ArgumentError`."
   def direction!(dir) when dir in [:asc, :desc], do: Atom.to_string(dir)

@@ -13,6 +13,20 @@ defmodule Moebius.Copy do
 
   alias Moebius.{Connection, Error, Identifier, Params, Pool}
 
+  require Record
+
+  Record.defrecordp(
+    :pg_statement,
+    :statement,
+    Record.extract(:statement, from_lib: "epgsql/include/epgsql.hrl")
+  )
+
+  Record.defrecordp(
+    :pg_column,
+    :column,
+    Record.extract(:column, from_lib: "epgsql/include/epgsql.hrl")
+  )
+
   @chunk 5_000
 
   def copy(pool, table, rows, opts) do
@@ -97,8 +111,8 @@ defmodule Moebius.Copy do
   # the column types, from Postgres itself: parse a select of those columns and read them back
   defp column_types(pid, table, names) do
     case :epgsql.parse(pid, "select #{names} from #{table}") do
-      {:ok, {:statement, _name, columns, _types, _info}} ->
-        {:ok, Enum.map(columns, &elem(&1, 2))}
+      {:ok, pg_statement(columns: columns)} ->
+        {:ok, Enum.map(columns, fn pg_column(type: type) -> type end)}
 
       {:error, error} ->
         {:error, Error.from_epgsql(error)}

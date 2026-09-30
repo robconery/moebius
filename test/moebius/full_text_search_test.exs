@@ -7,7 +7,7 @@ defmodule Moebius.FullTextSearchTest do
 
     {:ok, mike} =
       db(:users)
-      |> insert(first: "Mike", last: "Booger", email: "boogerbob@test.com")
+      |> insert(first: "Mike", last: "Smith", email: "mike.smith@test.com")
       |> TestDb.run()
 
     {:ok, _} =
@@ -19,9 +19,17 @@ defmodule Moebius.FullTextSearchTest do
   test "search/2 builds a ranked full text query" do
     cmd = db(:users) |> search(for: "Mike", in: [:first, :last])
 
-    assert cmd.sql =~ "to_tsvector(concat(first, ' ',  last)) @@ to_tsquery($1)"
+    assert cmd.sql =~ "to_tsvector(concat(first, ' ',  last)) @@ websearch_to_tsquery($1)"
     assert cmd.sql =~ "order by rank desc"
     assert cmd.params == ["Mike"]
+  end
+
+  test "search/2 takes what a person types: several words, quotes, apostrophes", %{mike: mike} do
+    assert {:ok, [%{id: id}]} =
+             db(:users) |> search(for: "mike smith", in: [:first, :last]) |> TestDb.run()
+
+    assert id == mike.id
+    assert {:ok, []} = db(:users) |> search(for: "O'Brien", in: [:first, :last]) |> TestDb.run()
   end
 
   test "search/2 returns only the matching rows, with a rank", %{mike: mike} do

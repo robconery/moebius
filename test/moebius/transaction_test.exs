@@ -44,10 +44,10 @@ defmodule Moebius.TransactionTest do
   end
 
   test "documents don't save when there's an error within a transaction" do
-    assert {:error, "relation \"poopasdasd\" does not exist"} =
+    assert {:error, "relation \"no_such_table\" does not exist"} =
              transaction(fn tx ->
                Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Mike"}, tx)
-               "select * from poopasdasd" |> TestDb.run(tx)
+               "select * from no_such_table" |> TestDb.run(tx)
                Moebius.DocumentQuery.db(:monkies) |> TestDb.save(%{name: "Larry"}, tx)
              end)
 

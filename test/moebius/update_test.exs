@@ -4,11 +4,15 @@ defmodule Moebius.UpdateTest do
 
   describe "update/2 SQL" do
     test "a basic update numbers params after the filter's" do
-      cmd = db(:users) |> filter(id: 1) |> update(email: "maggot@test.com")
+      cmd = db(:users) |> filter(id: 1) |> update(email: "after@test.com")
 
       assert cmd.sql == "update users set email = $2 where id = $1 returning *;"
-      assert cmd.params == [1, "maggot@test.com"]
+      assert cmd.params == [1, "after@test.com"]
       assert cmd.type == :update
+    end
+
+    test "an empty update raises" do
+      assert_raise ArgumentError, fn -> db(:users) |> filter(id: 1) |> update([]) end
     end
 
     test "with a string filter" do

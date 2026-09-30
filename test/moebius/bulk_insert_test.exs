@@ -54,6 +54,40 @@ defmodule Moebius.BulkInsertTest do
       assert people_count() == 5000
     end
 
+    test "reads each row by key, so key order doesn't matter" do
+      rows = [
+        [first_name: "A", last_name: "One"],
+        [last_name: "Two", first_name: "B"]
+      ]
+
+      %Moebius.CommandBatch{commands: [cmd]} = db(:people) |> bulk_insert(rows)
+      assert cmd.params == ["A", "One", "B", "Two"]
+
+      assert [{:ok, _}] = db(:people) |> bulk_insert(rows) |> TestDb.run_batch()
+
+      assert {:ok, [%{first_name: "A", last_name: "One"}, %{first_name: "B", last_name: "Two"}]} =
+               db(:people) |> select([:first_name, :last_name]) |> sort(:id) |> TestDb.run()
+    end
+
+    test "accepts maps" do
+      rows = [%{first_name: "A", last_name: "One"}, %{last_name: "Two", first_name: "B"}]
+
+      assert [{:ok, _}] = db(:people) |> bulk_insert(rows) |> TestDb.run_batch()
+      assert people_count() == 2
+    end
+
+    test "a row missing a column raises instead of shifting values" do
+      rows = [[first_name: "A", last_name: "One"], [first_name: "B"]]
+
+      assert_raise ArgumentError, ~r/missing :last_name/, fn ->
+        db(:people) |> bulk_insert(rows)
+      end
+    end
+
+    test "an empty list raises" do
+      assert_raise ArgumentError, fn -> db(:people) |> bulk_insert([]) end
+    end
+
     test "writes nothing when one row fails inside a transaction" do
       result = db(:people) |> bulk_insert(flawed_people(4)) |> TestDb.transact_batch()
 

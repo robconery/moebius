@@ -41,6 +41,14 @@ defmodule Moebius.FilterTest do
     end
   end
 
+  test "an empty keyword list leaves the command unchanged" do
+    cmd = db(:users) |> filter([])
+
+    assert cmd.where == ""
+    assert cmd.params == []
+    assert {:ok, [_, _]} = TestDb.run(cmd)
+  end
+
   describe "in" do
     test "an empty in: list matches nothing, and an empty not_in: matches everything" do
       assert {:ok, []} = db(:users) |> filter(:first, in: []) |> TestDb.run()

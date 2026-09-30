@@ -23,7 +23,7 @@ defmodule Moebius.DocumentTest do
         email: "steve@test.com",
         first: "Steve",
         money_spent: 500,
-        pets: ["poopy", "skippy"]
+        pets: ["rex", "skippy"]
       )
 
     {:ok, steve: steve, monkey: monkey}
@@ -90,7 +90,7 @@ defmodule Moebius.DocumentTest do
   describe "save/2 inserting" do
     test "a keyword list returns the saved document", %{steve: steve} do
       assert %{email: "steve@test.com", first: "Steve", money_spent: 500} = steve
-      assert steve.pets == ["poopy", "skippy"]
+      assert steve.pets == ["rex", "skippy"]
       assert is_integer(steve.id) and steve.id > 0
     end
 
@@ -202,17 +202,17 @@ defmodule Moebius.DocumentTest do
     end
 
     test "exists/3 matches an element of an array", %{steve: steve} do
-      assert {:ok, %{id: id}} = db(:user_docs) |> exists(:pets, "poopy") |> TestDb.first()
+      assert {:ok, %{id: id}} = db(:user_docs) |> exists(:pets, "rex") |> TestDb.first()
       assert id == steve.id
     end
 
     test "sort, limit and offset combine" do
       {:ok, _} =
-        db(:user_docs) |> TestDb.save(email: "rich@test.com", money_spent: 900, pets: ["poopy"])
+        db(:user_docs) |> TestDb.save(email: "rich@test.com", money_spent: 900, pets: ["rex"])
 
       assert {:ok, %{email: "rich@test.com"}} =
                db(:user_docs)
-               |> exists(:pets, "poopy")
+               |> exists(:pets, "rex")
                |> sort(:money_spent, :desc)
                |> limit(1)
                |> offset(0)
@@ -220,7 +220,7 @@ defmodule Moebius.DocumentTest do
 
       assert {:ok, [%{email: "steve@test.com"}]} =
                db(:user_docs)
-               |> exists(:pets, "poopy")
+               |> exists(:pets, "rex")
                |> sort(:money_spent, :desc)
                |> limit(1)
                |> offset(1)
@@ -231,6 +231,13 @@ defmodule Moebius.DocumentTest do
   describe "full text search" do
     test "search/2 uses the indexed search column" do
       assert {:ok, [%{name: "Chicken Wings"}]} = db(:monkies) |> search("duck") |> TestDb.run()
+    end
+
+    test "search/2 accepts plain search-box input" do
+      assert {:ok, [%{name: "Chicken Wings"}]} =
+               db(:monkies) |> search("duck lamb") |> TestDb.run()
+
+      assert {:ok, []} = db(:monkies) |> search("O'Brien's") |> TestDb.run()
     end
 
     test "search/2 with for: and in: searches on the fly" do

@@ -11,7 +11,9 @@ defmodule Moebius.Params do
 
   @integers [:int2, :int4, :int8]
   @floats [:float4, :float8]
-  @texts [:text, :varchar, :bpchar, :name, :bytea, :uuid]
+  @texts [:text, :varchar, :bpchar, :name, :bytea]
+  # 32 hex digits, with or without the usual hyphens; epgsql's codec crashes on anything else
+  @uuid ~r/\A[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}\z/
   @temporal %{
     date: [Date],
     time: [Time],
@@ -61,6 +63,10 @@ defmodule Moebius.Params do
   defp cast(type, value) when type in @texts and is_binary(value), do: {:ok, value}
   defp cast(:char, value) when is_binary(value) or is_integer(value), do: {:ok, value}
 
+  defp cast(:uuid, value) when is_binary(value) do
+    if Regex.match?(@uuid, value), do: {:ok, value}, else: :error
+  end
+
   defp cast(type, value) when type in [:json, :jsonb] do
     case Jason.encode_to_iodata(value) do
       {:ok, json} -> {:ok, {:moebius_json, json}}
@@ -82,7 +88,7 @@ defmodule Moebius.Params do
   defp cast(type, _value) when type in @integers or type in @floats or type in @texts,
     do: :error
 
-  defp cast(type, _value) when type in [:numeric, :bool, :char, :json, :jsonb], do: :error
+  defp cast(type, _value) when type in [:numeric, :bool, :char, :uuid, :json, :jsonb], do: :error
   defp cast(type, _value) when is_map_key(@temporal, type), do: :error
   defp cast({:array, _type}, _value), do: :error
 

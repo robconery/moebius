@@ -15,6 +15,10 @@ defmodule Moebius.InsertTest do
     assert cmd.type == :insert
   end
 
+  test "an empty insert raises instead of building invalid SQL" do
+    assert_raise ArgumentError, ~r/at least one column/, fn -> db(:users) |> insert([]) end
+  end
+
   test "returns the inserted row, defaults included" do
     assert {:ok,
             %{

@@ -141,6 +141,14 @@ defmodule Moebius.TypesTest do
     test "uuid is a string" do
       uuid = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
       assert round_trip(uuid, "uuid") == uuid
+      assert round_trip("A0EEBC999C0B4EF8BB6D6BB9BD380A11", "uuid") == uuid
+    end
+
+    test "a string that isn't a uuid is an error, not a connection crash" do
+      assert {:error, "parameter $1 must be uuid, got: \"not-a-uuid\""} =
+               TestDb.run("select $1::uuid as v", ["not-a-uuid"])
+
+      assert {:ok, [%{v: 1}]} = TestDb.run("select 1 as v")
     end
 
     test "booleans, integers, floats, text and arrays" do
