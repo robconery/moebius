@@ -1,25 +1,17 @@
 defmodule Mix.Tasks.Moebius.Seed do
   @moduledoc """
-  Seeds the database
+  Loads the test data in `test/db/seeds.sql`. Test environment only.
   """
   use Mix.Task
 
+  alias Mix.Tasks.Moebius.Helpers
+
   def run(_args) do
-    Mix.Task.run("app.start")
+    if Mix.env() != :test, do: Mix.raise("mix moebius.seed only runs in the test environment")
 
-    Moebius.get_connection()
-    |> seed_database()
-  end
+    Mix.Task.run("app.config")
+    {:ok, _} = Application.ensure_all_started(:epgsql)
 
-  defp seed_database(opts) do
-    case Mix.env() do
-      :test ->
-        "test/db/seeds.sql"
-        |> File.read!()
-        |> Moebius.run_with_psql(opts)
-
-      _ ->
-        raise "You can only run seeds in the test environment"
-    end
+    Moebius.get_connection() |> Helpers.run_file("test/db/seeds.sql")
   end
 end

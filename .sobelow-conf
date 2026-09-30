@@ -1,0 +1,12 @@
+[
+  verbose: false,
+  private: false,
+  skip: true,
+  router: nil,
+  exit: "low",
+  format: "txt",
+  out: nil,
+  # Moebius is a library with no web endpoint, so there is no HTTPS to enable
+  ignore: ["Config.HTTPS"],
+  ignore_files: []
+]

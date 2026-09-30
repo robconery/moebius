@@ -103,153 +103,84 @@ defmodule Moebius.QueryFilter do
     end
   end
 
+  alias Moebius.Identifier
+
+  @operators [eq: "=", neq: "!=", gt: ">", lt: "<", gte: ">=", lte: "<="]
+
   def filter(cmd, criteria) when is_bitstring(criteria),
     do: filter(cmd, criteria, [])
 
-  def filter(%{where: ""} = cmd, criteria) when is_list(criteria) do
-    cols = Keyword.keys(criteria)
-    vals = Keyword.values(criteria)
+  # keyword criteria: equality, joined with and. nil means IS NULL and takes no parameter.
+  def filter(cmd, criteria) when is_list(criteria) do
+    {predicates, params} =
+      Enum.reduce(criteria, {[], cmd.params}, fn
+        {col, nil}, {preds, params} ->
+          {["#{Identifier.name!(col)} is null" | preds], params}
 
-    {filters, _count} =
-      Enum.map_reduce(cols, 1, fn col, acc ->
-        {"#{col} = $#{acc}", acc + 1}
+        {col, value}, {preds, params} ->
+          {["#{Identifier.name!(col)} = $#{length(params) + 1}" | preds], params ++ [value]}
       end)
 
-    %{cmd | params: vals, where: " where #{Enum.join(filters, " and ")}", where_columns: cols}
+    %{
+      cmd
+      | params: params,
+        where: join_predicates(cmd, predicates |> Enum.reverse() |> Enum.join(" and ")),
+        where_columns: cmd.where_columns ++ Keyword.keys(criteria)
+    }
   end
 
-  def filter(%{where_columns: existing} = cmd, criteria) when is_list(existing) do
-    cols = Keyword.keys(criteria)
-    vals = Keyword.values(criteria)
-    param_seed = length(cmd.params) + 1
-
-    {filters, _count} =
-      Enum.map_reduce(cols, param_seed, fn col, acc ->
-        {"#{col} = $#{acc}", acc + 1}
-      end)
-
-    # we have an existing filter, which means we need to append the params and "and" the where
-    new_params = cmd.params ++ vals
-    new_where = Enum.join([cmd.where, "and #{Enum.join(filters, " and ")}"], " ")
-    new_cols = cmd.where_columns ++ cols
-
-    %{cmd | params: new_params, where: new_where, where_columns: new_cols}
+  def filter(cmd, criteria, [{op, nil}]) when op in [:eq, :neq] do
+    null_check = if op == :eq, do: "is null", else: "is not null"
+    %{cmd | where: join_predicates(cmd, "#{column(criteria)} #{null_check}")}
   end
 
-  def filter(%{where: ""} = cmd, criteria, eq: param) when not is_list(param) do
-    update_cmd(cmd, criteria, :eq, param)
+  def filter(cmd, criteria, [{op, param}])
+      when is_map_key(%{eq: 1, neq: 1, gt: 1, lt: 1, gte: 1, lte: 1}, op) and not is_list(param) do
+    placeholder = "$#{length(cmd.params) + 1}"
+    predicate = "#{column(criteria)} #{@operators[op]} #{placeholder}"
+
+    %{cmd | where: join_predicates(cmd, predicate), params: cmd.params ++ [param]}
   end
 
-  def filter(%{where: ""} = cmd, criteria, neq: param) when not is_list(param) do
-    update_cmd(cmd, criteria, :neq, param)
-  end
+  def filter(cmd, criteria, in: params) when is_list(params),
+    do: in_list(cmd, criteria, "IN", params)
 
-  def filter(%{where: ""} = cmd, criteria, gt: param) when not is_list(param) do
-    update_cmd(cmd, criteria, :gt, param)
-  end
+  def filter(cmd, criteria, not_in: params) when is_list(params),
+    do: in_list(cmd, criteria, "NOT IN", params)
 
-  def filter(%{where: ""} = cmd, criteria, lt: param) when not is_list(param) do
-    update_cmd(cmd, criteria, :lt, param)
-  end
-
-  def filter(%{where: ""} = cmd, criteria, gte: param) when not is_list(param) do
-    update_cmd(cmd, criteria, :gte, param)
-  end
-
-  def filter(%{where: ""} = cmd, criteria, lte: param) when not is_list(param) do
-    update_cmd(cmd, criteria, :lte, param)
-  end
-
-  def filter(%{where: ""} = cmd, criteria, in: params) when is_list(params) do
-    %{cmd | where: " where #{criteria} IN(#{map_params(params)})", params: params}
-  end
-
-  def filter(%{where: ""} = cmd, criteria, not_in: params) when is_list(params) do
-    %{cmd | where: " where #{criteria} NOT IN(#{map_params(params)})", params: params}
-  end
-
-  def filter(%{where: ""} = cmd, criteria, nin: params) when is_list(params) do
-    filter(cmd, criteria, not_in: params)
-  end
-
-  def filter(%{where: ""} = cmd, criteria, params) when is_list(params) do
-    %{cmd | params: params, where: " where #{criteria}"}
-  end
-
-  def filter(cmd, criteria, eq: param) when not is_list(param) do
-    update_predicates_cmd(cmd, criteria, :eq, param)
-  end
-
-  def filter(cmd, criteria, neq: param) when not is_list(param) do
-    update_predicates_cmd(cmd, criteria, :neq, param)
-  end
-
-  def filter(cmd, criteria, gt: param) when not is_list(param) do
-    update_predicates_cmd(cmd, criteria, :gt, param)
-  end
-
-  def filter(cmd, criteria, lt: param) when not is_list(param) do
-    update_predicates_cmd(cmd, criteria, :lt, param)
-  end
-
-  def filter(cmd, criteria, gte: param) when not is_list(param) do
-    update_predicates_cmd(cmd, criteria, :gte, param)
-  end
-
-  def filter(cmd, criteria, lte: param) when not is_list(param) do
-    update_predicates_cmd(cmd, criteria, :lte, param)
-  end
-
-  def filter(cmd, criteria, in: params) when is_list(params) do
-    in_list = map_params(params, length(cmd.params))
-    predicates = join_predicates(cmd, "#{criteria} IN(#{in_list})")
-
-    %{cmd | where: predicates, params: cmd.params ++ params}
-  end
-
-  def filter(cmd, criteria, not_in: params) when is_list(params) do
-    in_list = map_params(params, length(cmd.params))
-    predicates = join_predicates(cmd, "#{criteria} NOT IN(#{in_list})")
-
-    %{cmd | where: predicates, params: cmd.params ++ params}
-  end
-
-  def filter(cmd, criteria, nin: params) when is_list(params) do
-    filter(cmd, criteria, not_in: params)
-  end
+  def filter(cmd, criteria, nin: params) when is_list(params),
+    do: in_list(cmd, criteria, "NOT IN", params)
 
   def filter(cmd, criteria, params) when not is_list(params),
     do: filter(cmd, criteria, [params])
 
-  def filter(cmd, criteria, params) when is_list(params) do
+  # a SQL fragment with its own $n placeholders
+  def filter(cmd, criteria, params) when is_binary(criteria) and is_list(params) do
     %{cmd | where: join_predicates(cmd, criteria), params: cmd.params ++ params}
   end
 
   defdelegate where(cmd, criteria, params), to: __MODULE__, as: :filter
   defdelegate where(cmd, criteria), to: __MODULE__, as: :filter
 
-  defp map_params(params, seed \\ 0),
-    do: Enum.map_join((seed + 1)..(length(params) + seed), ", ", &"$#{&1}")
+  # IN () is a syntax error; nothing is in an empty list
+  defp in_list(cmd, _criteria, "IN", []), do: %{cmd | where: join_predicates(cmd, "false")}
+  defp in_list(cmd, _criteria, "NOT IN", []), do: %{cmd | where: join_predicates(cmd, "true")}
 
-  defp join_predicates(cmd, predicate), do: [cmd.where, predicate] |> Enum.join(" and ")
+  defp in_list(cmd, criteria, op, params) do
+    seed = length(cmd.params)
+    placeholders = Enum.map_join((seed + 1)..(seed + length(params)), ", ", &"$#{&1}")
 
-  defp operator(:eq), do: "="
-  defp operator(:neq), do: "!="
-  defp operator(:gt), do: ">"
-  defp operator(:lt), do: "<"
-  defp operator(:gte), do: ">="
-  defp operator(:lte), do: "<="
-
-  defp update_cmd(cmd, criteria, oper, param) do
-    where = " where #{criteria} #{operator(oper)} #{map_params([param])}"
-
-    %{cmd | where: where, params: [param]}
+    %{
+      cmd
+      | where: join_predicates(cmd, "#{column(criteria)} #{op}(#{placeholders})"),
+        params: cmd.params ++ params
+    }
   end
 
-  defp update_predicates_cmd(cmd, criteria, oper, param) do
-    in_list = map_params([param], length(cmd.params))
-    where = join_predicates(cmd, "#{criteria} #{operator(oper)} #{in_list}")
+  # a column given as an atom is a name and is checked; a string is an expression, used as is
+  defp column(col) when is_atom(col), do: Identifier.name!(col)
+  defp column(col) when is_binary(col), do: col
 
-    %{cmd | where: where, params: cmd.params ++ [param]}
-  end
+  defp join_predicates(%{where: ""}, predicate), do: " where #{predicate}"
+  defp join_predicates(%{where: where}, predicate), do: "#{where} and #{predicate}"
 end

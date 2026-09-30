@@ -16,7 +16,7 @@ Installing Moebius involves a few small steps:
 
    ```elixir
     def deps do
-      [{:moebius, "~> 4.2.0"}]
+      [{:moebius, "~> 5.0"}]
     end
    ```
 
@@ -53,26 +53,24 @@ config :moebius, connection: [
 scripts: "test/db"
 ```
 
-You can also configure custom [Postgres Extensions](https://hexdocs.pm/postgrex/Postgrex.Extension.html#content):
+If you want to use environment variables, just set things using `System.env`. A missing username or password falls back to `PGUSER` and `PGPASSWORD`.
+
+Under the hood, Moebius runs on [epgsql](https://github.com/epgsql/epgsql), the Erlang PostgreSQL driver, with a [pooler](https://github.com/epgsql/pooler) connection pool. Both are past 1.0 and have no dependencies of their own. Each database module owns one pool, started as a single child of your supervision tree. If Postgres goes away the pool keeps running and calls return `{:error, message}` until it's back; nothing else in your tree restarts.
+
+These connection options are worth knowing:
 
 ```elixir
-config :moebius,
-  connection: [url: "postgresql://user:password@host/database"],
-  types: PostgresTypes
+config :moebius, connection: [
+  url: "postgresql://user:password@host/database",
+  pool_size: 10,                # the most connections to open (default 10)
+  pool_min: 2,                  # opened at start and kept when idle (default 2)
+  checkout_timeout: 5_000,      # how long a call waits for a free connection
+  statement_timeout: "30s",     # Postgres cancels anything slower. Recommended.
+  ssl: true                     # or :required, with ssl_opts: [...]
+]
 ```
 
-And define your custom types in your application under `lib/postgres_types.ex`
-
-```elixir
-types = [Geo.PostGIS.Extension, Some.Custom.Extension]
-opts = [json: Jason]
-
-Postgrex.Types.define(PostgresTypes, types, opts)
-```
-
-If you want to use environment variables, just set things using `System.env`.
-
-Under the hood, Moebius uses [the Postgrex driver](https://github.com/ericmj/postgrex) to manage connections and connection pooling. Connections are supervised, so if there's an error any transaction pending will be rolled back effectively (more on that later). The settings you provide in `:connection` will be passed directly to Postgrex (aside from `:url`, which we parse).
+Types come back as you'd expect: `timestamptz` as a UTC `DateTime`, `timestamp` as `NaiveDateTime`, `date`, `time`, `numeric` as an exact `Decimal`, `json`/`jsonb` as maps, `uuid` as a string, `NULL` as `nil`. The same types work as parameters.
 
 You might be wondering what the `scripts` entry is? Moebius can execute SQL files directly for you - we'll get to that in a bit.
 
@@ -103,7 +101,7 @@ end
 def start_db do
   #create a child process
   children = [
-    {MyApp.Db, [Moebius.get_connection]}
+    {MyApp.Db, Moebius.get_connection()}
   ]
   Supervisor.start_link children, strategy: :one_for_one
 end
@@ -491,23 +489,64 @@ For multiple table joins you can specify the table that you want to join on:
 
 ## Transactions
 
-Transactions are facilitated by using a callback that has a `pid` on it, which you'll need to pass along to each query you want to be part of the transaction. The last execution will be returned. If there's an error, an `{:error, message}` will be returned instead and a `ROLLBACK` fired on the transaction. No need to `COMMIT`, it happens automatically:
+Pass a function to `transaction/1`. It gets a connection handle, which you pass along to each query. Whatever the function returns is what `transaction/1` returns. If a statement fails, the transaction rolls back and you get `{:error, message}`. No need to `COMMIT`, it happens automatically:
 
 ```elixir
-{:ok, result} = transaction fn(pid) ->
-  new_user =
+new_user = Moebius.Db.transaction(fn tx ->
+  {:ok, new_user} =
     db(:users)
-    |> insert(pid, email: "frodo@test.com")
-    |> Moebius.Db.run(pid)
+    |> insert(email: "frodo@test.com")
+    |> Moebius.Db.run(tx)
 
-  with(:logs)
-    |> insert(pid, user_id: new_user.id, log: "Hi Frodo")
-    |> Moebius.Db.run(pid)
+  db(:logs)
+  |> insert(user_id: new_user.id, log: "Hi Frodo")
+  |> Moebius.Db.run(tx)
+
   new_user
-end
+end)
 ```
 
+A few more things:
+
+- Queries in the same process join the open transaction even if you forget to pass `tx`.
+- `Moebius.Db.rollback(reason)` aborts the transaction, which then returns `{:error, reason}`.
+- If your function raises, the transaction rolls back and the exception is re-raised.
+- A transaction inside a transaction becomes a savepoint, so the inner one can fail without taking the outer one down.
+
 If you're having any kind of trouble with transactions, I highly recommend you move to a SQL file or a function, which we also support. Abstractions are here to help you, but if we're in your way, by all means shove us (gently) aside.
+
+## Streaming large results
+
+`stream/2` reads a query through a server-side cursor, a chunk at a time, so a million rows never sit in memory at once. It's an Elixir `Stream`, so nothing runs until you read it, and stopping early gives the connection back:
+
+```elixir
+db(:events)
+|> filter(:kind, eq: "signup")
+|> sort(:id)
+|> Moebius.Db.stream(chunk: 1_000)
+|> Stream.each(&send_welcome_email/1)
+|> Stream.run()
+```
+
+Read the stream in the process that created it; that process holds the connection until the stream ends.
+
+## Asking Postgres how it will run a query
+
+`explain/2` returns the plan as text. It's the fastest way to find out if a query uses your indexes:
+
+```elixir
+{:ok, plan} = db(:users) |> filter(email: "a@b.com") |> Moebius.Db.explain()
+# Index Scan using users_email_key on users  (cost=0.15..8.17 rows=1 width=...)
+
+{:ok, plan} = db(:users) |> filter(first: "Rob") |> Moebius.Db.explain(analyze: true)
+# Seq Scan on users ... (actual time=0.010..0.011 rows=1 loops=1)
+```
+
+With `analyze: true` the query really runs, inside a transaction that's rolled back, so even an explained insert leaves nothing behind.
+
+## Safety
+
+Every value you pass becomes a `$n` parameter; none are pasted into the SQL. Table, column and function names can't be parameters, so Moebius checks them instead: anything that isn't a plain name (`users`, `membership.users`, `"Order Items"`) raises `ArgumentError` before any SQL is built. Sort directions, join types and document operators are checked against a list. The only SQL used exactly as written is the SQL you write yourself, like `filter("price > $1", 10)`.
 
 ## Aggregates
 

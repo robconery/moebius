@@ -60,20 +60,13 @@ jobs:
         mix moebius.seed
 
     - name: Check warnings
-      # Fails on warnings in Moebius's own lib/. postgrex 0.19's generated
-      # BitString code (compiled into PostgresTypes) warns on Elixir 1.20+ and
-      # can't be fixed without upgrading the driver, so deps/ warnings are ignored.
-      run: |
-        mix deps.compile
-        mix compile --force 2>&1 | tee compile.log
-        if grep -E '└─ lib/' compile.log; then
-          echo "::error::Compiler warnings in lib/"
-          exit 1
-        fi
+      run: mix compile --warnings-as-errors
 
     - name: Run tests
-      run: |
-        mix test
+      run: mix test
+
+    - name: Check for order-dependent tests
+      run: mix test --repeat-until-failure 10
 
     - name: Check code quality, security and format
       run: |

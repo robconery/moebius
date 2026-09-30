@@ -53,4 +53,74 @@ defmodule Moebius.TransactionTest do
 
     assert {:ok, [%{name: "Setup"}]} = Moebius.DocumentQuery.db(:monkies) |> TestDb.run()
   end
+
+  describe "joining and nesting" do
+    test "plain run calls in the same process join the transaction" do
+      assert {:error, :changed_my_mind} =
+               transaction(fn _tx ->
+                 {:ok, _} = db(:users) |> insert(email: "joined@test.com") |> run()
+                 assert {:ok, %{count: 1}} = db(:users) |> count() |> run()
+                 rollback(:changed_my_mind)
+               end)
+
+      assert {:ok, %{count: 0}} = db(:users) |> count() |> run()
+    end
+
+    test "a raise rolls back and is re-raised" do
+      assert_raise ArgumentError, "bad", fn ->
+        transaction(fn tx ->
+          db(:users) |> insert(email: "raised@test.com") |> run(tx)
+          raise ArgumentError, "bad"
+        end)
+      end
+
+      assert {:ok, nil} = db(:users) |> filter(email: "raised@test.com") |> first()
+    end
+
+    test "an inner transaction is a savepoint: it can fail without the outer one" do
+      result =
+        transaction(fn tx ->
+          {:ok, _} = db(:users) |> insert(email: "outer@test.com") |> run(tx)
+
+          inner =
+            transaction(fn tx2 ->
+              db(:users) |> insert(email: "inner@test.com") |> run(tx2)
+              db(:users) |> insert(email: "outer@test.com") |> run(tx2)
+            end)
+
+          assert {:error, "duplicate key value violates unique constraint \"users_email_key\""} =
+                   inner
+
+          :outer_done
+        end)
+
+      assert result == :outer_done
+      assert {:ok, [%{email: "outer@test.com"}]} = db(:users) |> run()
+    end
+
+    test "an inner transaction that succeeds commits with the outer one" do
+      transaction(fn _tx ->
+        transaction(fn _tx2 -> db(:users) |> insert(email: "nested@test.com") |> run() end)
+      end)
+
+      assert {:ok, %{email: "nested@test.com"}} = db(:users) |> first()
+    end
+
+    test "throwing {:error, reason} rolls back and returns it" do
+      assert {:error, "nope"} =
+               transaction(fn _tx ->
+                 db(:users) |> insert(email: "thrown@test.com") |> run()
+                 throw({:error, "nope"})
+               end)
+
+      assert {:ok, %{count: 0}} = db(:users) |> count() |> run()
+    end
+
+    test "the connection is clean after a failed transaction" do
+      {:error, _} = transaction(fn tx -> "select * from nope" |> run(tx) end)
+
+      assert {:ok, [%{n: 1}]} = run("select 1 as n")
+      assert %{in_use_count: 0} = TestDb.pool_status()
+    end
+  end
 end

@@ -45,6 +45,43 @@ defmodule Moebius.DocumentTest do
       assert {:ok, %{name: "jeff", id: 1}} = db(:artists) |> TestDb.save(%{name: "jeff", id: 100})
     end
 
+    test "creating a document table twice is fine" do
+      TestDb.run("drop table if exists vats;")
+
+      assert {:ok, "Table created"} = TestDb.create_document_table(:vats)
+      assert {:ok, "Table created"} = TestDb.create_document_table(:vats)
+    end
+
+    test "a schema-qualified document table gets valid index names" do
+      TestDb.run("drop table if exists public.qualified_docs;")
+
+      assert {:ok, %{name: "q"}} = db("public.qualified_docs") |> TestDb.save(%{name: "q"})
+
+      assert {:ok,
+              [
+                %{indexname: "idx_public_qualified_docs"},
+                %{indexname: "idx_public_qualified_docs_search"}
+              ]} =
+               TestDb.run(
+                 "select indexname from pg_indexes where tablename = 'qualified_docs' and indexname like 'idx_%' order by 1"
+               )
+    end
+
+    test "many processes can create the same table at once" do
+      TestDb.run("drop table if exists racing_docs;")
+
+      results =
+        1..8
+        |> Task.async_stream(fn n -> db(:racing_docs) |> TestDb.save(%{n: n}) end,
+          max_concurrency: 8
+        )
+        |> Enum.map(fn {:ok, result} -> result end)
+
+      assert Enum.all?(results, &match?({:ok, %{n: _}}, &1)), inspect(results)
+      assert {:ok, docs} = db(:racing_docs) |> TestDb.run()
+      assert length(docs) == 8
+    end
+
     test "first creates the table if it doesn't exist" do
       assert {:ok, nil} = db(:artists) |> TestDb.first()
     end

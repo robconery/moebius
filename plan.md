@@ -39,3 +39,27 @@ Verify with:
 - `lib/` edits keep the existing behavior: `Enum.zip/2`; removed an unreachable `filter/3` clause and 2 unreachable `update_search/2` clauses; removed the dead `{:error, _}` branch in `create_document_table/1`; split `a && b` chains into sequential calls (the left side was always truthy); `length(x) > 0` → `x != []` (credo 1.7.19 flags this; the change was also made in 8 test assertions).
 - The 3 logged `transaction is not started` errors during tests are still there (phase 2: ROLLBACK rework).
 - CI hasn't run yet. The setup-beam pins (`erlang 29.0.5`, `elixir 1.20.4-otp-29`) get confirmed on the first push.
+
+---
+
+# Phase 2 Plan: replace Postgrex with epgsql + pooler
+
+Goal: drop the pre-1.0 driver for a stable one, fix the known defects, and raise confidence with tests. Released as 5.0.0 because the breaking changes (see `CHANGELOG.md`) are real, even though the builder API didn't change.
+
+## Tasks
+
+- [x] **1. Skills.** `.claude/skills/`: `erlang-otp` (with epgsql and pooler references), `postgres-sql`, `elixir-testing`, and `supabase-postgres-best-practices` from supabase/agent-skills.
+- [x] **2. Tests to the testing skill.** Each test owns its data, assertions are specific, doctests run, and nothing is commented out. This found two bugs: `delete(id) |> first()` deleted nothing, and `run/1` returned `[]` instead of `{:ok, []}`.
+- [x] **3. Driver.** epgsql 4.8 + pooler 1.7, decimal 3. Codecs for dates/times, numeric and JSON. Parameters are checked before they're sent, because a bad parameter crashes an epgsql connection.
+- [x] **4. Pool and transactions.** One pool per database module, in the user's tree. A connection is pinned to its process while held; nested transactions use savepoints; `rollback/1`.
+- [x] **5. Security.** Parameters for `find`, `contains`, and document ids; name checks (`Moebius.Identifier`); quoted document keys.
+- [x] **6. New.** `stream/2`, `explain/2`, `pool_status/0`, server timeouts, `Moebius.Error`.
+- [x] **7. Tooling.** Mix tasks without `psql`; CI back to `--warnings-as-errors`, plus a flake check; sobelow fails on any finding.
+
+## Log
+
+2026-09-30. All tasks done. **198 tests pass** (104 before), stable over 25+ random-seed runs; compile, credo, sobelow and hex.audit are clean.
+
+- The whole existing suite passed on epgsql on the first run after the swap.
+- Found while testing, and fixed: concurrent saves to a new document table lost writes (a race in `create table if not exists`; creation now takes an advisory lock); `url` silently overrode explicit options; `filter(:col, in: [])` was a syntax error.
+- Decimal 3 refuses to parse numeric strings over 34 digits (its CVE fix). Decoding builds the Decimal from the digits directly, so values from the database keep full precision.

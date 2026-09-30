@@ -1,76 +1,70 @@
-# this is the default database that is entirely optional
 defmodule Moebius.Db do
+  @moduledoc """
+  A ready-made database module that reads `config :moebius, connection: [...]`. Add it to
+  your supervision tree, or define your own with `use Moebius.Database`.
+  """
   use Moebius.Database
 end
 
 defmodule Moebius do
-  use Application
+  @moduledoc """
+  Helpers for connection config and SQL scripts. The query builders are in
+  `Moebius.Query` and `Moebius.DocumentQuery`; running them is `Moebius.Database`.
 
-  def start(_type, _args) do
-    Moebius.get_connection() |> Moebius.Db.start_link()
-  end
+  Moebius starts no processes of its own. Add `Moebius.Db` (or your own module that uses
+  `Moebius.Database`) to your supervision tree.
+  """
 
   @doc """
-  A convenience tool for assembling large queries with multiple commands which we use for testing.
-  These functions hand off to PSQL because Postgrex can't run more than
-  one command per query.
+  Runs a SQL script: any number of statements separated by semicolons, without parameters.
+  Opens its own connection with `opts` (the same options as a database module), so it
+  works before any pool is started. Returns `:ok` or `{:error, message}`.
+
+  The mix tasks use this to load `test/db/tables.sql` and `seeds.sql`.
   """
-  def run_with_psql(sql, opts) do
-    port = if is_binary(opts[:port]), do: opts[:port], else: to_string(opts[:port])
-
-    args =
-      [
-        "-h",
-        opts[:hostname],
-        "-d",
-        opts[:database],
-        "-p",
-        port,
-        "-c",
-        sql,
-        "--quiet",
-        "--set",
-        "ON_ERROR_STOP=1",
-        "--no-psqlrc"
-      ]
-
-    env = set_env(opts)
-
-    System.cmd("psql", args, env: env)
+  def run_script(sql, opts) when is_binary(sql) do
+    with_connection(opts, fn pid -> Moebius.Connection.script(pid, sql) end)
   end
 
-  def set_env(opts) do
-    cond do
-      Keyword.has_key?(opts, :username) and Keyword.has_key?(opts, :password) ->
-        [{"PGUSER", opts[:username]}, {"PGPASSWORD", opts[:password]}]
+  @doc false
+  @deprecated "Use Moebius.run_script/2, which doesn't need psql installed"
+  def run_with_psql(sql, opts), do: run_script(sql, opts)
 
-      Keyword.has_key?(opts, :username) ->
-        [{"PGUSER", opts[:username]}]
+  @doc false
+  # A single connection outside any pool, closed when `fun` returns.
+  def with_connection(opts, fun) do
+    case :epgsql.connect(Moebius.Connection.epgsql_options(opts)) do
+      {:ok, pid} ->
+        try do
+          case fun.(pid) do
+            {:error, %Moebius.Error{message: message}} -> {:error, message}
+            result -> result
+          end
+        after
+          :epgsql.close(pid)
+        end
 
-      Keyword.has_key?(opts, :password) ->
-        [{"PGPASSWORD", opts[:password]}]
-
-      true ->
-        []
+      {:error, reason} ->
+        {:error, connect_error(reason)}
     end
   end
 
+  defp connect_error({:error, _, _, _, message, _}), do: message
+  defp connect_error(reason), do: inspect(reason)
+
   def get_connection(), do: get_connection(:connection)
 
-  def pool_opts do
-    [pool: DBConnection.ConnectionPool]
-  end
+  @doc false
+  @deprecated "Pool options go in the connection options; see Moebius.Database"
+  def pool_opts, do: []
 
   def get_connection(key) when is_atom(key) do
-    opts = Application.get_env(:moebius, key)
+    opts = Application.get_env(:moebius, key) || []
 
-    opts =
-      cond do
-        Keyword.has_key?(opts, :url) -> Keyword.merge(opts, parse_connection(opts[:url]))
-        true -> opts
-      end
-
-    opts ++ pool_opts()
+    case opts[:url] do
+      nil -> opts
+      url -> Keyword.merge(parse_connection(url), opts)
+    end
   end
 
   # thanks to the Ecto team for this code!
@@ -98,7 +92,5 @@ defmodule Moebius do
 
     # strip off any nils
     Enum.reject(opts, fn {_k, v} -> is_nil(v) end)
-    # send the values to a char list because that's what :epgsql likes
-    # opts = for {k, v} <- opts, into: %{}, do: {k, String.to_char_list(v)}
   end
 end

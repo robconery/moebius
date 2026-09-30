@@ -1,8 +1,8 @@
 {
-  "builtCommit": "8fecd7465e66e8d79241705f55265d01ac7b33cf",
-  "builtAt": 1790801036,
-  "fileCount": 49,
-  "symbolCount": 239,
+  "builtCommit": "63a4b04a89daa7fa3457bd427b8f977a358ade17",
+  "builtAt": 1790804687,
+  "fileCount": 94,
+  "symbolCount": 250,
   "denyDirs": [
     ".codemap",
     ".git",

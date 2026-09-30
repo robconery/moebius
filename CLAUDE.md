@@ -1,6 +1,6 @@
 # Moebius
 
-Functional query library for Elixir + PostgreSQL. **Not an ORM**: no schemas, no mappings, no migrations. You pipe small functions to build a SQL command struct, then hand it to a database module to run through Postgrex. Published on Hex as `moebius` (v4.2.0, last release Oct 2024). See `PROJECT.md` for the full explanation and the upgrade plan.
+Functional query library for Elixir + PostgreSQL. **Not an ORM**: no schemas, no mappings, no migrations. You pipe small functions to build a SQL command struct, then hand it to a database module to run through epgsql, the Erlang driver, with a pooler pool. Published on Hex as `moebius` (v4.2.0; 5.0.0 is the epgsql release, see `CHANGELOG.md`). See `PROJECT.md` for the full explanation.
 
 ```elixir
 import Moebius.Query
@@ -17,8 +17,10 @@ Core modules (all in `lib/moebius/`):
 - `query.ex`: relational builder → `%QueryCommand{}`
 - `query_filter.ex`: where clauses
 - `document_query.ex`: JSONB builder → `%DocumentCommand{}`
-- `database.ex`: `use Moebius.Database` macro (run/first/find/save/transaction) plus the Postgrex `execute`
-- `transformer.ex`: turns Postgrex results into maps
+- `database.ex`: `use Moebius.Database` macro (run/first/find/save/transaction/stream/explain) plus `execute`
+- `pool.ex`, `connection.ex`, `params.ex`, `codec/`: the driver layer (pooler checkout, transactions, epgsql calls, parameter checks, type codecs)
+- `identifier.ex`: checks every name that goes into SQL
+- `transformer.ex`: turns `%Moebius.Result{}` into maps
 
 ## Skills (in `.claude/skills/`)
 
@@ -40,13 +42,13 @@ mix test
 mix quality                        # format check + sobelow + credo
 ```
 
-Tests check the generated `cmd.sql` string and also run it against the database through `TestDb` (defined in `test/test_helper.exs`).
+Tests check the generated `cmd.sql` string and also run it against the database through `TestDb` (defined in `test/support/test_db.ex`). `Moebius.TestData.reset_users!/0` resets the shared tables.
 
 ## Conventions and gotchas
 
-- Values go in as `$n` params. Table and column names are string-interpolated.
 - Builders return a struct. Nothing touches the database until `Db.run/first/find/save`.
 - Document tables are created automatically the first time you save to one (`id`, `body jsonb`, `search tsvector`, timestamps).
-- **postgrex is intentionally held at 0.19.2** until the driver upgrade. Don't run `mix deps.update --all`, because it bumps postgrex and db_connection; update deps by name.
-- postgrex 0.19 produces one compiler warning (BitString) on Elixir 1.20. CI ignores `deps/` warnings and fails only on `lib/` warnings.
+- Values go in as parameters, and names go through `Moebius.Identifier`. Never interpolate anything else into SQL.
+- A wrong-typed parameter crashes an epgsql connection process. That's why `Moebius.Params` checks every parameter first; keep new types covered there.
+- CI compiles with `--warnings-as-errors`, runs the suite, then `mix test --repeat-until-failure 10`.
 - Current plan and task log: `plan.md`.

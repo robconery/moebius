@@ -1,328 +1,357 @@
 defmodule Moebius.Database do
+  @moduledoc """
+  Turns a module into a database you can run commands against.
+
+  ```elixir
+  defmodule MyApp.Db do
+    use Moebius.Database
+  end
+
+  # in your application's supervision tree
+  children = [
+    {MyApp.Db, Moebius.get_connection()}
+  ]
+  ```
+
+  Each database module owns a pool of connections, started as one child of your tree. If
+  Postgres goes away, the pool keeps running and calls return `{:error, message}` until it
+  comes back. Nothing else in your tree restarts.
+
+  ## Connection options
+
+  * `:url` - `postgres://user:pass@host:port/database`, or the separate `:hostname`, `:port`,
+    `:database`, `:username`, `:password`. A missing username or password falls back to
+    `PGUSER` / `PGPASSWORD`.
+  * `:socket_dir` - connect over a Unix socket in this directory instead of TCP.
+  * `:ssl` - `true` (use TLS if the server offers it) or `:required`, with `:ssl_opts`.
+  * `:pool_size` - the most connections the pool opens (default 10).
+  * `:pool_min` - connections opened at start and kept when idle (default 2).
+  * `:checkout_timeout` - how long a call waits for a free connection, in ms (default 5000).
+  * `:queue_max` - how many calls may wait for a connection at once (default 50).
+  * `:max_lifetime` - recycle each connection after this many ms, for proxies and firewalls
+    that drop long-lived connections.
+  * `:statement_timeout`, `:lock_timeout`, `:idle_in_transaction_session_timeout` - Postgres
+    settings applied to every connection, e.g. `statement_timeout: "30s"`. Setting
+    `statement_timeout` is a good idea: the driver itself waits for a query forever.
+  * `:settings` - any other Postgres settings, as a keyword list.
+  * `:application_name` - shown in `pg_stat_activity` (default `"moebius"`).
+  """
+
+  alias Moebius.{Connection, DocumentQuery, Error, Pool, Query, Transformer}
+
   defmacro __using__(_opts) do
     quote location: :keep do
       @name __MODULE__
 
-      alias __MODULE__
+      alias Moebius.{Connection, DocumentCommand, QueryCommand, Transformer}
 
-      def start_link(opts) do
-        opts
-        |> prepare_extensions
-        |> Moebius.Database.start_link()
-      end
+      @doc "Starts this database's connection pool. See `Moebius.Database` for the options."
+      def start_link(opts), do: Moebius.Pool.start_link(@name, normalize_opts(opts))
 
       def child_spec([]), do: child_spec(Moebius.get_connection())
+      def child_spec(opts), do: Moebius.Pool.child_spec(@name, normalize_opts(opts))
 
-      def child_spec(arg) do
-        %{
-          id: @name,
-          start: {@name, :start_link, [arg]}
-        }
+      # {Db, opts} and {Db, [opts]} (the form the README has always shown) both arrive here
+      defp normalize_opts([opts]) when is_list(opts), do: normalize_opts(opts)
+
+      defp normalize_opts(opts) when is_list(opts) do
+        # options given explicitly win over the parts of the url
+        case opts[:url] do
+          nil -> opts
+          url -> Keyword.merge(Moebius.parse_connection(url), opts)
+        end
       end
 
-      def prepare_extensions(opts) do
-        # make sure we convert a tuple list, which will happen if our db is a worker
-        opts =
-          cond do
-            Keyword.keyword?(opts) -> opts
-            true -> Keyword.new([opts])
-          end
+      @doc "The pool's size and how much of it is in use."
+      def pool_status, do: Moebius.Pool.status(@name)
 
-        opts
-        |> Keyword.put_new(:name, @name)
-        |> Keyword.put_new(:types, PostgresTypes)
-      end
+      # ---- running SQL and commands ----
 
       def run(sql) when is_binary(sql), do: run(sql, [])
 
       def run(sql, params) when is_binary(sql) and is_list(params),
-        do: %Moebius.QueryCommand{sql: sql, params: params} |> run
+        do: run(%QueryCommand{sql: sql, params: params})
 
-      def run(sql, %DBConnection{} = conn) when is_binary(sql),
-        do: %Moebius.QueryCommand{sql: sql, params: []} |> run(conn)
+      def run(sql, %Connection{} = conn) when is_binary(sql),
+        do: run(%QueryCommand{sql: sql, params: []}, conn)
 
-      def run(sql, %DBConnection{} = conn, params) when is_binary(sql),
-        do: %Moebius.QueryCommand{sql: sql, params: params} |> run(conn)
+      def run(sql, %Connection{} = conn, params) when is_binary(sql),
+        do: run(%QueryCommand{sql: sql, params: params}, conn)
 
-      def run(%Moebius.QueryCommand{type: :insert} = cmd),
-        do: execute(cmd) |> Moebius.Transformer.to_single()
+      def run(%QueryCommand{} = cmd), do: cmd |> execute() |> Moebius.Database.shape(cmd)
 
-      def run(%Moebius.QueryCommand{type: :update} = cmd),
-        do: execute(cmd) |> Moebius.Transformer.to_single()
+      def run(%DocumentCommand{} = cmd),
+        do:
+          cmd
+          |> Moebius.Database.document_select()
+          |> execute_document()
+          |> Transformer.from_json()
 
-      def run(%Moebius.QueryCommand{type: :delete} = cmd),
-        do: execute(cmd) |> Moebius.Transformer.to_single()
-
-      def run(%Moebius.QueryCommand{type: :count} = cmd),
-        do: execute(cmd) |> Moebius.Transformer.to_single()
-
-      def run(%Moebius.QueryCommand{} = cmd), do: execute(cmd) |> Moebius.Transformer.to_list()
-
-      def run(%Moebius.QueryCommand{type: :insert} = cmd, %DBConnection{} = conn),
-        do: execute(cmd, conn) |> Moebius.Transformer.to_single()
-
-      def run(%Moebius.QueryCommand{type: :update} = cmd, %DBConnection{} = conn),
-        do: execute(cmd, conn) |> Moebius.Transformer.to_single()
-
-      def run(%Moebius.QueryCommand{type: :delete} = cmd, %DBConnection{} = conn),
-        do: execute(cmd, conn) |> Moebius.Transformer.to_single()
-
-      def run(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn),
-        do: execute(cmd, conn) |> Moebius.Transformer.to_list()
+      def run(%QueryCommand{} = cmd, %Connection{} = conn),
+        do: cmd |> Moebius.Database.execute(conn) |> Moebius.Database.shape(cmd)
 
       defdelegate all(table), to: __MODULE__, as: :run
 
-      def run_batch(%Moebius.CommandBatch{} = batch) do
-        batch.commands
-        |> Enum.map(fn cmd -> execute(cmd) end)
-      end
-
-      def transact_batch(%Moebius.CommandBatch{} = batch) do
-        transaction(fn tx ->
-          batch.commands
-          |> Enum.map(fn cmd -> execute(cmd, tx) end)
-        end)
-      end
-
-      def run(%Moebius.DocumentCommand{sql: nil} = cmd) do
-        res =
-          %{cmd | conn: @name}
-          |> Moebius.DocumentQuery.select()
-          |> Moebius.Database.execute()
-          |> Moebius.Transformer.from_json()
-      end
-
-      def run(%Moebius.DocumentCommand{} = cmd) do
-        execute(cmd)
-        |> Moebius.Transformer.from_json()
-      end
-
-      def first(%Moebius.DocumentCommand{sql: nil} = cmd) do
-        Moebius.DocumentQuery.select(cmd)
-        |> execute
-        |> Moebius.Transformer.from_json(:single)
-      end
-
-      def first(%Moebius.DocumentCommand{} = cmd) do
+      def first(%DocumentCommand{} = cmd) do
         cmd
-        |> execute
-        |> Moebius.Transformer.from_json(:single)
+        |> Moebius.Database.document_select()
+        |> execute_document()
+        |> Transformer.from_json(:single)
       end
 
-      def first(%Moebius.QueryCommand{sql: nil} = cmd) do
-        Moebius.Query.select(cmd)
-        |> execute
-        |> Moebius.Transformer.to_single()
-      end
+      def first(%QueryCommand{sql: nil} = cmd),
+        do: cmd |> Moebius.Query.select() |> execute() |> Transformer.to_single()
 
-      def first(%Moebius.QueryCommand{} = cmd) do
-        cmd
-        |> execute
-        |> Moebius.Transformer.to_single()
-      end
+      def first(%QueryCommand{} = cmd), do: cmd |> execute() |> Transformer.to_single()
 
       defdelegate one(table), to: __MODULE__, as: :first
 
-      def find(%Moebius.QueryCommand{} = cmd, id) do
-        sql = "select * from #{cmd.table_name} where id=#{id}"
-
-        %{cmd | sql: sql}
-        |> execute
-        |> Moebius.Transformer.to_single()
+      def find(%QueryCommand{} = cmd, id) do
+        %{
+          cmd
+          | sql: "select * from #{cmd.table_name} where id = $1",
+            params: [Moebius.Database.id(id)]
+        }
+        |> execute()
+        |> Transformer.to_single()
       end
 
-      def find(%Moebius.DocumentCommand{} = cmd, id) do
-        sql =
-          "select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name} where id=$1"
-
-        %{cmd | sql: sql, params: [id]}
-        |> execute
-        |> Moebius.Transformer.from_json(:single)
+      def find(%DocumentCommand{} = cmd, id) do
+        cmd
+        |> Moebius.DocumentQuery.find(Moebius.Database.id(id))
+        |> execute_document()
+        |> Transformer.from_json(:single)
       end
 
-      def transaction(fun) do
-        try do
-          {:ok, conn} = Postgrex.transaction(@name, fun, Moebius.get_connection())
-          conn
-        catch
-          e, %{message: message} -> {:error, message}
-          e, {:error, message} -> {:error, message}
-        end
+      @doc """
+      Streams the rows of a query or document query through a server-side cursor, so large
+      results never sit in memory at once. Read it in the process that created it.
+
+      * `:chunk` - rows fetched per round-trip (default 500).
+
+      ```elixir
+      db(:events) |> sort(:id) |> MyApp.Db.stream() |> Stream.each(&handle/1) |> Stream.run()
+      ```
+      """
+      def stream(cmd, opts \\ []),
+        do: Moebius.Database.stream(@name, cmd, Keyword.get(opts, :chunk, 500))
+
+      @doc """
+      Asks Postgres how it will run a query, and returns the plan as text.
+
+      * `:analyze` - also run the query and report real timings and row counts. The query runs
+        inside a transaction that is rolled back, so writes are not kept.
+      """
+      def explain(cmd, opts \\ []), do: Moebius.Database.explain(@name, cmd, opts)
+
+      # ---- batches ----
+
+      def run_batch(%Moebius.CommandBatch{commands: commands}),
+        do: Enum.map(commands, &(&1 |> execute() |> Moebius.Database.batch_result()))
+
+      def transact_batch(%Moebius.CommandBatch{commands: commands}) do
+        transaction(fn tx ->
+          Enum.map(
+            commands,
+            &(&1 |> Moebius.Database.execute(tx) |> Moebius.Database.batch_result())
+          )
+        end)
       end
 
-      def save(%Moebius.DocumentCommand{} = cmd, doc) when is_list(doc),
-        do: save(cmd, Enum.into(doc, %{}))
+      # ---- transactions ----
 
-      def save(%Moebius.DocumentCommand{} = cmd, doc) when is_struct(doc) do
-        case save(%Moebius.DocumentCommand{} = cmd, Map.from_struct(doc)) do
-          {:error, err} -> {:error, err}
-          {:ok, res} -> {:ok, Map.put_new(res, :__struct__, doc.__struct__)}
-        end
+      @doc """
+      Runs `fun` in a transaction and returns what it returns.
+
+      If a statement inside fails, or `fun` calls `rollback/1`, the transaction is rolled back
+      and this returns `{:error, reason}`. If `fun` raises anything else, the transaction is
+      rolled back and the exception is re-raised. A transaction inside a transaction becomes a
+      savepoint, so it can fail without taking the outer one down.
+      """
+      def transaction(fun) when is_function(fun, 1), do: Moebius.Pool.transaction(@name, fun)
+
+      @doc "Rolls back the current transaction, which then returns `{:error, value}`."
+      defdelegate rollback(value), to: Moebius.Pool
+
+      # ---- documents ----
+
+      def save(%DocumentCommand{} = cmd, doc) when is_list(doc), do: save(cmd, Map.new(doc))
+
+      def save(%DocumentCommand{} = cmd, %{__struct__: struct} = doc) do
+        with {:ok, saved} <- save(cmd, Map.from_struct(doc)),
+             do: {:ok, Map.put(saved, :__struct__, struct)}
       end
 
-      def save(%Moebius.DocumentCommand{} = cmd, doc) when is_map(doc) do
-        res =
-          %{cmd | conn: @name}
-          |> Moebius.DocumentQuery.decide_command(doc)
-          |> Moebius.Database.execute()
-          |> Moebius.Transformer.from_json(:single)
-          |> handle_save_result(cmd, doc)
-          |> check_struct(doc)
-      end
+      def save(%DocumentCommand{} = cmd, doc) when is_map(doc),
+        do: Moebius.Database.save_document(@name, cmd, doc)
 
-      def save(%Moebius.DocumentCommand{} = cmd, doc, %DBConnection{} = conn) when is_map(doc) do
-        %{cmd | conn: @name}
-        |> Moebius.DocumentQuery.decide_command(doc)
-        |> Moebius.Database.execute(conn)
-        |> Moebius.Transformer.from_json(:single)
-        |> handle_save_result(cmd, doc)
-        |> check_struct(doc)
-      end
+      def save(%DocumentCommand{} = cmd, doc, %Connection{}) when is_map(doc) or is_list(doc),
+        do: save(cmd, doc)
 
       def create_document_table(name) when is_atom(name) do
-        Moebius.DocumentQuery.db(name) |> create_document_table(nil)
-        {:ok, "Table created"}
+        with :ok <- Moebius.Database.create_document_table(@name, Moebius.DocumentQuery.db(name)),
+             do: {:ok, "Table created"}
       end
 
-      def create_document_table(%Moebius.DocumentCommand{} = cmd, _) do
-        sql = """
-        create table #{cmd.table_name}(
-          id serial primary key not null,
-          body jsonb not null,
-          search tsvector,
-          created_at timestamptz not null default now(),
-          updated_at timestamptz not null default now()
-        );
-        """
-
-        %Moebius.QueryCommand{conn: @name, sql: sql} |> execute
-
-        %Moebius.QueryCommand{
-          conn: @name,
-          sql: "create index idx_#{cmd.table_name}_search on #{cmd.table_name} using GIN(search);"
-        }
-        |> execute
-
-        %Moebius.QueryCommand{
-          conn: @name,
-          sql:
-            "create index idx_#{cmd.table_name} on #{cmd.table_name} using GIN(body jsonb_path_ops);"
-        }
-        |> execute
-
+      def create_document_table(%DocumentCommand{} = cmd, _doc) do
+        :ok = Moebius.Database.create_document_table(@name, cmd)
         cmd
       end
 
-      defp check_struct({:ok, query_result} = res, original) do
-        res =
-          cond do
-            Map.has_key?(original, :__struct__) ->
-              Map.put_new(query_result, :__struct__, original.__struct__)
-
-            true ->
-              query_result
-          end
-
-        {:ok, res}
-      end
-
-      defp handle_save_result({:ok, save_result} = res, cmd, _doc) when is_map(save_result) do
-        update_search(res, cmd)
-        res
-      end
-
-      defp handle_save_result({:error, err}, cmd, doc) do
-        table = cmd.table_name
-
-        cond do
-          String.contains?(err, "column") ->
-            raise err
-
-          String.contains?(err, "does not exist") ->
-            create_document_table(cmd, doc) |> save(Map.delete(doc, :id))
-
-          true ->
-            {:error, err}
-        end
-      end
-
-      defp execute(%Moebius.DocumentCommand{sql: nil} = cmd) do
-        %{cmd | conn: @name}
-        |> Moebius.DocumentQuery.select()
-        |> Moebius.Database.execute()
-      end
-
-      defp execute(%Moebius.DocumentCommand{} = cmd) do
-        res =
-          %{cmd | conn: @name}
-          |> Moebius.Database.execute()
-
-        case res do
-          {:error, _err} ->
-            create_document_table(cmd, nil)
-            execute(cmd)
-
-          res ->
-            res
-        end
-      end
-
-      defp execute(%Moebius.QueryCommand{sql: nil} = cmd) do
-        %{cmd | conn: @name}
-        |> Moebius.Query.select()
-        |> Moebius.Database.execute()
-      end
-
-      defp execute(%Moebius.QueryCommand{} = cmd) do
-        %{cmd | conn: @name}
-        |> Moebius.Database.execute()
-      end
-
-      defp execute(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn),
-        do: Moebius.Database.execute(cmd, conn)
-
-      defp update_search({:ok, query_result} = res, cmd) do
-        if cmd.search_fields != [] do
-          terms = Enum.map_join(cmd.search_fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
-
-          sql =
-            "update #{cmd.table_name} set search = to_tsvector(concat(#{terms})) where id=#{query_result.id}"
-
-          %Moebius.QueryCommand{sql: sql}
-          |> execute
-        end
-
-        res
-      end
+      defp execute(cmd), do: Moebius.Database.execute(%{cmd | conn: @name})
+      defp execute_document(cmd), do: Moebius.Database.execute_document(@name, cmd)
     end
   end
 
-  def start_link(opts) do
-    Postgrex.start_link(opts)
-  end
-
-  def execute(cmd) do
-    case Postgrex.query(cmd.conn, cmd.sql, cmd.params, Moebius.pool_opts()) do
-      {:ok, result} ->
-        {:ok, result}
-
-      {:error, err} ->
-        {:error, err.postgres.message}
-    end
-  end
+  # ---- the parts that don't need to be generated per module ----
 
   @doc """
-  Executes a command for a given transaction specified with `pid`. If the execution fails,
-  it will be caught in `Query.transaction/1` and reported back using `{:error, err}`.
+  Runs a command on the connection it names (`cmd.conn` is the database module), or on the
+  connection of a transaction.
   """
-  def execute(cmd, %DBConnection{} = conn) do
-    case Postgrex.query(conn, cmd.sql, cmd.params, Moebius.pool_opts()) do
-      {:ok, result} ->
-        {:ok, result}
+  def execute(%{sql: nil} = cmd), do: cmd |> Query.select() |> execute()
 
-      {:error, err} ->
-        Postgrex.query(conn, "ROLLBACK", [])
-        raise err.postgres.message
+  def execute(%{conn: pool} = cmd) do
+    Pool.checkout(pool, &query(&1, cmd))
+  end
+
+  def execute(cmd, %Connection{} = conn), do: query(conn, cmd)
+
+  # Inside a transaction a failed statement aborts it (Postgres rejects everything after the
+  # error anyway), so raise and let the transaction roll back.
+  defp query(%Connection{pool: pool, pid: pid}, cmd) do
+    case Connection.query(pid, cmd.sql, cmd.params) do
+      {:error, %Error{} = error} ->
+        if Pool.in_transaction?(pool), do: raise(error), else: {:error, error}
+
+      ok ->
+        ok
     end
   end
+
+  @doc false
+  def shape(result, %{type: type}) when type in [:insert, :update, :delete, :count],
+    do: Transformer.to_single(result)
+
+  def shape(result, _cmd), do: Transformer.to_list(result)
+
+  @doc false
+  def batch_result({:error, %Error{message: message}}), do: {:error, message}
+  def batch_result(ok), do: ok
+
+  @doc false
+  # Postgres ids are integers or strings (uuid, text). Accept integer strings for integer ids,
+  # which is what you get from a URL.
+  def id(id) when is_binary(id) do
+    if id =~ ~r/\A\d+\z/, do: String.to_integer(id), else: id
+  end
+
+  def id(id), do: id
+
+  # ---- documents ----
+
+  @doc false
+  def document_select(%{sql: nil} = cmd), do: DocumentQuery.select(cmd)
+  def document_select(cmd), do: cmd
+
+  @doc false
+  # Reading a document table that doesn't exist yet creates it (once) and tries again.
+  def execute_document(pool, cmd) do
+    case execute(%{cmd | conn: pool}) do
+      {:error, %Error{name: :undefined_table}} ->
+        with :ok <- create_document_table(pool, cmd), do: execute(%{cmd | conn: pool})
+
+      result ->
+        result
+    end
+  end
+
+  @doc false
+  def save_document(pool, cmd, doc) do
+    command = DocumentQuery.decide_command(%{cmd | conn: pool}, doc)
+
+    case execute(command) do
+      {:error, %Error{name: :undefined_table}} ->
+        # a new table has no row to update, so an id in the document is dropped
+        with :ok <- create_document_table(pool, cmd),
+             do: save_document(pool, cmd, Map.delete(doc, :id))
+
+      {:ok, _} = result ->
+        with {:ok, saved} <- Transformer.from_json(result, :single),
+             :ok <- update_search(pool, cmd, saved),
+             do: {:ok, saved}
+
+      {:error, %Error{message: message}} ->
+        {:error, message}
+    end
+  end
+
+  defp update_search(_pool, %{search_fields: []}, _saved), do: :ok
+
+  defp update_search(pool, cmd, saved) do
+    case execute(%{DocumentQuery.update_search(cmd, saved.id) | conn: pool}) do
+      {:ok, _} -> :ok
+      {:error, %Error{message: message}} -> {:error, message}
+    end
+  end
+
+  @doc false
+  # Two processes creating the same table at once can collide even with "if not exists"
+  # (Postgres checks the catalog before it locks it). A transaction-scoped advisory lock on
+  # the table name makes them take turns; the second one finds the table and does nothing.
+  def create_document_table(pool, cmd) do
+    run = fn sql, params ->
+      {:ok, _} = execute(%Moebius.QueryCommand{conn: pool, sql: sql, params: params})
+    end
+
+    Pool.transaction(pool, fn _tx ->
+      run.("select pg_advisory_xact_lock(hashtext($1))", [cmd.table_name])
+      Enum.each(DocumentQuery.create_table_sql(cmd), &run.(&1, []))
+      :ok
+    end)
+  end
+
+  # ---- streams and plans ----
+
+  @doc false
+  def stream(pool, %Moebius.DocumentCommand{} = cmd, chunk) do
+    cmd = document_select(cmd)
+    Pool.stream(pool, cmd.sql, cmd.params, chunk, &Transformer.from_json/1)
+  end
+
+  def stream(pool, %Moebius.QueryCommand{sql: nil} = cmd, chunk),
+    do: stream(pool, Query.select(cmd), chunk)
+
+  def stream(pool, %Moebius.QueryCommand{} = cmd, chunk),
+    do: Pool.stream(pool, cmd.sql, cmd.params, chunk, &Transformer.to_list/1)
+
+  @doc false
+  def explain(pool, cmd, opts) do
+    cmd =
+      case cmd do
+        %Moebius.DocumentCommand{} -> document_select(cmd)
+        %{sql: nil} -> Query.select(cmd)
+        _ -> cmd
+      end
+
+    options = if opts[:analyze], do: "analyze, buffers", else: "costs"
+    sql = "explain (#{options}) " <> String.trim_trailing(cmd.sql, ";")
+    plan = %Moebius.QueryCommand{conn: pool, sql: sql, params: cmd.params}
+
+    if opts[:analyze] do
+      Pool.transaction(pool, fn _tx -> Pool.rollback(plan_text(execute(plan))) end)
+      |> case do
+        {:error, {:ok, text}} -> {:ok, text}
+        {:error, {:error, message}} -> {:error, message}
+        {:error, message} -> {:error, message}
+      end
+    else
+      plan_text(execute(plan))
+    end
+  end
+
+  defp plan_text({:ok, %Moebius.Result{rows: rows}}),
+    do: {:ok, Enum.map_join(rows, "\n", &hd/1)}
+
+  defp plan_text({:error, %Error{message: message}}), do: {:error, message}
 end

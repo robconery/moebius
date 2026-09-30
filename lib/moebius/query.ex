@@ -1,8 +1,9 @@
 defmodule Moebius.Query do
   use Moebius.QueryFilter
 
-  alias Moebius.QueryCommand
   alias Moebius.CommandBatch
+  alias Moebius.Identifier
+  alias Moebius.QueryCommand
 
   @moduledoc """
   The main query interface for Moebius. Import this module into your code and query like a champ
@@ -38,7 +39,7 @@ defmodule Moebius.Query do
     do: db(Atom.to_string(table))
 
   def db(table),
-    do: %QueryCommand{table_name: table}
+    do: %QueryCommand{table_name: Identifier.name!(table)}
 
   defdelegate from(table), to: __MODULE__, as: :db
 
@@ -91,24 +92,26 @@ defmodule Moebius.Query do
     |> to_list
   ```
   """
-  def sort(%QueryCommand{} = cmd, col, dir) when is_atom(col) do
-    sort(cmd, Atom.to_string(col), dir)
-  end
-
-  def sort(%QueryCommand{} = cmd, col, dir) when is_binary(col) do
-    %{cmd | order: " order by #{col} #{dir}"}
+  def sort(%QueryCommand{} = cmd, col, dir) do
+    %{cmd | order: " order by #{order_term(col, dir)}"}
   end
 
   def sort(%QueryCommand{} = cmd, criteria) when is_list(criteria) do
-    orders =
-      criteria
-      |> Enum.map(fn {col, dir} -> "#{col} #{dir}" end)
-      |> Enum.join(", ")
+    orders = Enum.map_join(criteria, ", ", fn {col, dir} -> order_term(col, dir) end)
 
     %{cmd | order: " order by #{orders}"}
   end
 
   def sort(%QueryCommand{} = cmd, col), do: sort(cmd, col, :asc)
+
+  # a column given as an atom is a name and is checked; a string is an expression, used as is
+  defp order_term(col, dir) when is_atom(col),
+    do: "#{Identifier.name!(col)} #{Identifier.direction!(dir)}"
+
+  defp order_term(col, dir) when is_binary(col), do: "#{col} #{Identifier.direction!(dir)}"
+
+  defp column(col) when is_atom(col), do: Identifier.name!(col)
+  defp column(col) when is_binary(col), do: col
 
   defdelegate order_by(cmd, cols), to: __MODULE__, as: :sort
   defdelegate order_by(cmd, cols, direction), to: __MODULE__, as: :sort
@@ -127,7 +130,7 @@ defmodule Moebius.Query do
     |> to_list
   ```
   """
-  def limit(cmd, bound) when is_integer(bound),
+  def limit(cmd, bound) when is_integer(bound) and bound >= 0,
     do: %{cmd | limit: " limit #{bound}"}
 
   @doc """
@@ -143,7 +146,7 @@ defmodule Moebius.Query do
     |> to_list
   ```
   """
-  def offset(cmd, n),
+  def offset(cmd, n) when is_integer(n) and n >= 0,
     do: %{cmd | offset: " offset #{n}"}
 
   @doc """
@@ -197,7 +200,7 @@ defmodule Moebius.Query do
   end
 
   def select(%QueryCommand{} = cmd, cols) when is_list(cols) do
-    select_sql(cmd, Enum.join(cols, ", "))
+    select_sql(cmd, Enum.map_join(cols, ", ", &column/1))
   end
 
   defp select_sql(cmd, cols) do
@@ -260,7 +263,7 @@ defmodule Moebius.Query do
   ```
   """
   def group(%QueryCommand{} = cmd, cols) when is_atom(cols),
-    do: group(cmd, Atom.to_string(cols))
+    do: group(cmd, Identifier.name!(cols))
 
   def group(%QueryCommand{} = cmd, cols),
     do: %{cmd | group_by: cols}
@@ -298,9 +301,11 @@ defmodule Moebius.Query do
   ```
   """
   def reduce(%QueryCommand{} = cmd, op, column) when is_atom(column),
-    do: reduce(cmd, op, Atom.to_string(column))
+    do: reduce(cmd, op, Identifier.name!(column))
 
   def reduce(%QueryCommand{} = cmd, op, column) when is_bitstring(column) do
+    op = Identifier.name!(op)
+
     sql =
       cond do
         cmd.group_by ->
@@ -333,7 +338,7 @@ defmodule Moebius.Query do
   ```
   """
   def search(%QueryCommand{} = cmd, for: term, in: columns) when is_list(columns) do
-    concat_list = Enum.map_join(columns, ", ' ',  ", &"#{&1}")
+    concat_list = Enum.map_join(columns, ", ' ',  ", &Identifier.name!/1)
 
     sql = """
     select *, ts_rank_cd(to_tsvector(concat(#{concat_list})),to_tsquery($1)) as rank from #{cmd.table_name}
@@ -364,7 +369,7 @@ defmodule Moebius.Query do
 
   def bulk_insert(%QueryCommand{} = cmd, list) when is_list(list) do
     # do this once and get a canonnical map for the records -
-    column_map = list |> hd |> Keyword.keys()
+    column_map = list |> hd |> Keyword.keys() |> Enum.map(&Identifier.name!/1)
 
     cmd
     |> bulk_insert_batch(list, [], column_map)
@@ -404,7 +409,7 @@ defmodule Moebius.Query do
 
     params = for row <- list, {_k, v} <- row, do: v
 
-    column_names = Enum.map_join(column_map, ", ", &"#{&1}")
+    column_names = Enum.join(column_map, ", ")
     value_sql = Enum.join(param_list, ",")
     sql = "insert into #{cmd.table_name}(#{column_names}) values #{value_sql};"
     %{cmd | sql: sql, params: params, type: :insert}
@@ -416,7 +421,7 @@ defmodule Moebius.Query do
   def insert(%QueryCommand{} = cmd, criteria) do
     cols = Keyword.keys(criteria)
     vals = Keyword.values(criteria)
-    column_names = Enum.map_join(cols, ", ", &"#{&1}")
+    column_names = Identifier.names!(cols)
     parameter_placeholders = Enum.map_join(1..length(cols), ", ", &"$#{&1}")
 
     sql =
@@ -436,7 +441,7 @@ defmodule Moebius.Query do
 
     {cols, _col_count} =
       Enum.map_reduce(cols, first_available_param, fn col, acc ->
-        {"#{col} = $#{acc}", acc + 1}
+        {"#{Identifier.name!(col)} = $#{acc}", acc + 1}
       end)
 
     params = cmd.params ++ vals
@@ -506,11 +511,12 @@ defmodule Moebius.Query do
   ```
   """
   def join(%QueryCommand{} = cmd, table, opts \\ []) do
-    join_type = Keyword.get(opts, :join, "inner")
-    join_table = Keyword.get(opts, :on, cmd.table_name)
-    foreign_key = Keyword.get(opts, :foreign_key, "#{join_table}_id")
-    primary_key = Keyword.get(opts, :primary_key, "id")
-    using = Keyword.get(opts, :using, nil)
+    join_type = opts |> Keyword.get(:join, :inner) |> join_type!()
+    join_table = opts |> Keyword.get(:on, cmd.table_name) |> Identifier.name!()
+    foreign_key = opts |> Keyword.get(:foreign_key, "#{join_table}_id") |> Identifier.name!()
+    primary_key = opts |> Keyword.get(:primary_key, "id") |> Identifier.name!()
+    using = opts |> Keyword.get(:using) |> using_columns()
+    table = Identifier.name!(table)
 
     condition = join_condition(table, join_type, join_table, foreign_key, primary_key, using)
 
@@ -522,8 +528,20 @@ defmodule Moebius.Query do
   end
 
   defp join_condition(table, join_type, _join_table, _foreign_key, _primary_key, cols) do
-    " #{join_type} join #{table} using (#{Enum.join(cols, ", ")})"
+    " #{join_type} join #{table} using (#{cols})"
   end
+
+  @join_types ~w(inner left right full cross)
+
+  defp join_type!(type) do
+    case type |> to_string() |> String.downcase() do
+      t when t in @join_types -> t
+      _ -> raise ArgumentError, "join must be one of #{Enum.join(@join_types, ", ")}"
+    end
+  end
+
+  defp using_columns(nil), do: nil
+  defp using_columns(cols) when is_list(cols), do: Identifier.names!(cols)
 
   @doc """
   Executes the SQL in a given SQL file without parameters. Specify the scripts directory by setting the `scripts` directive in the config.
@@ -561,10 +579,12 @@ defmodule Moebius.Query do
     sql_file_command(file, [params])
   end
 
+  # the file name is checked by Identifier.script!/1: no "..", no absolute paths
+  # sobelow_skip ["Traversal.FileModule"]
   def sql_file_command(file, params) do
     sql =
       Application.get_env(:moebius, :scripts)
-      |> Path.join("#{Atom.to_string(file)}.sql")
+      |> Path.join("#{Identifier.script!(file)}.sql")
       |> File.read!()
       |> String.trim()
 
@@ -619,7 +639,7 @@ defmodule Moebius.Query do
         true -> ""
       end
 
-    sql = "select * from #{function_name}(#{arg_list});"
+    sql = "select * from #{Identifier.name!(function_name)}(#{arg_list});"
     %Moebius.QueryCommand{sql: sql, params: params}
   end
 end

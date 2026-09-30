@@ -33,8 +33,6 @@ defmodule Moebius.ReportedIssuesTest do
              |> TestDb.first()
   end
 
-  @tag skip:
-         "filter(col: nil) builds `col = $1`, which never matches NULL. Fixed with the epgsql swap."
   test "filtering on nil matches NULL (#35)" do
     {:ok, _} = db(:users) |> insert(email: "null@test.com", first: "Test") |> TestDb.run()
 

@@ -3,12 +3,18 @@
 > Read this FIRST. Directory → purpose. Drill into an area only when needed.
 > Fill `TODO` purposes via a single batched pass; they survive rebuilds.
 
-- `.` (7 files: 3·, 2.exs, 1.md) — mix.exs (deps, version), README (full API docs by example), .formatter.exs, .tool-versions
+- `.` (11 files: 4.md, 3·, 2.exs) — mix.exs (deps, version), README (full API docs by example), .formatter.exs, .tool-versions
+- `.claude/skills/elixir-testing` (1 files: 1.md) — Skill: ExUnit standards for this suite (data isolation on a shared DB, assertion style, flake checks)
+- `.claude/skills/erlang-otp` (3 files: 3.md) — Skill: OTP rules for a library on epgsql + pooler; references/epgsql.md and references/pooler.md document both APIs as used here
+- `.claude/skills/postgres-sql` (1 files: 1.md) — Skill: how the builders must write SQL (params, identifier checks, index-friendly SQL, pagination, bulk writes, transactions)
+- `.claude/skills/supabase-postgres-best-practices` (36 files: 36.md) — Skill (third-party, supabase/agent-skills): general Postgres rules; references/<category>-<rule>.md
 - `.github/workflows` (1 files: 1.yml) — CI: GitHub Actions, Postgres service, `mix test` under MIX_ENV=test
-- `config` (3 files: 3.exs) — config.exs imports <env>.exs; test.exs sets `:moebius, connection: [url: ...]` and `scripts: "test/db"` (sql_file dir)
-- `lib` (1 files: 1.ex) — moebius.ex — OTP app entry, connection parsing (`get_connection`, `parse_connection` URL→opts), `run_with_psql`, `pool_opts`
-- `lib/mix/tasks` (5 files: 5.ex) — Mix tasks: moebius.create / drop / migrate (runs test/db/tables.sql, test env only) / seed; helpers.ex shells out to `psql -U postgres -c "CREATE/DROP DATABASE ..."`
-- `lib/moebius` (10 files: 10.ex) — Core library. query.ex = relational query builder (pipes into %QueryCommand{}, builds SQL); query_filter.ex = where-clause builder (eq/gt/in/...); document_query.ex = JSONB document-store builder (%DocumentCommand{}); database.ex = `use Moebius.Database` macro giving run/first/find/save/transaction + raw Postgrex execute; transformer.ex = Postgrex result → maps/lists/JSON; *_command.ex/command_batch.ex = structs; postgrex_types.ex = Jason JSON types
-- `test` (1 files: 1.exs) — test_helper.exs defines `TestDb` (`use Moebius.Database`) and starts it — tests call `|> TestDb.run()`
+- `config` (4 files: 4.exs) — config.exs imports <env>.exs; test.exs sets `:moebius, connection: [url: ...]` and `scripts: "test/db"` (sql_file dir)
+- `lib` (1 files: 1.ex) — moebius.ex — `Moebius` (get_connection, parse_connection URL→opts, run_script/2 for multi-statement SQL) and the ready-made `Moebius.Db`
+- `lib/mix/tasks` (5 files: 5.ex) — Mix tasks: moebius.create / drop / migrate (test/db/tables.sql) / seed (seeds.sql); helpers.ex runs them through Moebius.run_script (epgsql, no psql)
+- `lib/moebius` (8 files: 8.ex) — Core library. Builders: query.ex (%QueryCommand{}), query_filter.ex (where clauses), document_query.ex (JSONB, %DocumentCommand{}), identifier.ex (name checks). Running: database.ex (`use Moebius.Database` macro), pool.ex (pooler checkout, transactions/savepoints, cursor streams), connection.ex (epgsql calls), params.ex (param type checks), transformer.ex (%Moebius.Result{} → maps). error.ex, result.ex, *_command.ex = structs
+- `lib/moebius/codec` (3 files: 3.ex) — epgsql codecs: date_time.ex (date/time/timestamp(tz) ↔ Elixir structs, exact µs), numeric.ex (↔ Decimal), json.ex (Jason adapter)
+- `test` (1 files: 1.exs) — test_helper.exs starts `TestDb` under a supervisor
 - `test/db` (4 files: 4.sql) — SQL fixtures: tables.sql (schema, used by migrate), seeds.sql, and sql_file() scripts (simple.sql, cte.sql)
-- `test/moebius` (17 files: 17.exs) — ExUnit tests, one file per feature (insert, update, delete, join, document, full_text_search, transaction, bulk_insert, ...). Most assert both generated `cmd.sql` and live DB result
+- `test/moebius` (16 files: 16.exs) — ExUnit tests, one file per feature. Builder tests assert `cmd.sql`/`cmd.params`; round-trip tests run through TestDb. types_test (codecs), pool_test (failures, timeouts, second pools), security_test (injection), stream_test, explain_test
+- `test/support` (2 files: 2.ex) — TestDb (`use Moebius.Database`) and Moebius.TestData (reset_users!/0, unique_email/1); compiled in the test env only
