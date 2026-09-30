@@ -1,444 +1,523 @@
-## A functional query tool for Elixir and PostgreSQL.
+# Moebius
 
-Our goal with creating Moebius is to try and keep as close as possible to the functional nature of Elixir and, at the same time, the goodness that is PostgreSQL. We think working with a database should feel like a natural extension of the language, with as little abstraction wonkery as possible.
+[![Hex.pm](https://img.shields.io/hexpm/v/moebius.svg)](https://hex.pm/packages/moebius)
+[![Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/moebius)
+[![CI](https://github.com/robconery/moebius/actions/workflows/elixir.yml/badge.svg)](https://github.com/robconery/moebius/actions/workflows/elixir.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Moebius is *not* an ORM. There are no mappings, no schemas, no migrations; only queries and data. We embrace PostgreSQL as much as possible, surfacing the goodness so you be a hero.
+**A functional query library for Elixir and PostgreSQL.** You pipe small functions together to build a query, then hand it to a database to run. You get plain maps back.
 
-## Documentation
+```elixir
+import Moebius.Query
 
-API documentation is available at http://hexdocs.pm/moebius
+{:ok, users} =
+  db(:users)
+  |> filter(:order_count, gt: 5)
+  |> sort(:last, :asc)
+  |> limit(20)
+  |> Moebius.Db.run()
+```
+
+Moebius is *not* an ORM. There are no schemas, no mappings and no migrations; only queries and data. It leans on PostgreSQL as hard as it can: JSONB documents, full-text search, `COPY`, cursors, savepoints and `EXPLAIN` are all a function call away.
+
+- [Why Moebius exists](#why-moebius-exists)
+- [What's new in 5.0](#whats-new-in-50)
+- [Installation](#installation) and [configuration](#configuration)
+- [Querying](#querying), [writing](#inserting-updating-and-deleting), [joins](#joins), [aggregates](#aggregates), [full-text search](#full-text-search)
+- [Documents (JSONB)](#documents-jsonb)
+- [SQL files and functions](#sql-files-and-functions)
+- [Bulk loading](#bulk-loading), [streaming](#streaming-large-results), [transactions](#transactions), [EXPLAIN](#asking-postgres-how-it-will-run-a-query)
+- [Types](#types), [errors](#errors) and [safety](#safety)
+- [Contributing](#contributing)
+
+## Why Moebius exists
+
+Elixir is lucky. The people who build the language also built Ecto and Postgrex, and both are excellent. Most languages don't get that. If Ecto fits the way you think, use it; it's a great piece of work and it isn't going anywhere.
+
+But the folks who make a language shouldn't have to make *every* tool for it too. That's a lot to carry, and one of the nice things about open source is that the rest of us can pitch in with a different take. Moebius is one of those takes.
+
+It started in 2015 as a port of the ideas in [MassiveJS](https://github.com/robconery/massive-js): talk to Postgres directly, treat SQL as a friend rather than something to hide, and keep the API small enough to hold in your head. Queries are data. Functions transform them. The database runs them. That's the whole idea, and it happens to fit Elixir very well.
+
+So Moebius is for you if:
+
+- You like SQL and want to write it (or something close to it) instead of mapping it.
+- You want to store documents in Postgres and query them without setting up a separate database.
+- You'd rather have maps than structs, and a pipe than a schema.
+
+## What's new in 5.0
+
+5.0 swaps the driver. Moebius used to run on Postgrex; it now runs on [epgsql](https://github.com/epgsql/epgsql), the Erlang PostgreSQL driver, with a [pooler](https://github.com/epgsql/pooler) connection pool. The query builders and the `run`/`first`/`find`/`save`/`transaction` API didn't change.
+
+### Why change the driver?
+
+Postgrex is a good driver and this isn't a knock on it. There were two practical reasons.
+
+**Stability.** Postgrex has been a 0.x library for its whole life, which means any minor release is allowed to break things. A library that depends on it has to pin `~> 0.19` and ask its users to live with that pin. epgsql has been past 1.0 since 2015 and on 4.x since 2018. pooler, from the same group, is at 1.7. Neither pulls in anything else.
+
+**Security.** Postgrex held `decimal` at 2.x, which kept a known vulnerability in every app that installed Moebius. With 5.0, `mix hex.audit` is clean.
+
+| | 4.2 (Postgrex) | 5.0 (epgsql) |
+|---|---|---|
+| Driver | postgrex 0.19.2 | epgsql 4.8.0 (no deps) |
+| Pool | db_connection 2.7.0 + telemetry | pooler 1.7.0 (no deps) |
+| Decimal | 2.4.1 | 3.1.1 |
+| Open CVEs | 3 (CVE-2026-32687, CVE-2026-58225, CVE-2026-32686) | 0 |
+| Needs `psql` installed for mix tasks | yes | no |
+| Tests | 104 | 209 |
+
+Since a major version was happening anyway, 5.0 also fixes some old behavior that couldn't be fixed without breaking something. The full list, with the reason for each, is in [CHANGELOG.md](CHANGELOG.md). The ones you're most likely to hit:
+
+- The transaction handle is a `%Moebius.Connection{}`. If you only pass `tx` back to `run/2` and `save/3`, nothing changes.
+- Table, column and function names are checked, and a bad one raises `ArgumentError`.
+- `filter(col: nil)` means `col IS NULL` (it used to build `col = $1`, which never matched).
+- `run/1` on a statement with no rows returns `{:ok, []}`, not a bare `[]`.
+- An exception raised inside `transaction/1` is re-raised after the rollback instead of being turned into `{:error, message}`.
+- The `:types` config (Postgrex extensions) is gone. Types are handled by Moebius's own codecs.
+
+### New in 5.0
+
+- [`copy/3`](#bulk-loading): bulk load any Enumerable with Postgres's binary `COPY` protocol.
+- [`stream/2`](#streaming-large-results): read a query through a server-side cursor, a chunk at a time.
+- [`explain/2`](#asking-postgres-how-it-will-run-a-query): the query plan as text, with an `analyze` that leaves nothing behind.
+- [Nested transactions](#transactions) become savepoints, and `rollback/1` aborts with a reason.
+- [Exact types](#types): `numeric` is a `Decimal` both ways, timestamps are exact to the microsecond, `infinity` works.
+- [`Moebius.Error`](#errors), with the SQLSTATE code, detail, hint, constraint, table and column.
+- Parameters are [checked before they're sent](#safety), so a wrong type is a clear error and never takes a connection down.
+- A pool that survives an outage: if Postgres goes away, calls return `{:error, message}` until it's back, and nothing else in your supervision tree restarts.
+
+### Bugs the new tests found
+
+The test suite was rewritten before any driver code changed, so that every test creates the rows it checks and asserts an exact value. Then the driver swap added tests for every type, failure and race. They turned up eleven bugs, all fixed in 5.0. Two of them were SQL injection:
+
+- `find("1 or 1=1")` returned a row, because the id was pasted into the SQL.
+- A `'` in a `DocumentQuery.contains/2` value broke out of the SQL string.
+
+The others: concurrent saves to a new document table could lose writes, `delete(id) |> first()` deleted nothing, `filter(col: nil)` never matched, a `url` silently overrode an explicit `port:`, `in: []` built invalid SQL, document tables in a schema got bad index names, a failed document query could retry forever, and two doctests were wrong and never ran. The details are in the [changelog](CHANGELOG.md#fixed).
+
+### Benchmarks
+
+Same script, same laptop, same Postgres 17 database, run against 4.2 and 5.0 with both pools holding ten open connections. Medians over three alternating runs.
+
+| Operation | 4.2 median | 5.0 median | 4.2 p99 | 5.0 p99 |
+|---|---:|---:|---:|---:|
+| find by id | 80 µs | 73 µs | 313 µs | 236 µs |
+| filter, 100 rows | 215 µs | 191 µs | 332 µs | 228 µs |
+| insert returning | 84 µs | 79 µs | 205 µs | 118 µs |
+| count | 184 µs | 167 µs | 314 µs | 199 µs |
+| document save | 87 µs | 83 µs | 181 µs | 121 µs |
+| document contains | 97 µs | 92 µs | 136 µs | 122 µs |
+
+| Workload | 4.2 | 5.0 |
+|---|---:|---:|
+| Load 100,000 rows with `bulk_insert` + `transact_batch` | 595 ms | 739 ms |
+| Load 100,000 rows with `copy/3` | n/a | **130 ms** |
+| 50 processes × 200 finds on a 10-connection pool | 167 ms | 187 ms |
+
+Single queries are 5 to 11% faster at the median and 10 to 42% faster at p99. Under heavy concurrency 5.0 is about 12% slower, because epgsql encodes and decodes inside its connection processes while DBConnection lends the socket to each caller. `bulk_insert` is slower for the same reason; use `copy/3`, which is 4.6 times faster than 4.2's `bulk_insert`.
 
 ## Installation
 
-Installing Moebius involves a few small steps:
-
-  1. Add moebius to your list of dependencies in `mix.exs`:
-
-   ```elixir
-    def deps do
-      [{:moebius, "~> 5.0"}]
-    end
-   ```
-
-  2. Add the db child process to your `Application` module's supervision tree:
-  
-  ```elixir
-  children = [
-    Moebius.Db
-  ]
-  ```
-
-Run `mix deps.get` and you'll be good to go.
-
-## Connecting to PostgreSQL
-
-There are various ways to connect to a database with Moebius. You can used a formal, supervised definition or just roll with our default. Either way, you start off by adding connection info in your `config.exs`:
+Add Moebius to your dependencies in `mix.exs`:
 
 ```elixir
-config :moebius, connection: [
-  hostname: "localhost",
-  username: "username",
-  password: "password",
-  database: "my_db"
-],
-scripts: "test/db"
+def deps do
+  [{:moebius, "~> 5.0"}]
+end
 ```
 
-You can also use a URL if you like:
+Then add the default database to your application's supervision tree:
 
 ```elixir
-config :moebius, connection: [
-  url: "postgresql://user:password@host/database"
-],
-scripts: "test/db"
+children = [
+  Moebius.Db
+]
 ```
 
-If you want to use environment variables, just set things using `System.env`. A missing username or password falls back to `PGUSER` and `PGPASSWORD`.
+Run `mix deps.get` and you're good to go. Moebius needs Elixir 1.15 or later.
 
-Under the hood, Moebius runs on [epgsql](https://github.com/epgsql/epgsql), the Erlang PostgreSQL driver, with a [pooler](https://github.com/epgsql/pooler) connection pool. Both are past 1.0 and have no dependencies of their own. Each database module owns one pool, started as a single child of your supervision tree. If Postgres goes away the pool keeps running and calls return `{:error, message}` until it's back; nothing else in your tree restarts.
+## Configuration
 
-These connection options are worth knowing:
+Put your connection details in `config/config.exs` (or `runtime.exs`):
+
+```elixir
+config :moebius,
+  connection: [
+    hostname: "localhost",
+    username: "postgres",
+    password: "postgres",
+    database: "my_app"
+  ],
+  scripts: "priv/sql"
+```
+
+A URL works too:
+
+```elixir
+config :moebius, connection: [url: "postgresql://user:password@host/database"]
+```
+
+A missing username or password falls back to `PGUSER` and `PGPASSWORD`. If you pass both a `url` and explicit options, the explicit options win. `scripts` is the directory for [SQL files](#sql-files-and-functions).
+
+These options are worth knowing:
 
 ```elixir
 config :moebius, connection: [
   url: "postgresql://user:password@host/database",
   pool_size: 10,                # the most connections to open (default 10)
   pool_min: 10,                 # opened at start and kept when idle (default: pool_size)
-  checkout_timeout: 5_000,      # how long a call waits for a free connection
+  checkout_timeout: 5_000,      # how long a call waits for a free connection, in ms
   statement_timeout: "30s",     # Postgres cancels anything slower. Recommended.
+  application_name: "my_app",   # shows up in pg_stat_activity
   ssl: true                     # or :required, with ssl_opts: [...]
 ]
 ```
 
-Types come back as you'd expect: `timestamptz` as a UTC `DateTime`, `timestamp` as `NaiveDateTime`, `date`, `time`, `numeric` as an exact `Decimal`, `json`/`jsonb` as maps, `uuid` as a string, `NULL` as `nil`. The same types work as parameters.
+Also supported: `queue_max`, `max_lifetime`, `lock_timeout`, `idle_in_transaction_session_timeout`, `settings` (any other session settings) and `socket_dir`.
 
-You might be wondering what the `scripts` entry is? Moebius can execute SQL files directly for you - we'll get to that in a bit.
+### Your own database modules
 
-## Supervision and Databases
-
-Moebius formalizes the concept of a database connection, so you can supervise each independently, or not at all. This allows for a lot of flexibility. You don't have to do it this way, but it really helps.
-
-**You don't need to do any of this** - we have a default DB setup for you. However, if you want a formalized, supervised module for your database, here's how you do it.
-
-First, create a module for your database:
+`Moebius.Db` is a ready-made database. You can make your own, each with its own pool:
 
 ```elixir
 defmodule MyApp.Db do
   use Moebius.Database
-
-  # helper/repo methods go here
 end
 ```
 
-Next, in your `Application` file, add this new module to your supervision tree:
+Each database module is one child in your supervision tree. With no arguments it reads the `:connection` config; pass options to point it somewhere else:
 
 ```elixir
-def start(_type, _args) do
-  start_db
-  #...
+config :moebius,
+  connection: [url: "postgresql://localhost/my_app"],
+  reporting: [url: "postgresql://replica/my_app", pool_size: 4]
+```
+
+```elixir
+defmodule MyApp.ReportingDb do
+  use Moebius.Database
 end
 
-def start_db do
-  #create a child process
-  children = [
-    {MyApp.Db, Moebius.get_connection()}
-  ]
-  Supervisor.start_link children, strategy: :one_for_one
-end
+children = [
+  MyApp.Db,
+  {MyApp.ReportingDb, Moebius.get_connection(:reporting)}
+]
 ```
 
-That's it. Now, when your app starts you'll have a supervised database you can use as needed. The function `Moebius.get_connection/0` will look for a key called `:connection` in your `config.exs`. If you want to connect to multiple databases, name these connections something meaningful, then pass that to `Moebius.get_connection/1`.
+That's handy for a read replica, a second database, or just keeping a slow reporting workload away from your web requests. (Many thanks to [Peter Hamilton](https://github.com/hamiltop) for the original idea.)
 
-For instance, you might have a sales database and an accounting one; or you might have a read-only connection and a write-only one to spread the load. For this, just specify each as needed:
+The rest of this README uses `Moebius.Db`, but every function works the same on your own modules. `pool_status/0` tells you how busy a pool is:
 
 ```elixir
-config :moebius, read_only: [
-  url: "postgresql://user:password@host/database"
-],
-write_only: [
-  url: "postgresql://user:password@host/database"
-],
-scripts: "test/db"
+Moebius.Db.pool_status()
+#=> %{max_count: 10, in_use_count: 1, free_count: 9, ...}
 ```
 
-You can now use these in your database module:
+## Querying
+
+Every query follows the same flow: build a command with the builder functions, then pass it to a database. Builders never touch the database, so you can inspect `cmd.sql` and `cmd.params` any time.
 
 ```elixir
-def start(_type, _args) do
-  start_db
-  #...
-end
+import Moebius.Query
 
-def start_db do
-  #create a worker
-  read_only_db_worker = worker(MyApp.Db, [Moebius.get_connection(:read_only)])
-  write_only_db_worker = worker(MyApp.Db, [Moebius.get_connection(:write_only)])
-  Supervisor.start_link [read_only_db_worker, write_only_db_worker], strategy: :one_for_one
-end
+cmd = db(:users) |> filter(email: "rob@example.com")
+cmd.params  #=> ["rob@example.com"]
+
+{:ok, user} = cmd |> Moebius.Db.first()
 ```
 
-It bears repeating: *you don't need to do any of this*, we have a default database setup for you. However supporting multiple connections was very high on our list so this is how we chose to do it (with many thanks to [Peter Hamilton](https://github.com/hamiltop) for the idea).
+You run a command with one of these:
 
-The rest of the examples you see below use our default database.
-
-## The Basic Query Flow
-
-When querying the database (read or write), you construct the query and then pass it to the database you want:
+| Function | Returns |
+|---|---|
+| `run/1` | `{:ok, [map]}` for a select, `{:ok, map}` for insert/update, `{:ok, %{deleted: n}}` for delete |
+| `first/1` | `{:ok, map}` or `{:ok, nil}` |
+| `find/2` | `{:ok, map}` or `{:ok, nil}`, by primary key |
 
 ```elixir
-{:ok, result} = Moebius.Query.db(:users) |> Moebius.Db.first
+{:ok, user}  = db(:users) |> Moebius.Db.find(42)
+{:ok, users} = db(:users) |> Moebius.Db.run()
+{:ok, %{count: 1024}} = db(:users) |> count() |> Moebius.Db.first()
 ```
 
-In this example, `db(:users)` initiates the `QueryCommand`, we can filter it, sort it, do all kinds of things. To run it, however, we need to pass it to the database we want to execute against.
+### Filtering
 
-The default database is `Moebius.Db`, but you can make your own with a dedicated connection as needed (see above).
-
-Let's see some more examples.
-
-## Simple Examples
-
-The API is built around the concept of transforming raw data from your database into something you need, and we try to make it feel as *functional* as possible. We lean on Elixir's `|>` operator for this, and it's the core of the API.
-
-This returns a user with the id of 1.
+Pass a keyword list for equality:
 
 ```elixir
-{:ok, result} =
+db(:users) |> filter(first: "Rob", last: "Conery")
+# where first = $1 and last = $2
+```
+
+Or a column and an operator:
+
+```elixir
+db(:users) |> filter(:name, eq: "mark")          # =
+db(:users) |> filter(:name, neq: "mark")         # !=
+db(:users) |> filter(:order_count, gt: 5)        # >
+db(:users) |> filter(:order_count, gte: 5)       # >=
+db(:users) |> filter(:order_count, lt: 5)        # <
+db(:users) |> filter(:order_count, lte: 5)       # <=
+db(:users) |> filter(:name, in: ["mark", "biff", "skip"])
+db(:users) |> filter(:name, ["mark", "biff", "skip"])       # same as in:
+db(:users) |> filter(:name, not_in: ["mark", "biff"])       # or nin:
+```
+
+`nil` means `IS NULL`, and `neq: nil` means `IS NOT NULL`:
+
+```elixir
+db(:users) |> filter(deleted_at: nil)
+db(:users) |> filter(:deleted_at, neq: nil)
+```
+
+An empty `in: []` matches nothing, and an empty `not_in: []` matches everything.
+
+When you need something the helpers don't cover, write the condition yourself. Values still go in as parameters:
+
+```elixir
+db(:users) |> filter("created_at > now() - interval '7 days'")
+db(:users) |> filter("email ilike $1", "%@example.com")
+```
+
+Filters stack, so you can pipe as many as you like.
+
+### Sorting, paging and picking columns
+
+```elixir
+{:ok, page} =
   db(:users)
-  |> filter(name: "Steve")
-  |> sort(:city, :desc)
-  |> limit(10)
-  |> offset(2)
-  |> Moebius.Db.run
+  |> filter(:order_count, gt: 0)
+  |> sort(:order_count, :desc)
+  |> limit(25)
+  |> offset(50)
+  |> select([:id, :email, :order_count])
+  |> Moebius.Db.run()
 ```
 
-Hopefully it's fairly straightforward what this query returns. All users named Steve sorted by city... skipping the first two, returning the next 10.
+`select/2` writes the SQL from everything piped in before it, so it goes last. You only need it to pick columns; without it you get `*`.
 
-### Operators
+`sort/2` takes a list for more than one column: `sort(id: :asc, name: :desc)`. `skip/2` is an alias for `offset/2`. `db(:users) |> last(:id) |> Moebius.Db.first()` gets the newest row.
 
-
-An "=" (Equal) query happens when you pass a column name and a value:
+If you'd rather read something closer to SQL, there are aliases: `from` for `db`, `where` for `filter`, and `order_by` for `sort`.
 
 ```elixir
-{:ok, result} =
-  db(:users)
-  |> filter(name: "mark")
-  |> Moebius.Db.run
-
-# or, if you want to be more precise, specify the `eq` key:
-
-{:ok, result} =
-  db(:users)
-  |> filter(:name, eq: "mark"])
-  |> Moebius.Db.run
+from(:users)
+|> where(:order_count, gt: 5)
+|> order_by(:email)
+|> Moebius.Db.run()
 ```
 
-A "!=" (Not Equal) query happens when you specify the `neq` key:
+### Just SQL
+
+If an abstraction is in your way, skip it:
 
 ```elixir
-{:ok, result} =
-  db(:users)
-  |> filter(:name, neq: "mark")
-  |> Moebius.Db.run
+{:ok, rows} = Moebius.Db.run("select id, email from users where id = $1", [1])
 ```
 
-A ">" (Greater Than) query happens when you specify the `gt` key:
+## Inserting, updating and deleting
+
+`insert` returns the new row:
 
 ```elixir
-{:ok, result} =
+{:ok, user} =
   db(:users)
-  |> filter(:order_count, gt: 5)
-  |> Moebius.Db.run
+  |> insert(email: "frodo@shire.me", first: "Frodo", last: "Baggins")
+  |> Moebius.Db.run()
+
+user.id #=> 1
 ```
 
-Additionally, the following comparison operators are available:
-
-- "<" (Less Than): `lt`
-- ">=" (Greater Than or Equal To): `gte`
-- "<=" (Less Than or Equal To) `lte`
-
-An "IN" query happens when you pass an array:
+`update` changes whatever the filter matches, and returns the updated row:
 
 ```elixir
-{:ok, result} =
+{:ok, user} =
   db(:users)
-  |> filter(:name, ["mark", "biff", "skip"])
-  |> Moebius.Db.run
-
-# or, if you want to be more precise, specify the `in` key:
-
-{:ok, result} =
-  db(:users)
-  |> filter(:name, in: ["mark", "biff", "skip"])
-  |> Moebius.Db.run
+  |> filter(id: 1)
+  |> update(email: "frodo@rivendell.me")
+  |> Moebius.Db.run()
 ```
 
-A "NOT IN" query happens when you specify the `not_in` or `nin` key:
+`delete` works the same way and returns a count:
 
 ```elixir
-{:ok, result} =
+{:ok, %{deleted: 3}} =
+  db(:sessions)
+  |> filter("expires_at < now()")
+  |> delete()
+  |> Moebius.Db.run()
+```
+
+## Joins
+
+Tables can be atoms or strings. The defaults follow the usual naming convention (`customer.id` = `order.customer_id`), and you can override any of it:
+
+```elixir
+db(:customer)
+|> join(:order)
+|> select()
+|> Moebius.Db.run()
+
+db(:customer)
+|> join(:order, on: :customer)
+|> join(:item, on: :order)
+|> select()
+|> Moebius.Db.run()
+
+db(:customer)
+|> join(:order, join: :left, foreign_key: :cust_id, primary_key: :id)
+|> select()
+|> Moebius.Db.run()
+```
+
+The options are `:join` (`:inner` by default, or `:left`, `:right`, `:full`, `:cross`), `:on`, `:foreign_key`, `:primary_key` and `:using`.
+
+## Aggregates
+
+Aggregates are built the way you'd think about them: gather the rows (`map`), group them (`group`) and reduce them (`reduce`):
+
+```elixir
+{:ok, %{sum: 5}} =
   db(:users)
-  |> filter(:name, not_in: ["mark", "biff", "skip"])
-  |> Moebius.Db.run
-```
+  |> map("order_count > 1")
+  |> reduce(:sum, :order_count)
+  |> Moebius.Db.first()
 
-If you prefer a more SQL-like syntax, you can use the following aliases:
-
-- db: `from`
-- filter: `where`
-- sort: `order_by`
-
-```elixir
-{:ok, result} =
-  from(:users)
-  |> where(name: "Steve")
-  |> where(:order_count, gt: 5)
-  |> order_by(id: :asc, name: :desc)
-```
-
-If you don't want to deal with my abstractions, just use SQL:
-
-```elixir
-{:ok, result} = "select * from users where id=1 limit 1 offset 1;" |> Moebius.Db.run
-```
-
-## Full Text indexing
-
-One of the great features of PostgreSQL is the ability to do intelligent full text searches. We support this functionality directly:
-
-```elixir
-{:ok, result} =
+{:ok, rows} =
   db(:users)
-  |> search(for: "Mike", in: [:first, :last, :email])
-  |> Moebius.Db.run
+  |> map("order_count > 1")
+  |> group(:email)
+  |> reduce(:sum, :order_count)
+  |> Moebius.Db.run()
+#=> [%{email: "b@test.com", sum: 2}, %{email: "c@test.com", sum: 3}]
 ```
 
-The `search` function builds a `tsvector` search on the fly for you and executes it over the columns you send in. The results are ordered in descending order using `ts_rank`.
+Any Postgres aggregate works: `:avg`, `:min`, `:max`, `:count` and so on. For anything fancier (window functions, CTEs), a [SQL file](#sql-files-and-functions) is the better tool.
 
-## JSONB Support
+## Full-text search
 
-Moebius supports using PostgreSQL as a document store in its entirety. Get your project off the ground and don't worry about migrations - just store documents, and you can normalize if you need to later on.
+Postgres has very good full-text search built in, and Moebius will build the `tsvector` query for you, ranked with `ts_rank`:
 
-Start by importing `Moebius.DocumentQuery` and saving a document:
+```elixir
+{:ok, results} =
+  db(:users)
+  |> search(for: "mike", in: [:first, :last, :email])
+  |> Moebius.Db.run()
+```
+
+## Documents (JSONB)
+
+Moebius can use Postgres as a document store. You don't create tables or write migrations; you save a map and Moebius takes care of the rest.
 
 ```elixir
 import Moebius.DocumentQuery
 
-{:ok, new_user} =
+{:ok, friend} =
   db(:friends)
-  |> Moebius.Db.save(email: "test@test.com", name: "Moe Test")
+  |> Moebius.Db.save(%{email: "moe@test.com", name: "Moe Test", tags: ["best"], spent: 250})
+
+friend.id #=> 1
 ```
 
-Two things happened for us here. The first is that `friends` did not exist as a document table in our database, but `save/2` did that for us. This is the table that was created on the fly:
+If `friends` didn't exist, `save/2` just created it:
 
 ```sql
-create table NAME(
-  id serial primary key not null,
+create table friends(
+  id bigint generated by default as identity primary key,
   body jsonb not null,
   search tsvector,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
--- index the search and jsonb fields
-create index idx_NAME_search on NAME using GIN(search);
-create index idx_NAME on NAME using GIN(body jsonb_path_ops);
+create index idx_friends_search on friends using GIN(search);
+create index idx_friends on friends using GIN(body jsonb_path_ops);
 ```
 
-The entire `DocumentQuery` module works off the premise that this is how you will store your JSONB docs. Note the `tsvector` field? That's PostgreSQL's built in full text indexing. We can use that if we want during by adding `searchable/1` to the pipe:
+Saving a document that has an `id` updates it:
 
 ```elixir
-import Moebius.DocumentQuery
-
-{:ok, new_user} =
-  db(:friends)
-  |> searchable([:name])
-  |> Moebius.Db.save(email: "test@test.com", name: "Moe Test")
+{:ok, friend} = db(:friends) |> Moebius.Db.save(%{friend | name: "Moe Howard"})
 ```
 
-By specifying the searchable fields, the `search` field will be updated with the values of the name field.
+### Querying documents
 
-Now, we can query our document using full text indexing which is optimized to use the GIN index created above:
+`contains/2` uses the `@>` operator and the GIN index, so it's fast. Use it whenever you can:
 
 ```elixir
-{:ok, user} =
-  db(:friends)
-  |> search("test.com")
-  |> Moebius.Db.run
+{:ok, friends} = db(:friends) |> contains(email: "moe@test.com") |> Moebius.Db.run()
+{:ok, friend}  = db(:friends) |> Moebius.Db.find(1)
 ```
 
-Or we can do a simple filter:
+For comparisons, `filter/4` works on any key. It can't use the GIN index, so it scans the table:
 
 ```elixir
-{:ok, user} =
+{:ok, big_spenders} =
   db(:friends)
-  |> contains(email: "test@test.com")
-  |> Moebius.Db.run
+  |> filter(:spent, ">", 100)
+  |> sort(:name)
+  |> limit(10)
+  |> Moebius.Db.run()
 ```
 
-This query is optimized to use the `@` (or "contains" operator), using the *other* GIN index specified above. There's more we can do...
+`exists/3` uses the `?` operator, which is handy for arrays:
 
 ```elixir
-{:ok, users} =
-  db(:friends)
-  |> filter(:money_spent, ">", 100)
-  |> Moebius.Db.run
+{:ok, besties} = db(:friends) |> exists(:tags, "best") |> Moebius.Db.run()
 ```
 
-This runs a full table scan so is not terribly optimal, but it does work if you need it once in a while. You can also use the existence (`?`) operator, which is very handy for querying arrays. In the library, it is implemented as `exists`:
+### Searching documents
+
+Tell Moebius which keys to index when you save, and it keeps the `search` column up to date:
 
 ```elixir
-{:ok, buddies} =
-  db(:friends)
-  |> exists(:tags, "best")
-  |> Moebius.Db.run
+db(:products)
+|> searchable([:name, :description])
+|> Moebius.Db.save(%{name: "Buffalo Wings", description: "Spicy chicken wings"})
+
+{:ok, results} = db(:products) |> search("spicy") |> Moebius.Db.run()
 ```
 
-This will allow you to query embedded documents and arrays rather easily, but again doesn't use the JSONB-optimized GIN index. You *can* index for using existence, have a look at the PostgreSQL docs.
+You can also search keys on the fly, without the index: `search(for: "spicy", in: [:name, :description])`.
 
-### Using Structs
+### Structs
 
-If you're a big fan of structs, you can use them directly on `save` and we'll send that same struct back to you, complete with an `id`:
+Save a struct and you get the same struct back, with its `id`:
 
 ```elixir
 defmodule Candy do
-  defstruct [
-    id: nil,
-    sticky: true,
-    chocolate: "gooey"
-  ]
+  defstruct id: nil, sticky: true, chocolate: "gooey"
 end
 
-yummy = %Candy{}
-{:ok, res} = db(:monkies) |> Moebius.Db.save(yummy)
-#res = %Candy{id: 1, sticky: true, chocolate: "gooey"}
+{:ok, %Candy{id: 1, sticky: true}} = db(:candies) |> Moebius.Db.save(%Candy{})
 ```
 
-I've been using this functionality constantly with another project I'm working on and it's helped me tremendously.
+## SQL files and functions
 
-## SQL Files
+Some people love SQL. I'm one of them. When a query gets hard (a window function, a CTE, a report), put it in a `.sql` file in your `scripts` directory and run it by name:
 
-I built this for [MassiveJS](https://github.com/robconery/massive-js) and I liked the idea, which is this: *some people love SQL*. I'm one of those people. I'd much rather work with a SQL file than muscle through some weird abstraction.
-
-With this library you can do that. Just create a scripts directory and specify it in the config (see above), then execute your file without an extension. Pass in whatever parameters you need:
+```sql
+-- priv/sql/top_customers.sql
+select c.id, c.email, sum(o.total) as spent
+from customers c
+join orders o on o.customer_id = c.id
+where o.created_at > $1
+group by c.id
+order by spent desc
+limit 10;
+```
 
 ```elixir
-{:ok, result} = sql_file(:my_groovy_query, "a param") |> Moebius.Db.run
+{:ok, top} = sql_file(:top_customers, [~D[2026-01-01]]) |> Moebius.Db.run()
 ```
 
-I highly recommend this approach if you have some difficult SQL you want to write (like a windowing query or CTE). We use this approach to build our test database - have a look at our tests and see.
-
-## Adding, Updating, Deleting (Non-Documents)
-
-Inserting is pretty straightforward:
+Postgres functions work the same way:
 
 ```elixir
-{:ok, result} =
-  db(:users)
-  |> insert(email: "test@test.com", first: "Test", last: "User")
-  |> Moebius.Db.run
+{:ok, [%{upper: "MOEBIUS"}]} = function(:upper, "moebius") |> Moebius.Db.run()
 ```
 
-Updating can work over multiple rows, or just one, depending on the filter you use:
+## Bulk loading
 
-```elixir
-{:ok, result} =
-  db(:users)
-  |> filter(id: 1)
-  |> update(email: "maggot@test.com")
-  |> Moebius.Db.run
-```
-
-The filter can be a single record, or affect multiple records:
-
-```elixir
-{:ok, result} =
-  db(:users)
-  |> filter("id > 100")
-  |> update(email: "test@test.com")
-  |> Moebius.Db.run
-
-{:ok, result} =
-  db(:users)
-  |> filter("email LIKE $2", "%test")
-  |> update(email: "ox@test.com")
-  |> Moebius.Db.run
-```
-
-Deleting works exactly the same way as `update`, but returns the count of deleted items in the result:
-
-```elixir
-{:ok, result} =
-  db(:users)
-  |> filter("email LIKE $2", "%test")
-  |> delete
-  |> Moebius.Db.run
-
-#result.deleted = 10, for instance
-```
-
-## Bulk Inserts
-
-For loading lots of rows, use `copy/3`. It speaks Postgres's `COPY` protocol, the same one `pg_dump` and `pg_restore` use: rows stream to the server in a single command, with no SQL to parse and no parameter limit. On a laptop it loads 100,000 rows in about 130ms, more than four times faster than `bulk_insert` below.
+For lots of rows, use `copy/3`. It speaks Postgres's binary `COPY` protocol, the same one `pg_dump` and `pg_restore` use: rows stream to the server in one command, with no SQL to parse and no parameter limit. 100,000 rows load in about 130 ms on a laptop.
 
 ```elixir
 rows = [
@@ -449,7 +528,7 @@ rows = [
 {:ok, 2} = Moebius.Db.copy(:people, rows)
 ```
 
-`rows` can be any Enumerable, including a lazy `Stream`. It's sent in chunks, so memory stays flat even for a file far bigger than RAM:
+`rows` can be any Enumerable, including a lazy `Stream`, and it's sent in chunks, so memory stays flat even for a file much bigger than RAM:
 
 ```elixir
 File.stream!("people.csv")
@@ -458,78 +537,15 @@ File.stream!("people.csv")
 |> Moebius.Db.copy(:people)
 ```
 
-It's all or nothing: if any row fails (a constraint, or a value of the wrong type, which is reported with its row and column), nothing is written. Inside a transaction it joins the transaction.
+It's all or nothing. If any row fails (a constraint, or a value of the wrong type, which is reported with its row and column), nothing is written. Inside a transaction it joins the transaction.
 
-`bulk_insert` still works too. It builds multi-row `INSERT` commands, split to stay under Postgres's parameter limit, which you run with `run_batch` or, all or nothing, with `transact_batch`:
-
-```elixir
-data = [#let's say 10,000 records or so]
-results =
-  db(:people)
-  |> bulk_insert(data)
-  |> Moebius.Db.transact_batch
-```
-
-## Table Joins
-
-Table joins can be applied for a single join or piped to create multiple joins. The table names can be either atoms or binary strings. There are a number of options to customize your joins:
+`bulk_insert` still works too. It builds multi-row `INSERT` commands split to stay under Postgres's parameter limit, which you run with `run_batch/1` or, all or nothing, `transact_batch/1`:
 
 ```elixir
-  :join        # set the type of join. LEFT, RIGHT, FULL, etc. defaults to INNER
-  :on          # specify the table to join on
-  :foreign_key # specify the tables foreign key column
-  :primary_key # specify the joining tables primary key column
-  :using       # used to specify a USING queries list of columns to join on
+db(:people)
+|> bulk_insert(rows)
+|> Moebius.Db.transact_batch()
 ```
-
-The simplest example is a basic join:
-
-```elixir
-{:ok, result} =
-  db(:customer)
-  |> join(:order)
-  |> select
-  |> Moebius.Db.run
-```
-
-For multiple table joins you can specify the table that you want to join on:
-
-```elixir
-{:ok, result} =
-  db(:customer)
-  |> join(:order, on: :customer)
-  |> join(:item, on: :order)
-  |> select
-  |> Moebius.Db.run
-```
-
-## Transactions
-
-Pass a function to `transaction/1`. It gets a connection handle, which you pass along to each query. Whatever the function returns is what `transaction/1` returns. If a statement fails, the transaction rolls back and you get `{:error, message}`. No need to `COMMIT`, it happens automatically:
-
-```elixir
-new_user = Moebius.Db.transaction(fn tx ->
-  {:ok, new_user} =
-    db(:users)
-    |> insert(email: "frodo@test.com")
-    |> Moebius.Db.run(tx)
-
-  db(:logs)
-  |> insert(user_id: new_user.id, log: "Hi Frodo")
-  |> Moebius.Db.run(tx)
-
-  new_user
-end)
-```
-
-A few more things:
-
-- Queries in the same process join the open transaction even if you forget to pass `tx`.
-- `Moebius.Db.rollback(reason)` aborts the transaction, which then returns `{:error, reason}`.
-- If your function raises, the transaction rolls back and the exception is re-raised.
-- A transaction inside a transaction becomes a savepoint, so the inner one can fail without taking the outer one down.
-
-If you're having any kind of trouble with transactions, I highly recommend you move to a SQL file or a function, which we also support. Abstractions are here to help you, but if we're in your way, by all means shove us (gently) aside.
 
 ## Streaming large results
 
@@ -544,11 +560,55 @@ db(:events)
 |> Stream.run()
 ```
 
-Read the stream in the process that created it; that process holds the connection until the stream ends.
+It works with document queries too. Read the stream in the process that created it, because that process holds the connection until the stream ends.
+
+## Transactions
+
+Pass a function to `transaction/1`. It gets a connection handle, which you pass to each query. Whatever the function returns, `transaction/1` returns. If a statement fails, everything rolls back and you get `{:error, message}`:
+
+```elixir
+Moebius.Db.transaction(fn tx ->
+  {:ok, user} =
+    db(:users)
+    |> insert(email: "frodo@shire.me")
+    |> Moebius.Db.run(tx)
+
+  {:ok, _log} =
+    db(:logs)
+    |> insert(user_id: user.id, log: "Hi Frodo")
+    |> Moebius.Db.run(tx)
+
+  user
+end)
+#=> %{id: 1, email: "frodo@shire.me", ...}
+```
+
+A few more things:
+
+- Queries in the same process join the open transaction even if you forget to pass `tx`.
+- `Moebius.Db.rollback(reason)` aborts the transaction, which then returns `{:error, reason}`.
+- If your function raises, the transaction rolls back and the exception is re-raised.
+- A transaction inside a transaction becomes a savepoint, so the inner one can fail without taking the outer one down:
+
+```elixir
+Moebius.Db.transaction(fn tx ->
+  {:ok, order} = db(:orders) |> insert(total: 100) |> Moebius.Db.run(tx)
+
+  # if this fails, only the payment is rolled back; the order stays
+  Moebius.Db.transaction(fn tx ->
+    {:ok, _} = db(:payments) |> insert(order_id: order.id) |> Moebius.Db.run(tx)
+    unless card_ok?(order), do: Moebius.Db.rollback(:declined)
+  end)
+
+  order
+end)
+```
+
+If transactions are giving you grief, move the logic into a SQL file or a Postgres function. Abstractions are here to help; if Moebius is in your way, shove it (gently) aside.
 
 ## Asking Postgres how it will run a query
 
-`explain/2` returns the plan as text. It's the fastest way to find out if a query uses your indexes:
+`explain/2` returns the plan as text. It's the fastest way to find out whether a query uses your indexes:
 
 ```elixir
 {:ok, plan} = db(:users) |> filter(email: "a@b.com") |> Moebius.Db.explain()
@@ -558,56 +618,83 @@ Read the stream in the process that created it; that process holds the connectio
 # Seq Scan on users ... (actual time=0.010..0.011 rows=1 loops=1)
 ```
 
-With `analyze: true` the query really runs, inside a transaction that's rolled back, so even an explained insert leaves nothing behind.
+With `analyze: true` the query really runs, inside a transaction that's rolled back, so explaining an insert leaves nothing behind.
+
+## Types
+
+Values come back as you'd expect, and the same types work as parameters:
+
+| Postgres | Elixir |
+|---|---|
+| `integer`, `bigint`, `smallint` | integer |
+| `real`, `double precision` | float |
+| `numeric` | `Decimal`, exact (encodes from `Decimal`, integers, floats or numeric strings) |
+| `text`, `varchar`, `uuid` | string |
+| `boolean` | boolean |
+| `json`, `jsonb` | map or list |
+| `timestamptz` | `DateTime` in UTC, exact to the microsecond |
+| `timestamp` | `NaiveDateTime` |
+| `date`, `time` | `Date`, `Time` |
+| `'infinity'` dates and timestamps | `:infinity` / `:"-infinity"` |
+| arrays | lists |
+| `NULL` | `nil` |
+
+Column names come back as atom keys.
+
+## Errors
+
+Every call returns `{:ok, result}` or `{:error, message}`, where the message is the one Postgres wrote:
+
+```elixir
+{:error, "duplicate key value violates unique constraint \"users_email_key\""} =
+  db(:users) |> insert(email: "taken@test.com") |> Moebius.Db.run()
+```
+
+Inside a transaction, a failed statement raises `Moebius.Error` so the transaction can roll back, and `transaction/1` turns it back into `{:error, message}`. If you rescue it yourself, it carries the SQLSTATE `code` and `name` (like `:unique_violation`), plus `detail`, `hint`, `constraint`, `table` and `column` when Postgres sends them.
 
 ## Safety
 
-Every value you pass becomes a `$n` parameter; none are pasted into the SQL. Table, column and function names can't be parameters, so Moebius checks them instead: anything that isn't a plain name (`users`, `membership.users`, `"Order Items"`) raises `ArgumentError` before any SQL is built. Sort directions, join types and document operators are checked against a list. The only SQL used exactly as written is the SQL you write yourself, like `filter("price > $1", 10)`.
+Every value you pass becomes a `$n` parameter; none are pasted into the SQL.
 
-## Aggregates
+Table, column and function names can't be parameters, so Moebius checks them instead. Anything that isn't a plain name (`users`, `membership.users`, `"Order Items"`) raises `ArgumentError` before any SQL is built. Sort directions, join types and document operators are checked against a list. The only SQL used exactly as written is SQL you write yourself, like `filter("price > $1", 10)`.
 
-Aggregates are built with a functional approach in mind. This might seem a bit odd, but when working with any relational database, it's a good idea to think about gathering your data, grouping it, and reducing it. That's what you're doing whenever you run aggregation queries.
-
-So, to that end, we have:
+Parameters are also checked before they're sent. Moebius asks Postgres to parse the statement first, reads back the type it expects for each `$n`, and checks your values in your own process. A wrong type is a clear error and the connection stays up:
 
 ```elixir
-{:ok, sum} =
-  db(:products)
-  |> map("id > 1")
-  |> group(:sku)
-  |> reduce(:sum, :id)
-  |> Moebius.Db.run
+{:error, "parameter $1 must be int4, got: \"five\""} =
+  db(:users) |> filter(id: "five") |> Moebius.Db.run()
 ```
 
-This might be a bit verbose, but it's also very very clear to whomever is reading it after you move on. You can work with any aggregate function in PostgreSQL this way (AVG, MIN, MAX, etc).
+## Mix tasks
 
-The interface is designed with *routine* aggregation in mind - meaning that there are some pretty complex things you can do with PostgreSQL queries. If you like doing that, I fully suggest you flex our SQL File functionality and write it out there - or create yourself a cool function and call it with our Function interface.
+For setting up a database from SQL scripts (in the `scripts` directory):
 
-## Functions
-
-PostgreSQL allows you to do so much, especially with functions. If you want to encapsulate a good time, you can execute it with Moebius:
-
-```elixir
-{:ok, party} = function(:good_time, [me, you]) |> Moebius.Db.run
+```sh
+mix moebius.create    # create the database
+mix moebius.drop      # drop it
+mix moebius.migrate   # run tables.sql (test env only)
+mix moebius.seed      # run seeds.sql (test env only)
+mix moebius.setup     # create + migrate + seed
+mix moebius.reset     # drop + setup
 ```
 
-You get the idea. If your function only returns one thing, you can specify you don't want an array back:
+None of them need `psql` installed.
 
-```elixir
-{:ok, no_party} = function(:bad_time, :single [me]) |> Moebius.Db.run
-```
+## Contributing
 
-## Test
+Help is very welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get the tests running and what a good pull request looks like. The short version: you need a local Postgres, and if you fix a bug, add a test that shows it.
 
-You'll need a local postgres instance running.
-
-```bash
+```sh
+mix deps.get
 MIX_ENV=test mix moebius.setup
-MIX_ENV=test mix test
+mix test
+mix quality
 ```
 
-## Help?
+The repo includes [Claude Code](https://claude.com/claude-code) skills in `.claude/skills/` (`erlang-otp`, `postgres-sql`, `elixir-testing` and `supabase-postgres-best-practices`). They're the rules the 5.0 code was held to, and they're a good read even if you don't use an AI assistant.
 
-I would love to have your help! I do ask that if you do find a bug, please add a test to your PR that shows the bug and how it was fixed.
+Found a security problem? Please report it privately; see [SECURITY.md](SECURITY.md).
 
-Thanks!
+## License
+
+[MIT](LICENSE). Copyright Rob Conery and Chase Pursley.

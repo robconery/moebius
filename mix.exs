@@ -16,7 +16,8 @@ defmodule Moebius.Mixfile do
       docs: [
         source_ref: "v#{@version}",
         source_url: "https://github.com/robconery/moebius",
-        extras: ["README.md"]
+        main: "readme",
+        extras: ["README.md", "CHANGELOG.md", "CONTRIBUTING.md", "LICENSE"]
       ],
       deps: deps(),
       aliases: aliases(),
@@ -47,7 +48,7 @@ defmodule Moebius.Mixfile do
 
   defp package() do
     [
-      files: ~w(lib test .formatter.exs mix.exs README* LICENSE*),
+      files: ~w(lib .formatter.exs mix.exs README* LICENSE* CHANGELOG*),
       maintainers: ["Rob Conery", "Chase Pursley"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/robconery/moebius"}
