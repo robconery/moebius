@@ -12,7 +12,6 @@ defmodule Moebius.Pool do
 
   @defaults [
     pool_size: 10,
-    pool_min: 2,
     checkout_timeout: 5_000,
     queue_max: 50
   ]
@@ -30,6 +29,9 @@ defmodule Moebius.Pool do
 
   def start_link(name, opts) do
     opts = Keyword.merge(@defaults, opts)
+    # open every connection up front, as Postgrex did, so the first burst of traffic doesn't
+    # wait on connection setup; pool_min below pool_size lets an idle pool shrink instead
+    opts = Keyword.put_new(opts, :pool_min, opts[:pool_size])
     :persistent_term.put({__MODULE__, name}, %{checkout_timeout: opts[:checkout_timeout]})
     %{start: {module, fun, args}} = :pooler.pool_child_spec(config(name, opts))
     apply(module, fun, args)

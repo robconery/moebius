@@ -125,16 +125,25 @@ defmodule Moebius.Connection do
   # the #statement{} record: {:statement, name, columns, types, parameter_info}
   defp statement_types({:statement, _name, _columns, types, _info}), do: types
 
-  defp to_result({:ok, columns, rows}, pid), do: {:ok, result(pid, columns, rows, length(rows))}
+  # A select says what it is by returning columns; asking the connection for the command
+  # tag would cost another call to its process on the hottest path.
+  defp to_result({:ok, [_ | _] = columns, rows}, _pid) do
+    {:ok,
+     %Result{
+       command: :select,
+       columns: Enum.map(columns, &column_name/1),
+       rows: Enum.map(rows, &Tuple.to_list/1),
+       num_rows: length(rows)
+     }}
+  end
+
+  defp to_result({:ok, [], _rows}, pid), do: {:ok, %Result{command: command(pid), num_rows: 0}}
   defp to_result({:ok, count}, pid), do: {:ok, %Result{command: command(pid), num_rows: count}}
 
   defp to_result({:ok, count, columns, rows}, pid),
     do: {:ok, result(pid, columns, rows, count)}
 
   defp to_result({:error, error}, _pid), do: {:error, Error.from_epgsql(error)}
-
-  # DDL and the like come back as a select of nothing; report them as no rows at all
-  defp result(pid, [], _rows, _count), do: %Result{command: command(pid), num_rows: 0}
 
   defp result(pid, columns, rows, count) do
     %Result{

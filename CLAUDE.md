@@ -17,8 +17,8 @@ Core modules (all in `lib/moebius/`):
 - `query.ex`: relational builder → `%QueryCommand{}`
 - `query_filter.ex`: where clauses
 - `document_query.ex`: JSONB builder → `%DocumentCommand{}`
-- `database.ex`: `use Moebius.Database` macro (run/first/find/save/transaction/stream/explain) plus `execute`
-- `pool.ex`, `connection.ex`, `params.ex`, `codec/`: the driver layer (pooler checkout, transactions, epgsql calls, parameter checks, type codecs)
+- `database.ex`: `use Moebius.Database` macro (run/first/find/save/transaction/stream/explain/copy) plus `execute`
+- `pool.ex`, `connection.ex`, `copy.ex`, `params.ex`, `codec/`: the driver layer (pooler checkout, transactions, epgsql calls, parameter checks, type codecs)
 - `identifier.ex`: checks every name that goes into SQL
 - `transformer.ex`: turns `%Moebius.Result{}` into maps
 

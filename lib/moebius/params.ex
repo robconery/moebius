@@ -27,19 +27,15 @@ defmodule Moebius.Params do
      }}
   end
 
-  def check(types, params) do
-    types
-    |> Enum.zip(params)
-    |> Enum.with_index(1)
-    |> Enum.reduce_while({:ok, []}, fn {{type, value}, n}, {:ok, acc} ->
-      case cast(type, value) do
-        {:ok, value} -> {:cont, {:ok, [value | acc]}}
-        :error -> {:halt, {:error, mismatch(n, type, value)}}
-      end
-    end)
-    |> case do
-      {:ok, acc} -> {:ok, Enum.reverse(acc)}
-      error -> error
+  def check(types, params), do: check(types, params, 1, [])
+
+  # one pass, no intermediate lists: this runs for every parameter of every query
+  defp check([], [], _n, acc), do: {:ok, :lists.reverse(acc)}
+
+  defp check([type | types], [value | values], n, acc) do
+    case cast(type, value) do
+      {:ok, value} -> check(types, values, n + 1, [value | acc])
+      :error -> {:error, mismatch(n, type, value)}
     end
   end
 

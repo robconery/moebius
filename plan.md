@@ -53,12 +53,13 @@ Goal: drop the pre-1.0 driver for a stable one, fix the known defects, and raise
 - [x] **3. Driver.** epgsql 4.8 + pooler 1.7, decimal 3. Codecs for dates/times, numeric and JSON. Parameters are checked before they're sent, because a bad parameter crashes an epgsql connection.
 - [x] **4. Pool and transactions.** One pool per database module, in the user's tree. A connection is pinned to its process while held; nested transactions use savepoints; `rollback/1`.
 - [x] **5. Security.** Parameters for `find`, `contains`, and document ids; name checks (`Moebius.Identifier`); quoted document keys.
-- [x] **6. New.** `stream/2`, `explain/2`, `pool_status/0`, server timeouts, `Moebius.Error`.
+- [x] **6. New.** `copy/3` (binary COPY from any Enumerable), `stream/2`, `explain/2`, `pool_status/0`, server timeouts, `Moebius.Error`.
+- [x] **8. Benchmarks.** Same script on 4.2/Postgrex and 5.0/epgsql (numbers in `CHANGELOG.md`). Two fixes came out of it: selects no longer make a third call to the connection for the command tag, and the pool opens all connections at start.
 - [x] **7. Tooling.** Mix tasks without `psql`; CI back to `--warnings-as-errors`, plus a flake check; sobelow fails on any finding.
 
 ## Log
 
-2026-09-30. All tasks done. **198 tests pass** (104 before), stable over 25+ random-seed runs; compile, credo, sobelow and hex.audit are clean.
+2026-09-30. All tasks done. **209 tests pass** (104 before), stable over 25+ random-seed runs; compile, credo, sobelow and hex.audit are clean.
 
 - The whole existing suite passed on epgsql on the first run after the swap.
 - Found while testing, and fixed: concurrent saves to a new document table lost writes (a race in `create table if not exists`; creation now takes an advisory lock); `url` silently overrode explicit options; `filter(:col, in: [])` was a syntax error.

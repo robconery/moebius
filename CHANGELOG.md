@@ -43,6 +43,9 @@ breaking changes are listed below, each with its reason.
 
 ### Added
 
+- `copy/3`: bulk load any Enumerable (a lazy `Stream` included) with Postgres's binary
+  `COPY` protocol. 100,000 rows load in about 130ms, 4.6x faster than 4.x's `bulk_insert` on
+  the same machine. All or nothing; bad values are reported with their row and column.
 - `stream/2`: read any query or document query through a server-side cursor, a chunk at a
   time. Lazy, and halting early gives the connection back.
 - `explain/2`: the query plan as text. `analyze: true` runs the query inside a rolled-back
@@ -51,6 +54,8 @@ breaking changes are listed below, each with its reason.
 - `rollback/1` aborts the current transaction with a reason.
 - Queries in the same process join an open transaction even without the `tx` argument.
 - `pool_status/0`: pool size and usage.
+- The pool opens all `pool_size` connections at start (as Postgrex did); set `pool_min` lower
+  to let an idle pool shrink.
 - Connection options: `pool_min`, `checkout_timeout`, `queue_max`, `max_lifetime`,
   `statement_timeout`, `lock_timeout`, `idle_in_transaction_session_timeout`, `settings`,
   `application_name`, `socket_dir`, `ssl`/`ssl_opts`.
@@ -63,6 +68,18 @@ breaking changes are listed below, each with its reason.
   float seconds). `infinity` dates and timestamps are supported.
 - `tsvector` columns come back as text instead of raising.
 - `mix moebius.create/drop/migrate/seed` no longer need `psql` installed.
+
+### Performance
+
+Measured with the same script against 4.2 (Postgrex 0.19) on the same machine and database,
+both pools holding 10 open connections:
+
+- Single queries are 5-17% faster (find by id 73µs vs 80µs median; insert, count, document
+  save and contains all faster).
+- 50 processes sharing the pool: about 11% slower (186ms vs 167ms for 10,000 finds). epgsql
+  encodes and decodes in the connection process, where DBConnection does it in each caller.
+- `bulk_insert` + `transact_batch` of 100k rows: about 22% slower (740ms vs 595ms). Use
+  `copy/3` instead, at 130ms.
 
 ### Fixed
 

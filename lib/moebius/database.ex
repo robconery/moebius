@@ -25,7 +25,8 @@ defmodule Moebius.Database do
   * `:socket_dir` - connect over a Unix socket in this directory instead of TCP.
   * `:ssl` - `true` (use TLS if the server offers it) or `:required`, with `:ssl_opts`.
   * `:pool_size` - the most connections the pool opens (default 10).
-  * `:pool_min` - connections opened at start and kept when idle (default 2).
+  * `:pool_min` - connections opened at start and kept when idle (default: `pool_size`, so
+    the pool is full from the start). Set it lower to let an idle pool shrink.
   * `:checkout_timeout` - how long a call waits for a free connection, in ms (default 5000).
   * `:queue_max` - how many calls may wait for a connection at once (default 50).
   * `:max_lifetime` - recycle each connection after this many ms, for proxies and firewalls
@@ -143,6 +144,28 @@ defmodule Moebius.Database do
         inside a transaction that is rolled back, so writes are not kept.
       """
       def explain(cmd, opts \\ []), do: Moebius.Database.explain(@name, cmd, opts)
+
+      @doc """
+      Bulk loads rows into a table with Postgres's `COPY` protocol, the fastest way to write
+      many rows. Returns `{:ok, count}` or `{:error, message}`; if any row fails, none are
+      written.
+
+      `rows` is any Enumerable of keyword lists or maps, including a lazy `Stream`, which is
+      sent in chunks so memory stays flat however many rows there are. The columns are the
+      keys of the first row, unless you pass `:columns`.
+
+      * `:columns` - the columns to fill, in order.
+      * `:chunk` - rows sent per message to the server (default 5,000).
+
+      ```elixir
+      "events.csv"
+      |> File.stream!()
+      |> CSV.decode!(headers: true)
+      |> Stream.map(&%{name: &1["name"], at: &1["at"]})
+      |> MyApp.Db.copy(:events)
+      ```
+      """
+      def copy(table, rows, opts \\ []), do: Moebius.Copy.copy(@name, table, rows, opts)
 
       # ---- batches ----
 
