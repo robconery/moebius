@@ -17,6 +17,6 @@ defmodule Moebius.FullTextSearch do
       |> search(for: user.first, in: [:first, :last, :email])
       |> TestDb.run()
 
-    assert length(result) > 0
+    assert result != []
   end
 end

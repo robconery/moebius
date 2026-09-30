@@ -33,7 +33,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Setup Elixir
       uses: erlef/setup-beam@v1
@@ -42,7 +42,7 @@ jobs:
         version-file: .tool-versions
 
     - name: Restore dependencies cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: deps
         key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
@@ -60,8 +60,16 @@ jobs:
         mix moebius.seed
 
     - name: Check warnings
+      # Fails on warnings in Moebius's own lib/. postgrex 0.19's generated
+      # BitString code (compiled into PostgresTypes) warns on Elixir 1.20+ and
+      # can't be fixed without upgrading the driver, so deps/ warnings are ignored.
       run: |
-        mix compile --warnings-as-errors
+        mix deps.compile
+        mix compile --force 2>&1 | tee compile.log
+        if grep -E '└─ lib/' compile.log; then
+          echo "::error::Compiler warnings in lib/"
+          exit 1
+        fi
 
     - name: Run tests
       run: |

@@ -10,7 +10,6 @@ defmodule Moebius.Mixfile do
       version: @version,
       elixir: "~> 1.15",
       package: package(),
-      build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       # ExDoc
       name: "Moebius",
@@ -35,12 +34,12 @@ defmodule Moebius.Mixfile do
   defp deps do
     [
       {:postgrex, "~> 0.19.2"},
-      {:jason, "~> 1.4.4"},
+      {:jason, "~> 1.4"},
 
       # Dev & Test
-      {:ex_doc, "~> 0.34.2", only: :dev},
-      {:credo, "~> 1.7.8", only: [:dev, :test]},
-      {:sobelow, "~> 0.12", only: [:dev, :test], runtime: false}
+      {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.15", only: [:dev, :test], runtime: false}
     ]
   end
 

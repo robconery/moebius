@@ -615,7 +615,7 @@ defmodule Moebius.Query do
   def function_command(function_name, params) do
     arg_list =
       cond do
-        length(params) > 0 -> Enum.map_join(1..length(params), ", ", &"$#{&1}")
+        params != [] -> Enum.map_join(1..length(params), ", ", &"$#{&1}")
         true -> ""
       end
 

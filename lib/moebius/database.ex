@@ -174,10 +174,8 @@ defmodule Moebius.Database do
       end
 
       def create_document_table(name) when is_atom(name) do
-        case Moebius.DocumentQuery.db(name) |> create_document_table(nil) do
-          {:error, err} -> {:error, err}
-          %Moebius.DocumentCommand{} = cmd -> {:ok, "Table created"}
-        end
+        Moebius.DocumentQuery.db(name) |> create_document_table(nil)
+        {:ok, "Table created"}
       end
 
       def create_document_table(%Moebius.DocumentCommand{} = cmd, _) do
@@ -222,8 +220,10 @@ defmodule Moebius.Database do
         {:ok, res}
       end
 
-      defp handle_save_result({:ok, save_result} = res, cmd, doc) when is_map(save_result),
-        do: update_search(res, cmd) && res
+      defp handle_save_result({:ok, save_result} = res, cmd, _doc) when is_map(save_result) do
+        update_search(res, cmd)
+        res
+      end
 
       defp handle_save_result({:error, err}, cmd, doc) do
         table = cmd.table_name
@@ -252,8 +252,12 @@ defmodule Moebius.Database do
           |> Moebius.Database.execute()
 
         case res do
-          {:error, err} -> create_document_table(cmd, nil) && execute(cmd)
-          res -> res
+          {:error, _err} ->
+            create_document_table(cmd, nil)
+            execute(cmd)
+
+          res ->
+            res
         end
       end
 
@@ -271,11 +275,8 @@ defmodule Moebius.Database do
       defp execute(%Moebius.QueryCommand{} = cmd, %DBConnection{} = conn),
         do: Moebius.Database.execute(cmd, conn)
 
-      defp update_search({:error, err}, cmd), do: {:error, err}
-      defp update_search([], _), do: []
-
       defp update_search({:ok, query_result} = res, cmd) do
-        if length(cmd.search_fields) > 0 do
+        if cmd.search_fields != [] do
           terms = Enum.map_join(cmd.search_fields, ", ' ', ", &"body -> '#{Atom.to_string(&1)}'")
 
           sql =
@@ -314,7 +315,8 @@ defmodule Moebius.Database do
         {:ok, result}
 
       {:error, err} ->
-        Postgrex.query(conn, "ROLLBACK", []) && raise err.postgres.message
+        Postgrex.query(conn, "ROLLBACK", [])
+        raise err.postgres.message
     end
   end
 end

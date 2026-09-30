@@ -87,6 +87,6 @@ defmodule Moebius.BasicSelectTest do
       |> filter(id: user.id)
       |> run
 
-    assert length(found) > 0
+    assert found != []
   end
 end

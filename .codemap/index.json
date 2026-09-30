@@ -1,0 +1,24 @@
+{
+  "builtCommit": "8fecd7465e66e8d79241705f55265d01ac7b33cf",
+  "builtAt": 1790801036,
+  "fileCount": 49,
+  "symbolCount": 239,
+  "denyDirs": [
+    ".codemap",
+    ".git",
+    ".next",
+    ".turbo",
+    ".venv",
+    "__pycache__",
+    "build",
+    "coverage",
+    "dist",
+    "graphify-out",
+    "node_modules",
+    "out",
+    "third_party",
+    "vendor",
+    "venv"
+  ],
+  "schema": 1
+}

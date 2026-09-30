@@ -36,7 +36,7 @@ defmodule Moebius.AggregateTest do
       |> reduce(:sum, :id)
       |> TestDb.run()
 
-    assert length(res) > 0
+    assert res != []
   end
 
   test "reduce allows an expression" do
@@ -47,6 +47,6 @@ defmodule Moebius.AggregateTest do
       |> reduce(:sum, "id + order_count")
       |> TestDb.run()
 
-    assert length(res) > 0
+    assert res != []
   end
 end

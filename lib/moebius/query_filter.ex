@@ -222,9 +222,6 @@ defmodule Moebius.QueryFilter do
     %{cmd | where: join_predicates(cmd, criteria), params: cmd.params ++ params}
   end
 
-  def filter(cmd, criteria, params) when is_list(params),
-    do: filter(cmd, criteria, params)
-
   defdelegate where(cmd, criteria, params), to: __MODULE__, as: :filter
   defdelegate where(cmd, criteria), to: __MODULE__, as: :filter
 

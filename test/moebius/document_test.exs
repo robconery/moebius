@@ -184,7 +184,7 @@ defmodule Moebius.DocTest do
       |> delete
       |> TestDb.run()
 
-    assert length(res) > 0
+    assert res != []
   end
 
   test "select works with filter", %{res: res} do
@@ -211,7 +211,7 @@ defmodule Moebius.DocTest do
       |> filter(:money_spent, ">", 100)
       |> TestDb.run()
 
-    assert length(return) > 0
+    assert return != []
   end
 
   test "select works with existence operator", %{res: res} do
@@ -249,7 +249,7 @@ defmodule Moebius.DocTest do
       |> search("duck")
       |> TestDb.run()
 
-    assert length(res) > 0
+    assert res != []
   end
 
   test "full text search on the fly works" do
@@ -258,7 +258,7 @@ defmodule Moebius.DocTest do
       |> search(for: "duck", in: [:name, :description])
       |> TestDb.run()
 
-    assert length(res) > 0
+    assert res != []
   end
 
   test "single returns nil when no match" do

@@ -30,7 +30,7 @@ defmodule Moebius.Transformer do
     for col <- cols, do: String.to_atom(col)
   end
 
-  def match_columns_to_row(row, cols), do: List.zip([cols, row])
+  def match_columns_to_row(row, cols), do: Enum.zip(cols, row)
 
   def to_map(list) do
     Enum.into(list, %{})
