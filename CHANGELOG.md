@@ -74,11 +74,11 @@ breaking changes are listed below, each with its reason.
 Measured with the same script against 4.2 (Postgrex 0.19) on the same machine and database,
 both pools holding 10 open connections:
 
-- Single queries are 5-17% faster (find by id 73µs vs 80µs median; insert, count, document
-  save and contains all faster).
-- 50 processes sharing the pool: about 11% slower (186ms vs 167ms for 10,000 finds). epgsql
+- Single queries: median latency 5-11% lower on every operation measured (find by id 73µs
+  vs 80µs), and p99 latency 10-42% lower (insert returning 118µs vs 205µs).
+- 50 processes sharing the pool: about 12% slower (187ms vs 167ms for 10,000 finds). epgsql
   encodes and decodes in the connection process, where DBConnection does it in each caller.
-- `bulk_insert` + `transact_batch` of 100k rows: about 22% slower (740ms vs 595ms). Use
+- `bulk_insert` + `transact_batch` of 100k rows: about 24% slower (739ms vs 595ms). Use
   `copy/3` instead, at 130ms.
 
 ### Fixed

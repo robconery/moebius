@@ -64,8 +64,8 @@ See `plan.md` for the phase 1 and phase 2 task logs.
 
 - Column names and document keys become atoms (`String.to_atom`). That's the public API, and it's safe only because they are a bounded set. Documented in `Moebius.Transformer`.
 - `search/2` uses `to_tsquery`, which raises a syntax error on ordinary user input ("red shoes"). `websearch_to_tsquery` would be kinder; changing it changes search semantics, so it's left for a later release.
-- `bulk_insert` (multi-row `VALUES`) is about 22% slower than on Postgrex, because epgsql copies each 20,000-parameter message to the connection process. `copy/3` is the fast path (4.6x faster than 4.x's bulk_insert).
-- Under heavy concurrency (50 processes on a 10-connection pool) throughput is about 11% below Postgrex: epgsql encodes and decodes in the connection process. Single queries are 5-17% faster.
+- `bulk_insert` (multi-row `VALUES`) is about 24% slower than on Postgrex, because epgsql copies each 20,000-parameter message to the connection process. `copy/3` is the fast path (4.6x faster than 4.x's bulk_insert).
+- Under heavy concurrency (50 processes on a 10-connection pool) throughput is about 12% below Postgrex: epgsql encodes and decodes in the connection process. Single queries are 5-11% faster at the median and 10-42% faster at p99.
 - LISTEN/NOTIFY isn't exposed. epgsql supports it through a dedicated connection.
 - The public builder API has no typespecs yet.
 
