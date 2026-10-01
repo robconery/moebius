@@ -15,6 +15,21 @@ defmodule Moebius.Codec.Numeric do
   @pos_inf 0xD000
   @neg_inf 0xF000
 
+  @doc false
+  # PostgreSQL numeric supports 131,072 digits before the decimal point and 16,383
+  # after it. Check before encoding: bit syntax truncates overflowing integers.
+  def representable?(%Decimal{sign: sign, coef: coef})
+      when sign in [-1, 1] and coef in [:NaN, :inf],
+      do: true
+
+  def representable?(%Decimal{sign: sign, coef: coef, exp: exp})
+      when sign in [-1, 1] and is_integer(coef) and coef >= 0 and is_integer(exp) do
+    exp >= -16_383 and
+      (coef == 0 or byte_size(Integer.to_string(coef)) + exp <= 131_072)
+  end
+
+  def representable?(_), do: false
+
   @impl true
   def init(_opts, _sock), do: []
 
@@ -58,6 +73,9 @@ defmodule Moebius.Codec.Numeric do
 
   def encode(%Decimal{sign: sign, coef: coef, exp: exp}, :numeric, _) do
     dscale = max(0, -exp)
+
+    if dscale > 16_383, do: raise(ArgumentError, "numeric scale exceeds PostgreSQL's range")
+
     sign = if sign == -1, do: @negative, else: @positive
 
     case coef do
@@ -72,6 +90,9 @@ defmodule Moebius.Codec.Numeric do
           coef |> Kernel.*(pow10(pad)) |> base_10000([]) |> drop_trailing_zeros(exp - pad)
 
         weight = length(digits) - 1 + div(exp, 4)
+
+        unless weight in -32_768..32_767 and length(digits) <= 65_535,
+          do: raise(ArgumentError, "numeric value exceeds PostgreSQL's binary format")
 
         [
           <<length(digits)::16, weight::signed-16, sign::16, dscale::16>>

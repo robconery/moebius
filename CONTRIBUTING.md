@@ -31,7 +31,7 @@ mix quality --strict                 # format check, sobelow and credo
 
 - **A bug fix comes with a test** that fails without the fix and passes with it. That's the one hard rule.
 - **Every test owns its data.** Create the rows your test checks in the test (or its `setup`), and assert exact values, not just "something came back". `Moebius.TestData.reset_users!/0` resets the shared tables.
-- **Values are parameters, names are checked.** Anything that goes into SQL as a value must be a `$n` parameter. Table, column and function names go through `Moebius.Identifier`. If you add a new parameter type, cover it in `Moebius.Params`, because a wrong-typed parameter crashes an epgsql connection process.
+- **Values are parameters, names are checked.** Anything that goes into SQL as a value must be a `$n` parameter. Table, column and function names go through `Moebius.Identifier`. If you add a new parameter type, cover it in [Moebius.Params](https://github.com/robconery/moebius/blob/master/lib/moebius/params.ex), because a wrong-typed parameter crashes an epgsql connection process.
 - **Builders don't do I/O.** Functions in `Moebius.Query` and `Moebius.DocumentQuery` return a struct; only the database module runs anything.
 - Keep pull requests small and focused. A short description of the problem and the fix is plenty.
 - Update `CHANGELOG.md` under an "Unreleased" heading if users will notice the change.

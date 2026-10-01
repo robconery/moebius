@@ -15,6 +15,11 @@ defmodule Moebius.PoolTest do
     use Moebius.Database
   end
 
+  defmodule NeverStarted do
+    @moduledoc false
+    use Moebius.Database
+  end
+
   setup do
     base = Moebius.get_connection()
     start_supervised!({TinyDb, base ++ [pool_size: 1, pool_min: 1, checkout_timeout: 100]})
@@ -45,6 +50,60 @@ defmodule Moebius.PoolTest do
     test "array elements are checked too" do
       assert {:error, "parameter $1 must be int4[], got: [1, \"2\"]"} =
                TinyDb.run("select $1::int[] as a", [[1, "2"]])
+    end
+
+    test "a number the type can't hold is an error, and the connection survives" do
+      backend = backend_pid()
+
+      assert {:error, "parameter $1 must be int2, got: 32768"} =
+               TinyDb.run("select $1::int2 as n", [32_768])
+
+      assert {:error, "parameter $1 must be int4, got: -2147483649"} =
+               TinyDb.run("select $1::int4 as n", [-2_147_483_649])
+
+      assert {:error, "parameter $1 must be int8, got: 9223372036854775808"} =
+               TinyDb.run("select $1::int8 as n", [9_223_372_036_854_775_808])
+
+      assert {:error, "parameter $1 must be int4[], got: [1, 2147483648]"} =
+               TinyDb.run("select $1::int4[] as a", [[1, 2_147_483_648]])
+
+      assert {:error, "parameter $1 must be float8, got: 1000" <> _} =
+               TinyDb.run("select $1::float8 as n", [Integer.pow(10, 400)])
+
+      assert {:ok, [%{n: -32_768}]} = TinyDb.run("select $1::int2 as n", [-32_768])
+      assert {:ok, [%{n: 3.0}]} = TinyDb.run("select $1::float8 as n", [3])
+      assert backend_pid() == backend
+    end
+
+    test "find/2 with an id too big for the key is an error, as from a URL" do
+      backend = backend_pid()
+
+      assert {:error, "parameter $1 must be int4, got: 99999999999"} =
+               db(:users) |> TinyDb.find("99999999999")
+
+      assert backend_pid() == backend
+    end
+  end
+
+  describe "a transaction opened by hand" do
+    test "begin through run/1 is refused, and the connection goes back clean" do
+      assert {:error, "a transaction can't be opened with run" <> _} = TinyDb.run("begin")
+
+      assert {:error, "a transaction can't be opened with run" <> _} =
+               TinyDb.run("start transaction")
+
+      # each statement is its own transaction again, so each gets a new transaction id
+      {:ok, [%{id: first}]} = TinyDb.run("select txid_current() as id")
+      {:ok, [%{id: second}]} = TinyDb.run("select txid_current() as id")
+      assert second != first
+    end
+
+    test "inside transaction/1 a begin is left alone" do
+      assert {:ok, [%{n: 1}]} =
+               TinyDb.transaction(fn _tx ->
+                 {:ok, []} = TinyDb.run("begin")
+                 TinyDb.run("select 1 as n")
+               end)
     end
   end
 
@@ -96,11 +155,6 @@ defmodule Moebius.PoolTest do
     end
 
     test "a database module that isn't started says so" do
-      defmodule NeverStarted do
-        @moduledoc false
-        use Moebius.Database
-      end
-
       assert {:error, "Moebius.PoolTest.NeverStarted isn't started"} =
                NeverStarted.run("select 1")
     end
@@ -158,6 +212,12 @@ defmodule Moebius.PoolTest do
       assert %{max_count: 1} = TinyDb.pool_status()
       assert %{max_count: 10} = TestDb.pool_status()
     end
+  end
+
+  # TinyDb has one connection, so a different backend means that connection was replaced
+  defp backend_pid do
+    {:ok, [%{pid: pid}]} = TinyDb.run("select pg_backend_pid() as pid")
+    pid
   end
 
   # pooler replaces members asynchronously; give it a moment

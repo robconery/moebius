@@ -1,6 +1,13 @@
 defmodule Moebius.CopyTest do
   use ExUnit.Case
+  import ExUnit.CaptureLog
   import Moebius.Query
+
+  # A pool of one, so the call after a copy is sure to get the connection the copy used.
+  defmodule OneDb do
+    @moduledoc false
+    use Moebius.Database
+  end
 
   setup do
     TestDb.run("drop table if exists shipments")
@@ -120,5 +127,52 @@ defmodule Moebius.CopyTest do
              end)
 
     assert count() == 0
+  end
+
+  describe "a copy that is cut short" do
+    setup do
+      start_supervised!({OneDb, Moebius.get_connection() ++ [pool_size: 1]})
+      :ok
+    end
+
+    test "a row stream that raises is re-raised, and the next caller gets a working connection" do
+      rows =
+        Stream.map(1..10, fn
+          7 -> raise "line 7 is not CSV"
+          n -> shipment(n)
+        end)
+
+      assert_raise RuntimeError, "line 7 is not CSV", fn ->
+        OneDb.copy(:shipments, rows, chunk: 2)
+      end
+
+      assert {:ok, [%{n: 1}]} = OneDb.run("select 1 as n")
+      assert count() == 0
+    end
+
+    test "a connection lost part way through is an error, not an exit" do
+      {:ok, [%{pid: backend}]} = OneDb.run("select pg_backend_pid() as pid")
+      [{connection, _}] = :pooler.pool_stats(OneDb)
+
+      # the second chunk ends the session on the server, and waits for the driver to notice
+      rows =
+        Stream.map(1..6, fn n ->
+          if n == 4 do
+            ref = Process.monitor(connection)
+            {:ok, _} = TestDb.run("select pg_terminate_backend($1)", [backend])
+            assert_receive {:DOWN, ^ref, :process, ^connection, _}
+          end
+
+          shipment(n)
+        end)
+
+      # the dead connection logs its own exit; capture_log only keeps the run quiet
+      capture_log(fn ->
+        assert {:error, "connection lost" <> _} = OneDb.copy(:shipments, rows, chunk: 2)
+      end)
+
+      assert {:ok, [%{n: 1}]} = OneDb.run("select 1 as n")
+      assert count() == 0
+    end
   end
 end

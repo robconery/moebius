@@ -5,11 +5,14 @@ defmodule Moebius.Connection do
   Pass it on to `run/2`, `run/3` and `save/3` so those statements run inside the
   transaction. (Calls that leave it out also join the transaction, as long as they run in
   the same process and on the same database.)
+
+  A handle is valid only in its owning process during its active checkout. Do not retain
+  it after the callback returns or pass it to a Task or another database module.
   """
 
-  defstruct [:pool, :pid]
+  defstruct [:pool, :pid, :owner, :ref]
 
-  @type t :: %__MODULE__{pool: atom(), pid: pid()}
+  @type t :: %__MODULE__{pool: atom(), pid: pid(), owner: pid(), ref: reference()}
 
   alias Moebius.{Error, Result}
 
@@ -41,7 +44,7 @@ defmodule Moebius.Connection do
 
     %{
       host: host(opts, port),
-      port: port,
+      port: if(opts[:socket_dir], do: 0, else: port),
       username: opts[:username] || System.get_env("PGUSER") || "postgres",
       database: opts[:database],
       timeout: opts[:connect_timeout] || opts[:timeout] || 5_000,
@@ -95,11 +98,21 @@ defmodule Moebius.Connection do
   # runs it. Checking first matters: epgsql encodes parameters inside the connection
   # process, and a value of the wrong type crashes that process.
   def query(pid, sql, params) do
-    with {:ok, statement} <- parse(pid, sql),
-         {:ok, params} <- Moebius.Params.check(statement_types(statement), params) do
-      pid
-      |> :epgsql.prepared_query(statement, params)
-      |> to_result(pid)
+    with {:ok, statement} <- parse(pid, sql) do
+      case Moebius.Params.check(statement_types(statement), params) do
+        {:ok, params} ->
+          pid
+          |> :epgsql.prepared_query(statement, params)
+          |> to_result(pid)
+
+        {:error, _} = error ->
+          # Parse starts an extended-query transaction. Even when Bind is never sent,
+          # Sync must finish that protocol cycle before the connection can be reused.
+          case :epgsql.sync(pid) do
+            :ok -> error
+            other -> {:error, lost(pid, other)}
+          end
+      end
     end
   catch
     :exit, reason -> {:error, lost(pid, reason)}
@@ -171,9 +184,10 @@ defmodule Moebius.Connection do
 
   defp command(pid), do: status(pid)
 
+  @doc false
   # The connection process died or stopped answering. Flag it, so the pool replaces it
   # instead of handing it to the next caller.
-  defp lost(pid, reason) do
+  def lost(pid, reason) do
     Process.put({__MODULE__, :broken, pid}, true)
     %Error{name: :connection_lost, message: "connection lost: #{exit_reason(reason)}"}
   end

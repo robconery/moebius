@@ -15,6 +15,7 @@ defmodule Moebius.Codec.DateTime do
   @pg_epoch_us 946_684_800_000_000
   @pg_epoch_date ~D[2000-01-01]
   @pg_epoch_naive ~N[2000-01-01 00:00:00.000000]
+  @pg_epoch_utc ~U[2000-01-01 00:00:00.000000Z]
   @midnight ~T[00:00:00.000000]
 
   @int64_max 0x7FFFFFFFFFFFFFFF
@@ -35,8 +36,10 @@ defmodule Moebius.Codec.DateTime do
   def decode(<<@int64_min::signed-64>>, type, _) when type in [:timestamp, :timestamptz],
     do: :"-infinity"
 
+  # Not DateTime.from_unix!/2: it raises past year 9999, Postgres goes on to 294276, and a
+  # raise here takes the connection down.
   def decode(<<us::signed-64>>, :timestamptz, _),
-    do: DateTime.from_unix!(us + @pg_epoch_us, :microsecond)
+    do: DateTime.add(@pg_epoch_utc, us, :microsecond)
 
   def decode(<<us::signed-64>>, :timestamp, _),
     do: NaiveDateTime.add(@pg_epoch_naive, us, :microsecond)

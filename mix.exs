@@ -1,7 +1,7 @@
 defmodule Moebius.Mixfile do
   use Mix.Project
 
-  @version "5.0.0"
+  @version "5.0.1"
 
   def project do
     [
@@ -17,7 +17,14 @@ defmodule Moebius.Mixfile do
         source_ref: "v#{@version}",
         source_url: "https://github.com/robconery/moebius",
         main: "readme",
-        extras: ["README.md", "CHANGELOG.md", "CONTRIBUTING.md", "LICENSE"]
+        extras: [
+          "README.md",
+          "CHANGELOG.md",
+          "CONTRIBUTING.md",
+          "SECURITY.md",
+          "CODE_OF_CONDUCT.md",
+          "LICENSE"
+        ]
       ],
       deps: deps(),
       aliases: aliases(),
@@ -37,7 +44,7 @@ defmodule Moebius.Mixfile do
       {:epgsql, "~> 4.8"},
       {:pooler, "~> 1.7"},
       {:jason, "~> 1.4"},
-      {:decimal, "~> 2.1 or ~> 3.0"},
+      {:decimal, "~> 3.0"},
 
       # Dev & Test
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
@@ -48,7 +55,8 @@ defmodule Moebius.Mixfile do
 
   defp package() do
     [
-      files: ~w(lib .formatter.exs mix.exs README* LICENSE* CHANGELOG*),
+      files:
+        ~w(lib .formatter.exs mix.exs README* LICENSE* CHANGELOG* CONTRIBUTING.md SECURITY.md CODE_OF_CONDUCT.md),
       maintainers: ["Rob Conery", "Chase Pursley"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/robconery/moebius"}

@@ -155,6 +155,53 @@ defmodule Moebius.DocumentTest do
     end
   end
 
+  describe "documents built from outside data" do
+    test "an \"id\" inside the document can't stand in for the row's id", %{steve: steve} do
+      # as decoded from a request body: string keys, and an id of the sender's choosing
+      assert {:ok, %{id: id, name: "visitor"} = saved} =
+               db(:user_docs) |> TestDb.save(%{"id" => steve.id, "name" => "visitor"})
+
+      assert id != steve.id
+
+      # read, change, save: it has to land on the visitor's own row
+      assert {:ok, %{id: ^id}} = db(:user_docs) |> TestDb.save(Map.put(saved, :name, "renamed"))
+
+      assert {:ok, %{email: "steve@test.com", first: "Steve"}} =
+               db(:user_docs) |> TestDb.find(steve.id)
+    end
+
+    test "a stored body with its own id or created_at reads with the row's" do
+      {:ok, [%{id: id}]} =
+        TestDb.run("""
+        insert into user_docs(body)
+        values ('{"id": 0, "created_at": "never", "name": "old"}') returning id
+        """)
+
+      assert {:ok, %{id: ^id, name: "old", created_at: %DateTime{}}} =
+               db(:user_docs) |> TestDb.find(id)
+    end
+
+    test "a key that isn't an atom yet stays a string, at any depth" do
+      key = "field_#{System.unique_integer([:positive])}"
+
+      assert {:ok, saved} =
+               db(:user_docs)
+               |> TestDb.save(%{"name" => "visitor", "extra" => %{key => 1}, key => 2})
+
+      assert %{:name => "visitor", :extra => %{^key => 1}, ^key => 2} = saved
+      assert_raise ArgumentError, fn -> String.to_existing_atom(key) end
+    end
+
+    test "document_keys: :atoms makes every key an atom" do
+      Application.put_env(:moebius, :document_keys, :atoms)
+      on_exit(fn -> Application.delete_env(:moebius, :document_keys) end)
+      key = "field_#{System.unique_integer([:positive])}"
+
+      assert {:ok, saved} = db(:user_docs) |> TestDb.save(%{key => 1})
+      assert Map.fetch(saved, String.to_existing_atom(key)) == {:ok, 1}
+    end
+  end
+
   describe "finding documents" do
     test "find returns the document by id", %{steve: steve} do
       assert {:ok, %{id: id, email: "steve@test.com"}} = db(:user_docs) |> TestDb.find(steve.id)

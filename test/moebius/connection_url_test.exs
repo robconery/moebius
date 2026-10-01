@@ -1,6 +1,12 @@
 defmodule Moebius.ConnectionUrlTest do
   use ExUnit.Case, async: true
 
+  test "Unix sockets keep the server port in the path and use transport port zero" do
+    opts = Moebius.Connection.epgsql_options(socket_dir: "/tmp", port: 6543)
+    assert opts.host == {:local, "/tmp/.s.PGSQL.6543"}
+    assert opts.port == 0
+  end
+
   describe "parse_connection/1" do
     test "splits a url into connection options" do
       assert Moebius.parse_connection("postgres://user:secret@db.example.com:6543/app") == [

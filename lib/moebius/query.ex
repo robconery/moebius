@@ -340,14 +340,12 @@ defmodule Moebius.Query do
   """
   def search(%QueryCommand{} = cmd, for: term, in: columns) when is_list(columns) do
     concat_list = Enum.map_join(columns, ", ' ',  ", &Identifier.name!/1)
+    vector = "to_tsvector(concat(#{concat_list}))"
+    query = "websearch_to_tsquery($#{length(cmd.params) + 1})"
+    cmd = Moebius.QueryFilter.append_condition(cmd, "#{vector} @@ #{query}", [term])
+    order = if cmd.order == "", do: " order by rank desc", else: cmd.order
 
-    sql = """
-    select *, ts_rank_cd(to_tsvector(concat(#{concat_list})),websearch_to_tsquery($1)) as rank from #{cmd.table_name}
-    where to_tsvector(concat(#{concat_list})) @@ websearch_to_tsquery($1)
-    order by rank desc
-    """
-
-    %{cmd | sql: sql, params: [term]}
+    select(%{cmd | order: order}, "*, ts_rank_cd(#{vector},#{query}) as rank")
   end
 
   @doc """

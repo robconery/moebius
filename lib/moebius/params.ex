@@ -11,6 +11,7 @@ defmodule Moebius.Params do
 
   @integers [:int2, :int4, :int8]
   @floats [:float4, :float8]
+  @float_max trunc(1.7976931348623157e308)
   @texts [:text, :varchar, :bpchar, :name, :bytea]
   # 32 hex digits, with or without the usual hyphens; epgsql's codec crashes on anything else
   @uuid ~r/\A[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}\z/
@@ -42,19 +43,34 @@ defmodule Moebius.Params do
   end
 
   defp cast(_type, nil), do: {:ok, nil}
-  defp cast(type, value) when type in @integers and is_integer(value), do: {:ok, value}
-  defp cast(type, value) when type in @floats and is_number(value), do: {:ok, value}
+
+  # epgsql raises inside the connection process for an integer the type can't hold
+  defp cast(:int2, value) when value in -0x8000..0x7FFF, do: {:ok, value}
+  defp cast(:int4, value) when value in -0x8000_0000..0x7FFF_FFFF, do: {:ok, value}
+
+  defp cast(:int8, value) when value in -0x8000_0000_0000_0000..0x7FFF_FFFF_FFFF_FFFF,
+    do: {:ok, value}
+
+  defp cast(type, value) when type in @floats and is_float(value), do: {:ok, value}
+
+  # an integer goes out as a float, and one past the largest float can't be written as one
+  defp cast(type, value) when type in @floats and value in -@float_max..@float_max,
+    do: {:ok, value}
 
   defp cast(type, value)
        when type in @floats and value in [:nan, :plus_infinity, :minus_infinity],
        do: {:ok, value}
 
-  defp cast(:numeric, %Decimal{} = value), do: {:ok, value}
-  defp cast(:numeric, value) when is_number(value), do: {:ok, value}
+  defp cast(:numeric, %Decimal{} = value) do
+    if Moebius.Codec.Numeric.representable?(value), do: {:ok, value}, else: :error
+  end
+
+  defp cast(:numeric, value) when is_integer(value), do: cast(:numeric, Decimal.new(value))
+  defp cast(:numeric, value) when is_float(value), do: cast(:numeric, Decimal.from_float(value))
 
   defp cast(:numeric, value) when is_binary(value) do
     case Decimal.parse(value) do
-      {_decimal, ""} -> {:ok, value}
+      {decimal, ""} -> cast(:numeric, decimal)
       _ -> :error
     end
   end

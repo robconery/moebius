@@ -120,6 +120,19 @@ defmodule Moebius.TypesTest do
       assert round_trip(:infinity, "timestamp") == :infinity
     end
 
+    test "years past 9999 and before 1 are read, to the ends of Postgres's range" do
+      assert %DateTime{year: 20_000, month: 1, day: 1, microsecond: {0, 6}} =
+               select("'20000-01-01 00:00:00+00'::timestamptz")
+
+      assert %DateTime{year: 294_276, microsecond: {999_999, 6}} =
+               select("'294276-12-31 23:59:59.999999+00'::timestamptz")
+
+      assert %DateTime{year: -4712} = select("'4713-01-01 00:00:00+00 BC'::timestamptz")
+      assert %NaiveDateTime{year: 294_276} = select("'294276-12-31 23:59:59'::timestamp")
+      assert %Date{year: 5_874_897} = select("'5874897-12-31'::date")
+      assert %Date{year: -4712} = select("'4713-01-01 BC'::date")
+    end
+
     test "arrays of dates" do
       assert round_trip([~D[2026-01-01], nil, ~D[2026-12-31]], "date[]") ==
                [~D[2026-01-01], nil, ~D[2026-12-31]]

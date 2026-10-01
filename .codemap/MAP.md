@@ -18,5 +18,5 @@
 - `lib/moebius/codec` (3 files: 3.ex) — epgsql codecs: date_time.ex (date/time/timestamp(tz) ↔ Elixir structs, exact µs), numeric.ex (↔ Decimal), json.ex (Jason adapter)
 - `test` (1 files: 1.exs) — test_helper.exs starts `TestDb` under a supervisor
 - `test/db` (4 files: 4.sql) — SQL fixtures: tables.sql (schema, used by migrate), seeds.sql, and sql_file() scripts (simple.sql, cte.sql)
-- `test/moebius` (23 files: 23.exs) — ExUnit tests, one file per feature. Builder tests assert `cmd.sql`/`cmd.params`; round-trip tests run through TestDb. types_test (codecs), pool_test (failures, timeouts, second pools), security_test (injection), stream_test, explain_test, copy_test
+- `test/moebius` (25 files: 25.exs) — ExUnit tests, one file per feature. Builder tests assert `cmd.sql`/`cmd.params`; round-trip tests run through TestDb. types_test (codecs), pool_test (failures, timeouts, second pools), security_test (injection), stream_test, explain_test, copy_test
 - `test/support` (2 files: 2.ex) — TestDb (`use Moebius.Database`) and Moebius.TestData (reset_users!/0, unique_email/1); compiled in the test env only

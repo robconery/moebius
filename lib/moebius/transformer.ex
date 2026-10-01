@@ -35,26 +35,53 @@ defmodule Moebius.Transformer do
 
   def from_json({:error, _} = error), do: error_message(error)
   def from_json({:ok, %Result{rows: nil}}), do: {:ok, []}
-  def from_json({:ok, %Result{rows: rows}}), do: {:ok, Enum.map(rows, &handle_row/1)}
+
+  def from_json({:ok, %Result{rows: rows}}) do
+    keys = document_keys()
+    {:ok, Enum.map(rows, &handle_row(&1, keys))}
+  end
 
   def from_json({:error, _} = error, :single), do: error_message(error)
   def from_json({:ok, %Result{rows: nil}}, :single), do: {:ok, nil}
 
   def from_json({:ok, %Result{rows: rows}}, :single),
-    do: {:ok, rows |> List.first() |> handle_row()}
+    do: {:ok, rows |> List.first() |> handle_row(document_keys())}
 
-  defp handle_row(nil), do: nil
+  defp handle_row(nil, _keys), do: nil
 
-  defp handle_row([id, json, created_at, updated_at]) do
+  # The row's own columns win over keys of the same name inside the document, so a body
+  # that carries an "id" can't pass itself off as another document.
+  defp handle_row([id, json, created_at, updated_at], keys) do
     json
-    |> decode_json()
-    |> Map.put_new(:id, id)
-    |> Map.put_new(:created_at, created_at)
-    |> Map.put_new(:updated_at, updated_at)
+    |> Jason.decode!(keys: keys)
+    |> Map.put(:id, id)
+    |> Map.put(:created_at, created_at)
+    |> Map.put(:updated_at, updated_at)
   end
 
-  # documents are read as body::text; their keys are the document's own field names
-  defp decode_json(json), do: Jason.decode!(json, keys: :atoms)
+  # Documents are read as body::text. A key becomes an atom only if that atom already exists,
+  # as every field your own code names does; any other key stays a string. Atoms are never
+  # garbage collected, so documents whose keys come from users could fill the atom table.
+  # `config :moebius, document_keys: :atoms` makes every key an atom, for documents you trust.
+  defp document_keys do
+    case Application.get_env(:moebius, :document_keys, :existing_atoms) do
+      :existing_atoms ->
+        &existing_atom/1
+
+      :atoms ->
+        :atoms
+
+      other ->
+        raise ArgumentError,
+              "document_keys must be :existing_atoms or :atoms, got: #{inspect(other)}"
+    end
+  end
+
+  defp existing_atom(key) do
+    String.to_existing_atom(key)
+  rescue
+    ArgumentError -> key
+  end
 
   defp error_message({:error, %Error{message: message}}), do: {:error, message}
   defp error_message({:error, message}), do: {:error, message}

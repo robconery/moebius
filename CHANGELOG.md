@@ -1,5 +1,55 @@
 # Changelog
 
+## 5.0.1
+
+### Fixed
+
+- Parameter validation failures now synchronize the driver before returning a connection
+  to the pool, releasing the parse transaction and its table locks.
+- Relational and document full-text searches preserve existing predicates, parameter
+  numbering, joins where supported, explicit sorting, limits and offsets. Existing OR
+  predicates are grouped before the search condition is added.
+- Document writes and search-column updates are atomic. A failed search update rolls back
+  the document write, including when called inside an existing transaction.
+- Numeric values outside PostgreSQL's representable range are rejected before encoding,
+  rather than being silently truncated by the binary codec.
+- Explicit connection handles require the original process and active checkout. Expired,
+  cross-process and cross-database handles are rejected for queries and document saves.
+- Stream callbacks reuse their connection and transaction. A standalone stream rolls back
+  callback writes on an exception or error and releases its connection on early halt.
+  Suspended streams cannot be resumed after their enclosing transaction has ended.
+- Unix-socket connections use transport port zero while retaining the server port in the
+  socket filename.
+- **A number too big for its type crashed the connection**, such as `find("99999999999")` on an `integer` key.
+  That is the same kind of error now. Reading a `timestamptz` past year 9999 crashed it too;
+  those are read as a `DateTime`, to the end of Postgres's range.
+- **A document with an `"id"` inside its body read back under that id**, so saving it again
+  overwrote a different document. The row's `id`, `created_at` and `updated_at` always win
+  now, and `save/2` no longer stores them in the body under string keys either.
+- **`copy/3` gave back a connection still in COPY mode when the row stream raised**, and the
+  next caller got "connection lost". The connection is replaced instead. A connection that
+  dies during a copy is `{:error, "connection lost: ..."}`, not an exit.
+
+### Safety defaults and compatibility
+
+- Requires Decimal 3.x. The package constraint no longer permits 2.x releases affected by
+  [CVE-2026-32686](https://github.com/ericmj/decimal/security/advisories/GHSA-rhv4-8758-jx7v).
+- Pooled connections default to `statement_timeout: "30s"`, `lock_timeout: "5s"`, and
+  `idle_in_transaction_session_timeout: "30s"`. Override these for longer operations;
+  `0` disables a limit. These server settings do not provide a client-side network deadline.
+- **Document keys become atoms only if the atom already exists.** Every field your own code
+  names does, so `doc.email` works as before. A key nobody has named stays a string. Before,
+  every key of every document became a new atom, atoms are never freed, and a document store
+  that holds user-shaped JSON could fill the atom table and stop the VM. Set
+  `config :moebius, document_keys: :atoms` for the old behaviour, if you trust your documents.
+- **`run("begin")` returns an error.** Each call may use a different connection, so the
+  transaction stayed open on a pooled connection and the next caller's writes were rolled back
+  with it. Use `transaction/1`.
+- The transaction callback's return contract is unchanged: returning `{:error, reason}`
+  commits normally. Call `rollback/1` to abort an application-level failure.
+- Documented the trusted-SQL string arguments and the concurrency guarantees of
+  `READ COMMITTED`, including ways to prevent lost updates.
+
 ## 5.0.0
 
 Moebius now runs on [epgsql](https://github.com/epgsql/epgsql) 4.8 with a
@@ -46,8 +96,8 @@ breaking changes are listed below, each with its reason.
 - **Numeric strings longer than 34 digits are refused as parameters.** This is decimal 3's
   protection against CVE-2026-32686. Pass a `Decimal` built with `max_digits: :infinity` if
   you really mean it. Values read from the database keep full precision.
-- Deprecated: `Moebius.run_with_psql/2` (use `Moebius.run_script/2`, which doesn't need `psql`
-  installed) and `Moebius.pool_opts/0` (pool options go in the connection options).
+- Deprecated: Moebius.run_with_psql/2 (use `Moebius.run_script/2`, which doesn't need `psql`
+  installed) and Moebius.pool_opts/0 (pool options go in the connection options).
 
 
 ### Fixed

@@ -46,6 +46,10 @@ So Moebius is for you if:
 
 ## What's new in 5.0
 
+**5.0.1 fixes transaction cleanup, scoped searches, atomic document saves, numeric bounds,
+connection ownership, streaming, and Unix sockets.** It also enables configurable server
+timeouts by default. See [CHANGELOG.md](CHANGELOG.md) for the release details.
+
 5.0 swaps the driver. Moebius used to run on Postgrex; it now runs on [epgsql](https://github.com/epgsql/epgsql), the Erlang PostgreSQL driver, with a [pooler](https://github.com/epgsql/pooler) connection pool. The query builders and the `run`/`first`/`find`/`save`/`transaction` API didn't change.
 
 ### Why change the driver?
@@ -166,13 +170,20 @@ config :moebius, connection: [
   pool_size: 10,                # the most connections to open (default 10)
   pool_min: 10,                 # opened at start and kept when idle (default: pool_size)
   checkout_timeout: 5_000,      # how long a call waits for a free connection, in ms
-  statement_timeout: "30s",     # Postgres cancels anything slower. Recommended.
+  statement_timeout: "30s",     # maximum time for a statement (default 30s)
+  lock_timeout: "5s",           # maximum wait for each lock (default 5s)
+  idle_in_transaction_session_timeout: "30s", # idle transaction limit (default 30s)
   application_name: "my_app",   # shows up in pg_stat_activity
   ssl: true                     # or :required, with ssl_opts: [...]
 ]
 ```
 
 Also supported: `queue_max`, `max_lifetime`, `lock_timeout`, `idle_in_transaction_session_timeout`, `settings` (any other session settings) and `socket_dir`.
+
+These timeout defaults apply to pooled connections. Override them for long-running queries
+or COPY imports; `0` disables a limit. They bound work on the server, but do not impose a
+client deadline when the network stops responding. `run_script/2` opens a separate connection
+and does not apply the pool's timeout defaults.
 
 ### Your own database modules
 
@@ -438,6 +449,10 @@ Saving a document that has an `id` updates it:
 {:ok, friend} = db(:friends) |> Moebius.Db.save(%{friend | name: "Moe Howard"})
 ```
 
+The `id`, `created_at` and `updated_at` you get back are the row's own. They are never stored inside the document.
+
+Keys come back as atoms when the atom already exists, which covers every field your code mentions (`friend.email`). A key nobody has named stays a string. Atoms are never freed, so this keeps documents with keys chosen by users, like a webhook payload, from filling the atom table. If you trust your documents and want every key as an atom, set `config :moebius, document_keys: :atoms`.
+
 ### Querying documents
 
 `contains/2` uses the `@>` operator and the GIN index, so it's fast. Use it whenever you can:
@@ -477,6 +492,11 @@ db(:products)
 ```
 
 You can also search keys on the fly, without the index: `search(for: "spicy", in: [:name, :description])`.
+
+A document save and its search-column update run in one transaction. If either fails,
+neither write is committed. Both relational and document searches preserve preceding
+filters, parameters, sorting, limits and offsets. Put `search/2` last in the builder pipeline,
+before calling `run/1`, `first/1` or `stream/2`.
 
 ### Structs
 
@@ -560,7 +580,11 @@ db(:events)
 |> Stream.run()
 ```
 
-It works with document queries too. Read the stream in the process that created it, because that process holds the connection until the stream ends.
+It works with document queries too. Enumerate and resume the stream in the same process.
+That process holds the connection until the stream ends. Database calls in stream callbacks
+reuse that connection and transaction. A standalone stream commits its callback writes on
+completion or early halt, and rolls them back if fetching or consuming rows raises or throws.
+When enumerated inside `transaction/1`, the enclosing transaction controls the outcome.
 
 ## Transactions
 
@@ -587,6 +611,10 @@ A few more things:
 
 - Queries in the same process join the open transaction even if you forget to pass `tx`.
 - `Moebius.Db.rollback(reason)` aborts the transaction, which then returns `{:error, reason}`.
+- Returning `{:error, reason}` from the callback does **not** abort it; that is a normal
+  return and commits. Use `rollback/1` for application-level failures.
+- A connection handle may only be used by its owning process during its active checkout.
+  Do not retain it after the callback returns or pass it to a Task or another database.
 - If your function raises, the transaction rolls back and the exception is re-raised.
 - A transaction inside a transaction becomes a savepoint, so the inner one can fail without taking the outer one down:
 
@@ -604,7 +632,12 @@ Moebius.Db.transaction(fn tx ->
 end)
 ```
 
-If transactions are giving you grief, move the logic into a SQL file or a Postgres function. Abstractions are here to help; if Moebius is in your way, shove it (gently) aside.
+PostgreSQL's default isolation level is `READ COMMITTED`. It prevents dirty reads, but a
+transaction alone does not prevent lost updates in a read-modify-write operation. Use an
+atomic update such as `SET balance = balance + $1`, lock the row with `SELECT ... FOR UPDATE`,
+or use optimistic version checks. For stronger isolation, issue `SET TRANSACTION ISOLATION
+LEVEL SERIALIZABLE` before the transaction's first data query and retry the whole transaction
+on serialization failure. Acquire multiple row locks in a consistent order to reduce deadlocks.
 
 ## Asking Postgres how it will run a query
 
@@ -656,7 +689,15 @@ Inside a transaction, a failed statement raises `Moebius.Error` so the transacti
 
 Every value you pass becomes a `$n` parameter; none are pasted into the SQL.
 
-Table, column and function names can't be parameters, so Moebius checks them instead. Anything that isn't a plain name (`users`, `membership.users`, `"Order Items"`) raises `ArgumentError` before any SQL is built. Sort directions, join types and document operators are checked against a list. The only SQL used exactly as written is SQL you write yourself, like `filter("price > $1", 10)`.
+Table and function names, keyword column names, and atom column names are checked. Anything
+that isn't a plain name (`users`, `membership.users`, `"Order Items"`) raises `ArgumentError`.
+Sort directions, join types and document operators are checked against a list.
+
+Strings supplied to `filter`, `select` (including strings in a column list), `sort`, `group`
+and the column argument of `reduce` are **trusted SQL expressions**, used as written. Never
+pass request input directly to these arguments. Map requested fields through an allowlist
+of known columns; do not convert arbitrary request strings to atoms. Put user values in
+parameters, for example `filter("price > $1", requested_price)`.
 
 Parameters are also checked before they're sent. Moebius asks Postgres to parse the statement first, reads back the type it expects for each `$n`, and checks your values in your own process. A wrong type is a clear error and the connection stays up:
 

@@ -32,8 +32,9 @@ defmodule Moebius.Database do
   * `:max_lifetime` - recycle each connection after this many ms, for proxies and firewalls
     that drop long-lived connections.
   * `:statement_timeout`, `:lock_timeout`, `:idle_in_transaction_session_timeout` - Postgres
-    settings applied to every connection, e.g. `statement_timeout: "30s"`. Setting
-    `statement_timeout` is a good idea: the driver itself waits for a query forever.
+    settings applied to every pooled connection (defaults: `"30s"`, `"5s"`, `"30s"`).
+    Override them for long-running work, or set `0` to disable a limit. These are server
+    limits; the driver does not impose a separate deadline for an unresponsive network.
   * `:settings` - any other Postgres settings, as a keyword list.
   * `:application_name` - shown in `pg_stat_activity` (default `"moebius"`).
   """
@@ -89,7 +90,7 @@ defmodule Moebius.Database do
           |> Transformer.from_json()
 
       def run(%QueryCommand{} = cmd, %Connection{} = conn),
-        do: cmd |> Moebius.Database.execute(conn) |> Moebius.Database.shape(cmd)
+        do: %{cmd | conn: @name} |> Moebius.Database.execute(conn) |> Moebius.Database.shape(cmd)
 
       defdelegate all(table), to: __MODULE__, as: :run
 
@@ -126,7 +127,10 @@ defmodule Moebius.Database do
 
       @doc """
       Streams the rows of a query or document query through a server-side cursor, so large
-      results never sit in memory at once. Read it in the process that created it.
+      results never sit in memory at once. Enumerate and resume it in the same process.
+      Callback queries on this database share the cursor's connection and transaction.
+      An owned transaction commits on completion or early halt and rolls back on an error,
+      throw or exception. Inside an existing transaction, that caller controls the outcome.
 
       * `:chunk` - rows fetched per round-trip (default 500).
 
@@ -192,6 +196,10 @@ defmodule Moebius.Database do
       @doc """
       Runs `fun` in a transaction and returns what it returns.
 
+      Returning `{:error, reason}` is still a normal return and commits. Call `rollback/1`
+      to abort an application-level failure. Connection handles are valid only in the
+      owning process while its checkout is active.
+
       If a statement inside fails, or `fun` calls `rollback/1`, the transaction is rolled back
       and this returns `{:error, reason}`. If `fun` raises anything else, the transaction is
       rolled back and the exception is re-raised. A transaction inside a transaction becomes a
@@ -214,8 +222,13 @@ defmodule Moebius.Database do
       def save(%DocumentCommand{} = cmd, doc) when is_map(doc),
         do: Moebius.Database.save_document(@name, cmd, doc)
 
-      def save(%DocumentCommand{} = cmd, doc, %Connection{}) when is_map(doc) or is_list(doc),
-        do: save(cmd, doc)
+      def save(%DocumentCommand{} = cmd, doc, %Connection{} = conn)
+          when is_map(doc) or is_list(doc) do
+        case Moebius.Pool.validate(conn, @name) do
+          :ok -> save(cmd, doc)
+          {:error, error} -> Moebius.Database.connection_error(@name, error)
+        end
+      end
 
       def create_document_table(name) when is_atom(name) do
         with :ok <- Moebius.Database.create_document_table(@name, Moebius.DocumentQuery.db(name)),
@@ -244,7 +257,22 @@ defmodule Moebius.Database do
     Pool.checkout(pool, &query(&1, cmd))
   end
 
-  def execute(cmd, %Connection{} = conn), do: query(conn, cmd)
+  def execute(%{sql: nil} = cmd, %Connection{} = conn),
+    do: cmd |> Query.select() |> execute(conn)
+
+  def execute(cmd, %Connection{} = conn) do
+    pool = cmd.conn || conn.pool
+
+    case Pool.validate(conn, pool) do
+      :ok -> query(conn, cmd)
+      {:error, error} -> connection_error(pool, error)
+    end
+  end
+
+  @doc false
+  def connection_error(pool, error) do
+    if Pool.in_transaction?(pool), do: raise(error), else: {:error, error.message}
+  end
 
   # Inside a transaction a failed statement aborts it (Postgres rejects everything after the
   # error anyway), so raise and let the transaction roll back.
@@ -252,6 +280,11 @@ defmodule Moebius.Database do
     case Connection.query(pid, cmd.sql, cmd.params) do
       {:error, %Error{} = error} ->
         if Pool.in_transaction?(pool), do: raise(error), else: {:error, error}
+
+      # A BEGIN that isn't inside transaction/1 would go back to the pool still open, and
+      # the next caller's writes would be rolled back with it.
+      {:ok, %Moebius.Result{command: command}} = ok when command in [:begin, :start] ->
+        if Pool.in_transaction?(pool), do: ok, else: {:error, Pool.end_stray_transaction(pid)}
 
       ok ->
         ok
@@ -301,23 +334,35 @@ defmodule Moebius.Database do
   def save_document(pool, cmd, doc) do
     command = DocumentQuery.decide_command(%{cmd | conn: pool}, doc)
 
-    case execute(command) do
+    # Keep the body and its search index in one transaction. A savepoint also allows
+    # a missing table to be created without aborting a caller's outer transaction.
+    result =
+      Pool.transaction(pool, fn _tx ->
+        try do
+          with {:ok, saved} <- Transformer.from_json(execute(command), :single),
+               :ok <- update_search(pool, cmd, saved),
+               do: {:ok, saved}
+        rescue
+          error in Error -> Pool.rollback(error)
+        end
+      end)
+
+    case result do
       {:error, %Error{name: :undefined_table}} ->
         # a new table has no row to update, so an id in the document is dropped
         with :ok <- create_document_table(pool, cmd),
              do: save_document(pool, cmd, Map.delete(doc, :id))
 
-      {:ok, _} = result ->
-        with {:ok, saved} <- Transformer.from_json(result, :single),
-             :ok <- update_search(pool, cmd, saved),
-             do: {:ok, saved}
+      {:error, %Error{} = error} ->
+        connection_error(pool, error)
 
-      {:error, %Error{message: message}} ->
-        {:error, message}
+      other ->
+        other
     end
   end
 
   defp update_search(_pool, %{search_fields: []}, _saved), do: :ok
+  defp update_search(_pool, _cmd, nil), do: :ok
 
   defp update_search(pool, cmd, saved) do
     case execute(%{DocumentQuery.update_search(cmd, saved.id) | conn: pool}) do

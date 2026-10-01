@@ -13,7 +13,10 @@ defmodule Moebius.Pool do
   @defaults [
     pool_size: 10,
     checkout_timeout: 5_000,
-    queue_max: 50
+    queue_max: 50,
+    statement_timeout: "30s",
+    lock_timeout: "5s",
+    idle_in_transaction_session_timeout: "30s"
   ]
 
   # server settings Moebius accepts as connection options
@@ -84,11 +87,31 @@ defmodule Moebius.Pool do
     end
   end
 
+  @doc false
+  def validate(%Connection{pool: pool, owner: owner, ref: ref} = conn, expected_pool) do
+    if pool == expected_pool and owner == self() and is_reference(ref) and
+         Process.get({__MODULE__, :held, pool}) == conn do
+      :ok
+    else
+      {:error,
+       %Error{
+         name: :invalid_connection,
+         message:
+           "connection must belong to this database and the current process's active checkout"
+       }}
+    end
+  end
+
+  defp hold(pool, pid) do
+    conn = %Connection{pool: pool, pid: pid, owner: self(), ref: make_ref()}
+    Process.put({__MODULE__, :held, pool}, conn)
+    conn
+  end
+
   defp take(pool, fun) do
     case take_member(pool) do
       {:ok, pid} ->
-        conn = %Connection{pool: pool, pid: pid}
-        Process.put({__MODULE__, :held, pool}, conn)
+        conn = hold(pool, pid)
 
         try do
           fun.(conn)
@@ -228,6 +251,20 @@ defmodule Moebius.Pool do
     if error, do: {:error, error.message}
   end
 
+  @doc false
+  # Ends a transaction that was opened with a plain statement instead of transaction/2, and
+  # returns the error for the caller.
+  def end_stray_transaction(pid) do
+    undo(pid, "rollback", nil)
+
+    %Error{
+      name: :stray_transaction,
+      message:
+        "a transaction can't be opened with run, because each call may use a different " <>
+          "connection. Use transaction/1."
+    }
+  end
+
   defp depth(pool), do: Process.get({__MODULE__, :depth, pool}, 0)
 
   defp set_depth(pool, 0), do: Process.delete({__MODULE__, :depth, pool})
@@ -242,14 +279,43 @@ defmodule Moebius.Pool do
   stream ends or is halted. Outside a transaction the cursor runs in one of its own.
   """
   def stream(pool, sql, params, chunk, transform) do
-    Stream.resource(
-      fn -> open_cursor(pool, sql, params) end,
-      fn state -> fetch(state, chunk, transform) end,
-      &close_cursor/1
-    )
+    fn acc, reducer ->
+      ref = make_ref()
+
+      resource =
+        Stream.resource(
+          fn -> open_cursor(pool, sql, params, ref) end,
+          fn state -> stream_step(ref, fn -> fetch(state, chunk, transform) end) end,
+          &close_cursor/1
+        )
+
+      # Stream.resource's cleanup also runs on consumer exceptions. Mark the failure
+      # before that cleanup, so callback writes are rolled back instead of committed.
+      Enumerable.reduce(resource, acc, fn row, inner_acc ->
+        stream_step(ref, fn ->
+          case Process.get({__MODULE__, :stream_connection, ref}) do
+            %Connection{} = conn ->
+              :ok = ok!(validate(conn, pool))
+
+            nil ->
+              raise Error, name: :invalid_connection, message: "stream belongs to another process"
+          end
+
+          reducer.(row, inner_acc)
+        end)
+      end)
+    end
   end
 
-  defp open_cursor(pool, sql, params) do
+  defp stream_step(ref, fun) do
+    fun.()
+  catch
+    kind, reason ->
+      Process.put({__MODULE__, :stream_failed, ref}, true)
+      :erlang.raise(kind, reason, __STACKTRACE__)
+  end
+
+  defp open_cursor(pool, sql, params, ref) do
     {conn, owned?} =
       case Process.get({__MODULE__, :held, pool}) do
         %Connection{} = conn ->
@@ -257,13 +323,16 @@ defmodule Moebius.Pool do
 
         nil ->
           case take_member(pool) do
-            {:ok, pid} -> {%Connection{pool: pool, pid: pid}, true}
+            {:ok, pid} -> {hold(pool, pid), true}
             {:error, error} -> raise error
           end
       end
 
     cursor = "moebius_cursor_#{System.unique_integer([:positive])}"
-    state = %{conn: conn, owned?: owned?, cursor: cursor, done?: false}
+    state = %{conn: conn, owned?: owned?, cursor: cursor, done?: false, ref: ref}
+    Process.put({__MODULE__, :stream_connection, ref}, conn)
+
+    if owned?, do: set_depth(pool, 1)
 
     try do
       if owned?, do: :ok = ok!(Connection.script(conn.pid, "begin"))
@@ -271,16 +340,18 @@ defmodule Moebius.Pool do
       sql = "declare #{cursor} no scroll cursor for #{String.trim_trailing(sql, ";")}"
       {:ok, _} = ok!(Connection.query(conn.pid, sql, params))
       state
-    rescue
-      error ->
+    catch
+      kind, reason ->
+        Process.put({__MODULE__, :stream_failed, ref}, true)
         close_cursor(state)
-        reraise error, __STACKTRACE__
+        :erlang.raise(kind, reason, __STACKTRACE__)
     end
   end
 
   defp fetch(%{done?: true} = state, _chunk, _transform), do: {:halt, state}
 
   defp fetch(%{conn: conn, cursor: cursor} = state, chunk, transform) do
+    :ok = ok!(validate(conn, conn.pool))
     {:ok, result} = ok!(Connection.query(conn.pid, "fetch #{chunk} from #{cursor}", []))
 
     case transform.({:ok, result}) do
@@ -289,15 +360,46 @@ defmodule Moebius.Pool do
     end
   end
 
+  defp close_cursor(%{conn: conn, ref: ref} = state) do
+    Process.delete({__MODULE__, :stream_connection, ref})
+
+    case validate(conn, conn.pool) do
+      :ok ->
+        finish_cursor(state)
+
+      {:error, error} ->
+        Process.delete({__MODULE__, :stream_failed, ref})
+        raise error
+    end
+  end
+
   # our own transaction: ending it closes the cursor
-  defp close_cursor(%{conn: conn, owned?: true}) do
-    Connection.script(conn.pid, "commit")
-    give_back(conn.pool, conn.pid)
+  defp finish_cursor(%{conn: conn, owned?: true, ref: ref}) do
+    try do
+      if Process.delete({__MODULE__, :stream_failed, ref}) do
+        undo(conn.pid, "rollback", nil)
+      else
+        case finish(conn.pid, "commit") do
+          :ok ->
+            :ok
+
+          {:error, error} ->
+            undo(conn.pid, "rollback", nil)
+            raise error
+        end
+      end
+    after
+      set_depth(conn.pool, 0)
+      Process.delete({__MODULE__, :held, conn.pool})
+      give_back(conn.pool, conn.pid)
+    end
   end
 
   # the caller's transaction: close the cursor and leave the transaction alone
-  defp close_cursor(%{conn: conn, cursor: cursor}),
-    do: Connection.script(conn.pid, "close #{cursor}")
+  defp finish_cursor(%{conn: conn, cursor: cursor, ref: ref}) do
+    Process.delete({__MODULE__, :stream_failed, ref})
+    Connection.script(conn.pid, "close #{cursor}")
+  end
 
   defp ok!({:error, %Error{} = error}), do: raise(error)
   defp ok!(ok), do: ok

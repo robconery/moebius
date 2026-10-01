@@ -165,6 +165,18 @@ defmodule Moebius.QueryFilter do
   defdelegate where(cmd, criteria, params), to: __MODULE__, as: :filter
   defdelegate where(cmd, criteria), to: __MODULE__, as: :filter
 
+  @doc false
+  # Keep an existing OR expression grouped when another builder adds a condition.
+  def append_condition(cmd, predicate, params) do
+    where =
+      case cmd.where do
+        "" -> " where #{predicate}"
+        " where " <> existing -> " where (#{existing}) and #{predicate}"
+      end
+
+    %{cmd | where: where, params: cmd.params ++ params}
+  end
+
   # IN () is a syntax error; nothing is in an empty list
   defp in_list(cmd, _criteria, "IN", []), do: %{cmd | where: join_predicates(cmd, "false")}
   defp in_list(cmd, _criteria, "NOT IN", []), do: %{cmd | where: join_predicates(cmd, "true")}

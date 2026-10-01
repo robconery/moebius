@@ -34,10 +34,17 @@ defmodule Moebius.Copy do
     chunk = Keyword.get(opts, :chunk, @chunk)
 
     Pool.checkout(pool, fn %Connection{pid: pid} ->
-      rows
-      |> Stream.chunk_every(chunk)
-      |> Enum.reduce_while(:not_started, &send_chunk(pid, table, opts, &1, &2))
-      |> finish(pid)
+      try do
+        rows
+        |> Stream.chunk_every(chunk)
+        |> Enum.reduce_while(:not_started, &send_chunk(pid, table, opts, &1, &2))
+        |> finish(pid)
+      after
+        # Still copying here means `rows` raised part way through. The connection is left
+        # in copy mode, so it can't go back to the pool for the next caller.
+        if Process.delete({__MODULE__, :copying, pid}),
+          do: Process.put({Connection, :broken, pid}, true)
+      end
     end)
     |> raise_in_transaction(pool)
   end
@@ -57,12 +64,22 @@ defmodule Moebius.Copy do
 
   defp send_chunk(pid, _table, _opts, rows, {:copying, columns, types, sent}) do
     with {:ok, values} <- values(rows, columns, types, sent),
-         :ok <- :epgsql.copy_send_rows(pid, values, :infinity) do
+         :ok <- send_rows(pid, values) do
       {:cont, {:copying, columns, types, sent + length(rows)}}
     else
-      {:error, %Error{} = error} -> {:halt, {:aborted, error}}
-      {:error, reason} -> {:halt, {:aborted, Error.from_epgsql(reason)}}
+      {:error, error} -> {:halt, {:aborted, error}}
     end
+  end
+
+  # As in Moebius.Connection, a connection that dies under a call is an error for the caller,
+  # not an exit.
+  defp send_rows(pid, values) do
+    case :epgsql.copy_send_rows(pid, values, :infinity) do
+      :ok -> :ok
+      {:error, reason} -> {:error, Error.from_epgsql(reason)}
+    end
+  catch
+    :exit, reason -> {:error, Connection.lost(pid, reason)}
   end
 
   defp finish(:not_started, _pid), do: {:ok, 0}
@@ -78,10 +95,14 @@ defmodule Moebius.Copy do
   defp finish({:aborted, error}, pid), do: abort(pid, server_error(pid) || error)
 
   defp done(pid) do
+    Process.delete({__MODULE__, :copying, pid})
+
     case :epgsql.copy_done(pid) do
       {:ok, count} -> {:ok, count}
       {:error, error} -> {:error, Error.from_epgsql(error)}
     end
+  catch
+    :exit, reason -> {:error, Connection.lost(pid, reason)}
   end
 
   # A COPY that stopped part way leaves the connection in copy mode. Don't reuse it.
@@ -103,9 +124,15 @@ defmodule Moebius.Copy do
     sql = "copy #{table} (#{names}) from stdin with (format binary)"
 
     case :epgsql.copy_from_stdin(pid, sql, {:binary, types}) do
-      {:ok, _formats} -> :ok
-      {:error, error} -> {:error, Error.from_epgsql(error)}
+      {:ok, _formats} ->
+        Process.put({__MODULE__, :copying, pid}, true)
+        :ok
+
+      {:error, error} ->
+        {:error, Error.from_epgsql(error)}
     end
+  catch
+    :exit, reason -> {:error, Connection.lost(pid, reason)}
   end
 
   # the column types, from Postgres itself: parse a select of those columns and read them back
@@ -117,6 +144,8 @@ defmodule Moebius.Copy do
       {:error, error} ->
         {:error, Error.from_epgsql(error)}
     end
+  catch
+    :exit, reason -> {:error, Connection.lost(pid, reason)}
   end
 
   defp keys(row) when is_map(row), do: Map.keys(row)

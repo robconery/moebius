@@ -32,6 +32,10 @@ defmodule Moebius.DocumentQuery do
 
   @operators ~w(= != <> > < >= <= ? like ilike)
 
+  # The row's own columns. They are never stored inside the body, whichever kind of key they
+  # arrive under: a body with an "id" of its own would read back as a different document.
+  @row_keys [:id, :created_at, :updated_at, "id", "created_at", "updated_at"]
+
   @doc """
   Specifies the table or view you want to query. 'with' is an alias for the `db/1` function using
   a string as a table name. This is useful for specifying a table within a schema.
@@ -235,7 +239,7 @@ defmodule Moebius.DocumentQuery do
   def delete(%DocumentCommand{} = cmd, pid, id) when is_pid(pid), do: cmd |> delete_command(id)
 
   def insert(%DocumentCommand{} = cmd, doc) do
-    doc = Map.drop(doc, [:created_at, :updated_at])
+    doc = Map.drop(doc, @row_keys)
 
     sql = """
     insert into #{cmd.table_name}(#{cmd.json_field})
@@ -247,7 +251,7 @@ defmodule Moebius.DocumentQuery do
   end
 
   def update(%DocumentCommand{} = cmd, change, id) when is_map(change) do
-    change = Map.drop(change, [:created_at, :updated_at])
+    change = Map.drop(change, @row_keys)
 
     sql = """
     update #{cmd.table_name}
@@ -298,25 +302,25 @@ defmodule Moebius.DocumentQuery do
   ```
   """
   def search(%DocumentCommand{} = cmd, term) when is_bitstring(term) do
-    sql = """
-    select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name}
-    where search @@ websearch_to_tsquery($1)
-    order by ts_rank_cd(search,websearch_to_tsquery($1))  desc
-    """
-
-    %{cmd | sql: sql, params: [term]}
+    search_command(cmd, "search", term)
   end
 
   def search(%DocumentCommand{} = cmd, for: term, in: fields) do
     terms = search_terms(fields)
 
-    sql = """
-    select id, #{cmd.json_field}::text, created_at, updated_at from #{cmd.table_name}
-    where to_tsvector(concat(#{terms})) @@ websearch_to_tsquery($1)
-    order by ts_rank_cd(to_tsvector(concat(#{terms})),websearch_to_tsquery($1))  desc
-    """
+    search_command(cmd, "to_tsvector(concat(#{terms}))", term)
+  end
 
-    %{cmd | sql: sql, params: [term]}
+  defp search_command(cmd, vector, term) do
+    query = "websearch_to_tsquery($#{length(cmd.params) + 1})"
+    cmd = Moebius.QueryFilter.append_condition(cmd, "#{vector} @@ #{query}", [term])
+
+    order =
+      if cmd.order == "",
+        do: " order by ts_rank_cd(#{vector},#{query}) desc",
+        else: cmd.order
+
+    select(%{cmd | order: order})
   end
 
   defp delete_command(%DocumentCommand{} = cmd, id) do
