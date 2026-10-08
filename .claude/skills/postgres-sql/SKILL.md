@@ -46,7 +46,7 @@ The document table has `GIN (body jsonb_path_ops)`. (`advanced-jsonb-indexing.md
 
 ### Full-text search
 
-(`advanced-full-text-search.md`)
+(Rob's rules are in `../postgres-full-text-search/SKILL.md`, which supersedes `advanced-full-text-search.md`: English for prose, English + simple for literal values, in both the vector and the query.)
 
 - Stored `search tsvector` with a GIN index is the fast path (`DocumentQuery.search/2`).
 - On-the-fly `to_tsvector(concat(...)) @@ ...` scans the table. Fine for small tables, and the docs say so.
