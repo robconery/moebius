@@ -1,13 +1,12 @@
 # Moebius
 
-Functional query library for Elixir + PostgreSQL. **Not an ORM**: no schemas, no mappings, no migrations. You pipe small functions to build a SQL command struct, then hand it to a database module to run through epgsql, the Erlang driver, with a pooler pool. Published on Hex as `moebius` (v4.2.0; 5.0.0 is the epgsql release, see `CHANGELOG.md`). See `PROJECT.md` for the full explanation.
+Functional query library for Elixir + PostgreSQL. 
 
-```elixir
-import Moebius.Query
-db(:users) |> filter(email: "a@b.com") |> Moebius.Db.first()          # relational
-import Moebius.DocumentQuery
-db(:orders) |> contains(status: "open") |> Moebius.Db.run()            # JSONB document store
-```
+## Rules
+
+Never install a package by editing the package manifest. Always use the binary tool for installing a package. 
+
+Be very, very terse in your reply. Give me details, but don't go on and on, and just give it to me directly. Use emojis freely. 
 
 ## Navigating the code
 
@@ -21,14 +20,6 @@ Core modules (all in `lib/moebius/`):
 - `pool.ex`, `connection.ex`, `copy.ex`, `params.ex`, `codec/`: the driver layer (pooler checkout, transactions, epgsql calls, parameter checks, type codecs)
 - `identifier.ex`: checks every name that goes into SQL
 - `transformer.ex`: turns `%Moebius.Result{}` into maps
-
-## Skills (in `.claude/skills/`)
-
-Load the matching skill before you change code:
-- `erlang-otp`: processes, supervision, the pool, calling Erlang (epgsql, pooler). Its `references/` document the epgsql and pooler APIs.
-- `postgres-sql`: any function that builds SQL, DDL, indexes, pagination, bulk writes, transactions.
-- `supabase-postgres-best-practices`: general Postgres rules with examples (installed from supabase/agent-skills; update with `npx skills update`).
-- `elixir-testing`: anything under `test/`. Every test owns its data. Check for flaky tests with `mix test --repeat-until-failure 20`.
 
 ## Running tests
 
