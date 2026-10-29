@@ -41,4 +41,34 @@ defmodule Moebius.ReportedIssuesTest do
 
     assert {:ok, [%{email: "null@test.com"}]} = db(:users) |> filter(last: nil) |> TestDb.run()
   end
+
+  test "limit, offset and sort piped after search are honored (#99)" do
+    for n <- 1..3 do
+      {:ok, _} =
+        db(:users)
+        |> insert(first: "Searchable", last: "Person #{n}", email: "search#{n}@test.com")
+        |> TestDb.run()
+    end
+
+    assert {:ok, [_, _, _]} =
+             db(:users) |> search(for: "Searchable", in: [:first]) |> TestDb.run()
+
+    assert {:ok, [_, _]} =
+             db(:users) |> search(for: "Searchable", in: [:first]) |> limit(2) |> TestDb.run()
+
+    assert {:ok, [%{email: "search3@test.com"}]} =
+             db(:users)
+             |> search(for: "Searchable", in: [:first])
+             |> sort(:id, :desc)
+             |> limit(1)
+             |> TestDb.run()
+
+    assert {:ok, %{email: "search2@test.com"}} =
+             db(:users)
+             |> search(for: "Searchable", in: [:first])
+             |> sort(:id)
+             |> offset(1)
+             |> limit(1)
+             |> TestDb.first()
+  end
 end

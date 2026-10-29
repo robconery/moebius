@@ -66,10 +66,12 @@ defmodule Moebius.SafetyRegressionTest do
       |> limit(1)
       |> search(for: "sharedword", in: [:name])
 
+    sql = select(cmd).sql
+
     assert cmd.params == [10, "sharedword"]
-    assert cmd.sql =~ "where (tenant_id = $1) and"
-    assert cmd.sql =~ "websearch_to_tsquery($2)"
-    assert cmd.sql =~ "order by id asc limit 1 offset 1"
+    assert sql =~ "where (tenant_id = $1) and"
+    assert sql =~ "websearch_to_tsquery($2)"
+    assert sql =~ "order by id asc limit 1 offset 1"
     assert {:ok, [%{id: 2, tenant_id: 10}]} = OneDb.run(cmd)
   end
 
@@ -82,6 +84,7 @@ defmodule Moebius.SafetyRegressionTest do
       |> join(:users, on: :safety_records, primary_key: :id, foreign_key: :id)
       |> filter("safety_records.tenant_id = $1 or safety_records.tenant_id = $2", [10, 20])
       |> search(for: "sharedword", in: [:name])
+      |> select()
 
     assert cmd.sql =~ "inner join users"
     assert cmd.sql =~ "where (safety_records.tenant_id = $1 or safety_records.tenant_id = $2) and"
@@ -106,7 +109,7 @@ defmodule Moebius.SafetyRegressionTest do
           DocumentQuery.search(scoped, for: "sharedword", in: [:name])
         ] do
       assert search.params == [%{tenant: 10}, "sharedword"]
-      assert search.sql =~ "where (body @> $1) and"
+      assert DocumentQuery.select(search).sql =~ "where (body @> $1) and"
       assert {:ok, [%{id: id}]} = OneDb.run(search)
       assert id == doc.id
     end

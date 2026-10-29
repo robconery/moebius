@@ -7,6 +7,8 @@ tags: full-text-search, tsvector, gin, search
 
 ## Use tsvector for Full-Text Search
 
+> **Superseded.** Follow `../../postgres-full-text-search/SKILL.md` for all full-text search work. The examples below use a single `english` config, which stems names, tags and places (`Paris` → `pari`) and drops literals made of stop words (`The Who`). Do not copy them. Keep only the general point: use `tsvector` + GIN instead of `LIKE '%...%'`.
+
 LIKE with wildcards can't use indexes. Full-text search with tsvector is orders of magnitude faster.
 
 **Incorrect (LIKE pattern matching):**

@@ -192,8 +192,13 @@ defmodule Moebius.Query do
 
   #command is a QueryCommand object with all of the pipelined settings applied
   ```
+
+  Without `cols`, the select list is the one the pipeline set (`*`, or the ranked list
+  `search/2` asks for).
   """
-  def select(cmd, cols \\ "*")
+  def select(cmd, cols \\ nil)
+
+  def select(%QueryCommand{} = cmd, nil), do: select_sql(cmd, cmd.select)
 
   def select(%QueryCommand{} = cmd, cols) when is_bitstring(cols) do
     select_sql(cmd, cols)
@@ -329,12 +334,17 @@ defmodule Moebius.Query do
   for:  -   The string term you want to query against.
   in:   -   An atomized list of columns to search against.
 
+  Like every other builder, `search` only adds to the command; the SQL is built when you run
+  it. So `sort`, `limit` and `offset` work before or after it. Without a `sort`, rows come
+  back by rank, best match first.
+
   Example:
 
   ```
   result =
     db(:users)
     |> search(for: "Mike", in: [:first, :last, :email])
+    |> limit(10)
     |> run
   ```
   """
@@ -345,7 +355,7 @@ defmodule Moebius.Query do
     cmd = Moebius.QueryFilter.append_condition(cmd, "#{vector} @@ #{query}", [term])
     order = if cmd.order == "", do: " order by rank desc", else: cmd.order
 
-    select(%{cmd | order: order}, "*, ts_rank_cd(#{vector},#{query}) as rank")
+    %{cmd | order: order, select: "*, ts_rank_cd(#{vector},#{query}) as rank"}
   end
 
   @doc """

@@ -291,6 +291,59 @@ defmodule Moebius.DocumentTest do
       assert {:ok, [%{name: "Chicken Wings"}]} =
                db(:monkies) |> search(for: "duck", in: [:name, :description]) |> TestDb.run()
     end
+
+    test "search/2 builds nothing until the command runs" do
+      assert %{sql: nil} = db(:monkies) |> search("duck")
+      assert %{sql: nil} = db(:monkies) |> search(for: "duck", in: [:name])
+    end
+
+    test "limit piped after search/2 is honored (#98)" do
+      {:ok, _} = db(:monkies) |> searchable([:name]) |> TestDb.save(%{name: "Duck Soup"})
+      {:ok, _} = db(:monkies) |> searchable([:name]) |> TestDb.save(%{name: "Duck Pie"})
+
+      assert {:ok, [_, _, _]} = db(:monkies) |> search("duck") |> TestDb.run()
+      assert {:ok, [_]} = db(:monkies) |> search("duck") |> limit(1) |> TestDb.run()
+
+      assert {:ok, [_, _]} = db(:monkies) |> search(for: "duck", in: [:name]) |> TestDb.run()
+
+      assert {:ok, [_]} =
+               db(:monkies) |> search(for: "duck", in: [:name]) |> limit(1) |> TestDb.run()
+    end
+
+    test "search/2 |> sort(:id, :desc) |> first returns the newest match (#98)" do
+      {:ok, _} = db(:monkies) |> searchable([:name]) |> TestDb.save(%{name: "Duck Soup"})
+      {:ok, newest} = db(:monkies) |> searchable([:name]) |> TestDb.save(%{name: "Duck Pie"})
+
+      assert {:ok, %{id: id, name: "Duck Pie"}} =
+               db(:monkies) |> search("duck") |> sort(:id, :desc) |> limit(1) |> TestDb.first()
+
+      assert id == newest.id
+
+      assert {:ok, %{name: "Duck Pie"}} =
+               db(:monkies) |> search("duck") |> sort(:created_at, :desc) |> TestDb.first()
+    end
+  end
+
+  describe "sort/3" do
+    test "sorts on a key of the document" do
+      assert %{order: " order by body -> 'city' asc"} = db(:user_docs) |> sort(:city)
+      assert %{order: " order by body -> 'city' desc"} = db(:user_docs) |> sort(:city, :desc)
+    end
+
+    test "sorts :id, :created_at and :updated_at on the row's columns (#98)" do
+      assert %{order: " order by id desc"} = db(:user_docs) |> sort(:id, :desc)
+      assert %{order: " order by created_at asc"} = db(:user_docs) |> sort(:created_at)
+      assert %{order: " order by updated_at desc"} = db(:user_docs) |> sort("updated_at", :desc)
+    end
+
+    test "sorting on :id orders by the row id, not a body key", %{steve: steve} do
+      {:ok, later} = db(:user_docs) |> TestDb.save(email: "later@test.com")
+
+      assert {:ok, [%{id: first_id}, %{id: second_id}]} =
+               db(:user_docs) |> sort(:id, :desc) |> TestDb.run()
+
+      assert {first_id, second_id} == {later.id, steve.id}
+    end
   end
 
   describe "deleting documents" do
