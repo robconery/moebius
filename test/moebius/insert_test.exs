@@ -50,4 +50,105 @@ defmodule Moebius.InsertTest do
              |> insert(email: "json@test.com", profile: %{theme: "dark"}, roles: ["admin", "dev"])
              |> TestDb.run()
   end
+
+  describe "ignore_conflict" do
+    test "adds on conflict do nothing before returning" do
+      cmd = db(:users) |> insert(email: "a@test.com") |> ignore_conflict()
+
+      assert cmd.sql ==
+               "insert into users(email) values($1) on conflict do nothing returning *;"
+    end
+
+    test "names the conflict target columns" do
+      assert db(:users) |> insert(email: "a@test.com") |> ignore_conflict(:email) |> Map.get(:sql) ==
+               "insert into users(email) values($1) on conflict (email) do nothing returning *;"
+
+      assert db(:users)
+             |> insert(email: "a@test.com", first: "A")
+             |> ignore_conflict([:email, :first])
+             |> Map.get(:sql) ==
+               "insert into users(email, first) values($1, $2) on conflict (email, first) do nothing returning *;"
+    end
+
+    test "applies to every command in a bulk insert" do
+      %Moebius.CommandBatch{commands: [cmd]} =
+        db(:users) |> bulk_insert([[email: "a@test.com"]]) |> ignore_conflict(:email)
+
+      assert cmd.sql == "insert into users(email) values ($1) on conflict (email) do nothing;"
+    end
+
+    test "rejects an unsafe column name" do
+      assert_raise ArgumentError, fn ->
+        db(:users)
+        |> insert(email: "a@test.com")
+        |> ignore_conflict("email); drop table users;--")
+      end
+    end
+
+    test "rejects an unsafe column name inside a list" do
+      assert_raise ArgumentError, fn ->
+        db(:users)
+        |> insert(email: "a@test.com")
+        |> ignore_conflict([:email, "x); drop table users;--"])
+      end
+    end
+
+    test "raises when applied twice" do
+      assert_raise ArgumentError, ~r/already applied/, fn ->
+        db(:users) |> insert(email: "a@test.com") |> ignore_conflict() |> ignore_conflict(:email)
+      end
+    end
+
+    test "returns an error when the target column has no unique constraint" do
+      assert {:error,
+              "there is no unique or exclusion constraint matching the ON CONFLICT specification"} =
+               db(:users)
+               |> insert(email: "a@test.com")
+               |> ignore_conflict(:first)
+               |> TestDb.run()
+
+      assert {:ok, []} = db(:users) |> filter(email: "a@test.com") |> TestDb.run()
+    end
+
+    test "raises when not piped after an insert" do
+      assert_raise ArgumentError, ~r/must follow insert/, fn ->
+        db(:users) |> filter(id: 1) |> update(first: "X") |> ignore_conflict()
+      end
+    end
+
+    test "skips a duplicate and returns nil" do
+      {:ok, %{id: id}} = db(:users) |> insert(email: "dupe@test.com") |> TestDb.run()
+
+      assert {:ok, nil} =
+               db(:users)
+               |> insert(email: "dupe@test.com")
+               |> ignore_conflict(:email)
+               |> TestDb.run()
+
+      assert {:ok, [%{id: ^id}]} = db(:users) |> filter(email: "dupe@test.com") |> TestDb.run()
+    end
+
+    test "still returns an error for a different constraint" do
+      assert {:error,
+              ~s(null value in column "email" of relation "users" violates not-null constraint)} =
+               db(:users) |> insert(first: "No email") |> ignore_conflict(:email) |> TestDb.run()
+    end
+
+    test "bulk insert skips existing rows and inserts the rest" do
+      {:ok, _} = db(:users) |> insert(email: "dupe@test.com") |> TestDb.run()
+
+      assert [ok: %Moebius.Result{num_rows: 1}] =
+               db(:users)
+               |> bulk_insert([[email: "dupe@test.com"], [email: "new@test.com"]])
+               |> ignore_conflict(:email)
+               |> TestDb.transact_batch()
+
+      assert {:ok, rows} =
+               db(:users)
+               |> filter("email in ('dupe@test.com', 'new@test.com')")
+               |> TestDb.run()
+
+      assert rows |> Enum.map(& &1.email) |> Enum.sort() == ["dupe@test.com", "new@test.com"]
+    end
+  end
 end

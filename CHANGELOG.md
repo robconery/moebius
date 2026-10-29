@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `Moebius.Query.ignore_conflict/1,2` adds `on conflict [(cols)] do nothing` to `insert/2`
+  and `bulk_insert/2`. A skipped single insert returns `{:ok, nil}`. (#120)
+
 ## 5.0.1
 
 ### Fixed
