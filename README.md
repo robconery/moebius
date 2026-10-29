@@ -502,9 +502,21 @@ db(:products)
 You can also search keys on the fly, without the index: `search(for: "spicy", in: [:name, :description])`.
 
 A document save and its search-column update run in one transaction. If either fails,
-neither write is committed. Both relational and document searches preserve preceding
-filters, parameters, sorting, limits and offsets. Put `search/2` last in the builder pipeline,
-before calling `run/1`, `first/1` or `stream/2`.
+neither write is committed. `search/2` is a builder like any other: it only adds to the
+command, so `filter`, `sort`, `limit` and `offset` work before or after it. Without a `sort`,
+matches come back best first. To get the newest match, sort on the row's own columns:
+
+```elixir
+{:ok, latest} =
+  db(:logs)
+  |> search(for: "/users/accounts", in: [:name])
+  |> sort(:created_at, :desc)
+  |> limit(1)
+  |> Moebius.Db.first()
+```
+
+On a document, `sort/3` with `:id`, `:created_at` or `:updated_at` sorts on the table column;
+any other key sorts on `body -> 'key'`.
 
 ### Structs
 

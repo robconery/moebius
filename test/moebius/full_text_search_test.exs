@@ -17,10 +17,31 @@ defmodule Moebius.FullTextSearchTest do
   end
 
   test "search/2 builds a ranked full text query" do
-    cmd = db(:users) |> search(for: "Mike", in: [:first, :last])
+    cmd = db(:users) |> search(for: "Mike", in: [:first, :last]) |> select()
 
     assert cmd.sql =~ "to_tsvector(concat(first, ' ',  last)) @@ websearch_to_tsquery($1)"
     assert cmd.sql =~ "order by rank desc"
+    assert cmd.params == ["Mike"]
+  end
+
+  test "search/2 builds nothing until the command runs" do
+    assert %{sql: nil} = db(:users) |> search(for: "Mike", in: [:first, :last])
+  end
+
+  test "sort, limit and offset piped after search/2 are in the SQL (#98, #99)" do
+    cmd =
+      db(:users)
+      |> search(for: "Mike", in: [:first, :last])
+      |> sort(:id, :desc)
+      |> limit(1)
+      |> offset(2)
+      |> select()
+
+    assert cmd.sql ==
+             "select *, ts_rank_cd(to_tsvector(concat(first, ' ',  last)),websearch_to_tsquery($1)) as rank " <>
+               "from users where to_tsvector(concat(first, ' ',  last)) @@ websearch_to_tsquery($1)" <>
+               " order by id desc limit 1 offset 2;"
+
     assert cmd.params == ["Mike"]
   end
 

@@ -7,6 +7,15 @@
 - `Moebius.Query.ignore_conflict/1,2` adds `on conflict [(cols)] do nothing` to `insert/2`
   and `bulk_insert/2`. A skipped single insert returns `{:ok, nil}`. (#120)
 
+### Fixed
+
+- `search/2` on both `Moebius.Query` and `Moebius.DocumentQuery` no longer builds its SQL
+  eagerly, so `sort`, `limit` and `offset` piped after it are honored (#98, #99). The select
+  list it needs lives in the new `select` field of `%QueryCommand{}`, and `select/1` uses it.
+- `Moebius.DocumentQuery.sort/3` with `:id`, `:created_at` or `:updated_at` sorts on the row's
+  column instead of `body -> 'id'`, so `search |> sort(:id, :desc) |> first` returns the newest
+  match (#98).
+
 ## 5.0.1
 
 ### Fixed
