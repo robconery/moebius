@@ -453,6 +453,41 @@ defmodule Moebius.Query do
   def insert(%QueryCommand{}, []), do: raise(ArgumentError, "insert needs at least one column")
 
   @doc """
+  Skips rows that would break a unique constraint, with `on conflict do nothing`. Pipe it after
+  `insert/2` or `bulk_insert/2`. Give a column (or list of columns) to ignore conflicts on that
+  constraint only; any other constraint violation still returns an error.
+
+  A skipped `insert/2` returns `{:ok, nil}`.
+
+  ```
+  db(:users) |> insert(email: "rob@test.com") |> ignore_conflict(:email) |> Moebius.Db.run()
+  db(:people) |> bulk_insert(data) |> ignore_conflict() |> Moebius.Db.transact_batch()
+  ```
+  """
+  def ignore_conflict(cmd, columns \\ [])
+
+  def ignore_conflict(%CommandBatch{commands: commands} = batch, columns),
+    do: %{batch | commands: Enum.map(commands, &ignore_conflict(&1, columns))}
+
+  def ignore_conflict(%QueryCommand{type: :insert, sql: sql} = cmd, columns) do
+    clause =
+      case List.wrap(columns) do
+        [] -> "on conflict do nothing"
+        cols -> "on conflict (#{Identifier.names!(cols)}) do nothing"
+      end
+
+    sql =
+      if String.ends_with?(sql, " returning *;"),
+        do: String.replace_suffix(sql, " returning *;", " #{clause} returning *;"),
+        else: String.replace_suffix(sql, ";", " #{clause};")
+
+    %{cmd | sql: sql}
+  end
+
+  def ignore_conflict(%QueryCommand{}, _columns),
+    do: raise(ArgumentError, "ignore_conflict must follow insert/2 or bulk_insert/2")
+
+  @doc """
   Creates an update command based on the assembled pipeline.
   """
   def update(%QueryCommand{} = cmd, [_ | _] = criteria) do
