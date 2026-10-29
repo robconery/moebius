@@ -470,6 +470,9 @@ defmodule Moebius.Query do
     do: %{batch | commands: Enum.map(commands, &ignore_conflict(&1, columns))}
 
   def ignore_conflict(%QueryCommand{type: :insert, sql: sql} = cmd, columns) do
+    if String.contains?(sql, " on conflict "),
+      do: raise(ArgumentError, "ignore_conflict was already applied to this insert")
+
     clause =
       case List.wrap(columns) do
         [] -> "on conflict do nothing"

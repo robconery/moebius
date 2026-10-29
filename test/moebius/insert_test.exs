@@ -85,6 +85,31 @@ defmodule Moebius.InsertTest do
       end
     end
 
+    test "rejects an unsafe column name inside a list" do
+      assert_raise ArgumentError, fn ->
+        db(:users)
+        |> insert(email: "a@test.com")
+        |> ignore_conflict([:email, "x); drop table users;--"])
+      end
+    end
+
+    test "raises when applied twice" do
+      assert_raise ArgumentError, ~r/already applied/, fn ->
+        db(:users) |> insert(email: "a@test.com") |> ignore_conflict() |> ignore_conflict(:email)
+      end
+    end
+
+    test "returns an error when the target column has no unique constraint" do
+      assert {:error,
+              "there is no unique or exclusion constraint matching the ON CONFLICT specification"} =
+               db(:users)
+               |> insert(email: "a@test.com")
+               |> ignore_conflict(:first)
+               |> TestDb.run()
+
+      assert {:ok, []} = db(:users) |> filter(email: "a@test.com") |> TestDb.run()
+    end
+
     test "raises when not piped after an insert" do
       assert_raise ArgumentError, ~r/must follow insert/, fn ->
         db(:users) |> filter(id: 1) |> update(first: "X") |> ignore_conflict()
@@ -104,7 +129,8 @@ defmodule Moebius.InsertTest do
     end
 
     test "still returns an error for a different constraint" do
-      assert {:error, _} =
+      assert {:error,
+              ~s(null value in column "email" of relation "users" violates not-null constraint)} =
                db(:users) |> insert(first: "No email") |> ignore_conflict(:email) |> TestDb.run()
     end
 
@@ -117,10 +143,12 @@ defmodule Moebius.InsertTest do
                |> ignore_conflict(:email)
                |> TestDb.transact_batch()
 
-      assert {:ok, [_, _]} =
+      assert {:ok, rows} =
                db(:users)
                |> filter("email in ('dupe@test.com', 'new@test.com')")
                |> TestDb.run()
+
+      assert rows |> Enum.map(& &1.email) |> Enum.sort() == ["dupe@test.com", "new@test.com"]
     end
   end
 end
