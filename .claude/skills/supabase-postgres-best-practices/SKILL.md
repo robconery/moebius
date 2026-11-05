@@ -24,6 +24,10 @@ Reference these guidelines when:
 - Optimizing for Postgres-specific features
 - Working with Row-Level Security (RLS)
 
+## Overrides: full-text search
+
+For full-text search (`tsvector`, `tsquery`, `to_tsvector`, `websearch_to_tsquery`, `ts_rank`, `ts_headline`, GIN search indexes), **use the `postgres-full-text-search` skill (`../postgres-full-text-search/SKILL.md`) instead of `references/advanced-full-text-search.md`.** It takes precedence wherever the two disagree: English for prose, simple + English for literal values (names, tags, cities, countries), concatenated in both the vector and the query. Every search is ranked descending, with exact literal matches first.
+
 ## Rule Categories by Priority
 
 | Priority | Category | Impact | Prefix |

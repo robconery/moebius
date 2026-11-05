@@ -51,6 +51,7 @@ defmodule Moebius do
 
   defp connect_error(reason), do: Moebius.Error.from_epgsql(reason).message
 
+  # Reads the default `:connection` key from the `:moebius` app config.
   def get_connection(), do: get_connection(:connection)
 
   @doc false
@@ -60,6 +61,7 @@ defmodule Moebius do
   def get_connection(key) when is_atom(key) do
     opts = Application.get_env(:moebius, key) || []
 
+    # A `:url` expands into discrete options; explicit keys in `opts` win.
     case opts[:url] do
       nil -> opts
       url -> Keyword.merge(parse_connection(url), opts)
@@ -68,7 +70,10 @@ defmodule Moebius do
 
   # thanks to the Ecto team for this code!
   def parse_connection(url) when is_binary(url) do
-    info = url |> URI.decode() |> URI.parse()
+    info =
+      url
+      |> URI.decode()
+      |> URI.parse()
 
     if info.host in [nil, ""] do
       raise ArgumentError, "invalid database URL: host is not present"

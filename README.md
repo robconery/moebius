@@ -32,6 +32,14 @@ Moebius is *not* an ORM. There are no schemas, no mappings and no migrations; on
 
 ## Why Moebius exists
 
+PostgreSQL is one of the best pieces of software ever written, and most of us use about a tenth of it. It stores documents as well as any document database. It does full-text search, ranked, in any language you can find a dictionary for. It loads a hundred thousand rows in the time it takes to blink, streams results through cursors, nests transactions with savepoints, and will tell you exactly how it plans to run your query if you just ask. All of that has been sitting there for years, waiting.
+
+The usual way in is an ORM, and an ORM's job is to stand between you and the database. That's a fine job if what you want is objects. But if what you want is *Postgres*, all of it, then every layer in the way is something you have to learn, configure, and eventually work around. I've spent more evenings than I'd like to admit fighting a mapping layer to get it to emit a query I could have typed in thirty seconds.
+
+Elixir gives us a better option. A query is just data. A pipe is just a function handing data to the next function. So a query builder can be nothing more than a handful of small functions that each add one clause to a struct, and a database module that runs the struct when you're ready. No schemas to keep in sync, no migrations to generate, no magic to debug at 11pm. You can read the whole thing in an afternoon, and you can see the SQL it builds whenever you want.
+
+That's the bet Moebius makes: **SQL is a friend, Postgres is the feature, and Elixir's pipe is the only abstraction you need on top.** When it works, you stop thinking about the library and start thinking about your data, which is the whole point.
+
 Elixir is lucky. The people who build the language also built Ecto and Postgrex, and both are excellent. Most languages don't get that. If Ecto fits the way you think, use it; it's a great piece of work and it isn't going anywhere.
 
 But the folks who make a language shouldn't have to make *every* tool for it too. That's a lot to carry, and one of the nice things about open source is that the rest of us can pitch in with a different take. Moebius is one of those takes.
@@ -494,9 +502,21 @@ db(:products)
 You can also search keys on the fly, without the index: `search(for: "spicy", in: [:name, :description])`.
 
 A document save and its search-column update run in one transaction. If either fails,
-neither write is committed. Both relational and document searches preserve preceding
-filters, parameters, sorting, limits and offsets. Put `search/2` last in the builder pipeline,
-before calling `run/1`, `first/1` or `stream/2`.
+neither write is committed. `search/2` is a builder like any other: it only adds to the
+command, so `filter`, `sort`, `limit` and `offset` work before or after it. Without a `sort`,
+matches come back best first. To get the newest match, sort on the row's own columns:
+
+```elixir
+{:ok, latest} =
+  db(:logs)
+  |> search(for: "/users/accounts", in: [:name])
+  |> sort(:created_at, :desc)
+  |> limit(1)
+  |> Moebius.Db.first()
+```
+
+On a document, `sort/3` with `:id`, `:created_at` or `:updated_at` sorts on the table column;
+any other key sorts on `body -> 'key'`.
 
 ### Structs
 

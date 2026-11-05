@@ -9,6 +9,7 @@ defmodule Moebius.QueryCommand do
             columns: nil,
             vals: nil,
             type: :select,
+            select: "*",
             where: "",
             order: "",
             limit: "",

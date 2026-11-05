@@ -176,7 +176,9 @@ defmodule Moebius.DocumentQuery do
   def offset(%DocumentCommand{} = cmd, len), do: Moebius.Query.offset(cmd, len)
 
   @doc """
-  Sorts the query based on the supplied criteria.
+  Sorts the query based on the supplied criteria. `field` is a key of the document; the row's
+  own `:id`, `:created_at` and `:updated_at` sort on the table columns, so `sort(:id, :desc)`
+  (or `sort(:created_at, :desc)`) gets the newest document first.
 
   Example:
 
@@ -185,15 +187,17 @@ defmodule Moebius.DocumentQuery do
     |> exists(:pets, "skippy") # :pets is an array
     |> sort(:city)
     |> to_list
+
+  newest = db(:logs) |> sort(:created_at, :desc) |> limit(1) |> Moebius.Db.first()
   ```
   """
   def sort(%DocumentCommand{} = cmd, field, direction \\ :asc) do
-    %{
-      cmd
-      | order:
-          " order by body -> #{Identifier.json_key(field)} #{Identifier.direction!(direction)}"
-    }
+    %{cmd | order: " order by #{sort_term(cmd, field)} #{Identifier.direction!(direction)}"}
   end
+
+  # the row's own columns are sorted as columns; anything else is a key of the body (#98)
+  defp sort_term(_cmd, field) when field in @row_keys, do: to_string(field)
+  defp sort_term(cmd, field), do: "#{cmd.json_field} -> #{Identifier.json_key(field)}"
 
   def decide_command(%DocumentCommand{} = cmd, doc) do
     cond do
@@ -311,6 +315,8 @@ defmodule Moebius.DocumentQuery do
     search_command(cmd, "to_tsvector(concat(#{terms}))", term)
   end
 
+  # Only adds to the command; the SQL is built when it runs (see `select/1`), so `sort`,
+  # `limit` and `offset` work before or after `search` (#98, #99).
   defp search_command(cmd, vector, term) do
     query = "websearch_to_tsquery($#{length(cmd.params) + 1})"
     cmd = Moebius.QueryFilter.append_condition(cmd, "#{vector} @@ #{query}", [term])
@@ -320,7 +326,7 @@ defmodule Moebius.DocumentQuery do
         do: " order by ts_rank_cd(#{vector},#{query}) desc",
         else: cmd.order
 
-    select(%{cmd | order: order})
+    %{cmd | order: order}
   end
 
   defp delete_command(%DocumentCommand{} = cmd, id) do
